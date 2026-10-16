@@ -2,13 +2,11 @@
 
 namespace App\Models;
 
-use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class SMSCode extends Model
 {
-    /** @use HasFactory<UserFactory> */
     use HasFactory;
 
     protected $table = 'sms_codes_disabled';

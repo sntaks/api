@@ -233,11 +233,11 @@ it('reports each game with stakes, payouts, outcome and house take', function ()
     expect($data['pagination']['total'])->toBe(2);
     expect($done)->toMatchArray(['outcome' => 'completed', 'players' => 2, 'game_type' => 1]);
     expect($done['stakes'])->toEqual(200);
-    expect($done['paid_to_players'])->toEqual(180);
-    expect($done['house_payout'])->toEqual(10);
+    expect($done['paid_to_players'])->toEqual(181);
+    expect($done['house_payout'])->toEqual(9);
     expect($done['refunded'])->toEqual(0);
     expect($done['escrow_balance'])->toEqual(0);
-    expect($done['house_take'])->toEqual(20);
+    expect($done['house_take'])->toEqual(19);
 
     $open = collect($data['items'])->firstWhere('game_id', 'DG_OPEN');
     expect($open['outcome'])->toBe('open');
@@ -254,7 +254,7 @@ it('summarises games by outcome and player count and filters them', function () 
     $data = drillGet($this, 'games');
 
     expect($data['summary']['games'])->toBe(3);
-    expect($data['summary']['by_outcome']['completed'])->toMatchArray(['games' => 2, 'stakes' => 400, 'paid_to_players' => 360, 'house_take' => 40]);
+    expect($data['summary']['by_outcome']['completed'])->toMatchArray(['games' => 2, 'stakes' => 400, 'paid_to_players' => 362, 'house_take' => 38]);
     expect($data['summary']['by_outcome']['refunded'])->toMatchArray(['games' => 1, 'stakes' => 100, 'refunded' => 100]);
     expect($data['summary']['by_players']['2']['games'])->toBe(2);
     expect($data['summary']['by_players']['1']['games'])->toBe(1);
@@ -358,14 +358,14 @@ it('gives a customer statement with opening and closing balances that reconcile'
 
     expect($data['customer'])->toMatchArray(['id' => 900, 'name' => 'Alice Wanjiru', 'phone_no' => '2547****5678']);
     expect($data['statement']['opening_balance'])->toEqual(1200);
-    expect($data['statement']['credits'])->toEqual(190);
+    expect($data['statement']['credits'])->toEqual(191);
     expect($data['statement']['debits'])->toEqual(100);
-    expect($data['statement']['closing_balance'])->toEqual(1290);
+    expect($data['statement']['closing_balance'])->toEqual(1291);
     expect($data['statement']['entries'])->toBe(3);
     expect($data['statement']['reconciles'])->toBeTrue();
-    expect($data['wallet']['balance_now'])->toEqual(1290);
+    expect($data['wallet']['balance_now'])->toEqual(1291);
     expect(array_column($data['items'], 'entry_type'))->toBe(['deposit', 'game_bet', 'game_payout']);
-    expect($data['items'][2]['balance_after'])->toEqual(1290);
+    expect($data['items'][2]['balance_after'])->toEqual(1291);
     expect($data['pagination']['total'])->toBe(3);
 });
 
@@ -400,14 +400,14 @@ it('ranks customers by activity and reports how concentrated balances are', func
     expect($data['items'][0]['staked'])->toEqual(100);
     expect($data['items'][0]['won'])->toEqual(0);
     expect($data['items'][0]['net_gaming'])->toEqual(-100);
-    expect($data['items'][1]['won'])->toEqual(180);
-    expect($data['items'][1]['net_gaming'])->toEqual(80);
+    expect($data['items'][1]['won'])->toEqual(181);
+    expect($data['items'][1]['net_gaming'])->toEqual(81);
 
     $byNet = drillGet($this, 'customers/top?sort=net_gaming');
     expect(array_column($byNet['items'], 'customer_id'))->toBe([901, 900]);
 
     expect(drillGet($this, 'customers/top?limit=1')['items'])->toHaveCount(1);
-    expect($data['summary']['customer_wallets_total'])->toEqual(2000 + 500 + 100 - 100 - 100 + 180);
+    expect($data['summary']['customer_wallets_total'])->toEqual(2000 + 500 + 100 - 100 - 100 + 181);
     expect($data['summary']['concentration']['share_percent'])->toEqual(100.0);
 });
 

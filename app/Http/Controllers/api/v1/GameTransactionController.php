@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\api\v1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PagedListRequest;
 use App\Http\Requests\StoreGameTransactionRequest;
 use App\Http\Resources\GameTransactionResource;
 use App\Services\GameWalletService;
@@ -17,9 +18,9 @@ class GameTransactionController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(PagedListRequest $request)
     {
-        return GameTransactionResource::collection($this->gameWalletService->listGameTransactions());
+        return GameTransactionResource::collection($this->gameWalletService->listGameTransactions($request->perPage()));
     }
 
     /**

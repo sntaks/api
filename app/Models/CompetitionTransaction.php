@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class CompetitionTransaction extends Model
 {
-    /** @use HasFactory<\Database\Factories\WalletFactory> */
     use HasFactory;
 
     protected $table = 'competition_transactions';
@@ -20,11 +19,13 @@ class CompetitionTransaction extends Model
         'status',
     ];
 
-    public function wallet() {
+    public function wallet()
+    {
         return $this->belongsTo(CompetitionWallet::class, 'competition_wallet_id');
     }
 
-    public function customer() {
-        return $this->belongsTo(Customer::class);
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class)->withTrashed();
     }
 }

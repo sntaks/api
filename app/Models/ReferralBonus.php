@@ -43,12 +43,12 @@ class ReferralBonus extends Model
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Customer::class)->withTrashed();
     }
 
     public function referred(): BelongsTo
     {
-        return $this->belongsTo(Customer::class, 'referred_id');
+        return $this->belongsTo(Customer::class, 'referred_id')->withTrashed();
     }
 
     public function wallet(): BelongsTo

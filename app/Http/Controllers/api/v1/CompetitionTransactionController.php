@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\api\v1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PagedListRequest;
 use App\Http\Requests\StoreCompetitionTransactionRequest;
 use App\Http\Requests\UpdateCompetitionTransactionRequest;
 use App\Http\Resources\CompetitionTransactionResource;
-use App\Models\Customer;
 use App\Services\CompetitionWalletService;
 use Illuminate\Support\Facades\Log;
 
@@ -19,9 +19,9 @@ class CompetitionTransactionController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(PagedListRequest $request)
     {
-        return CompetitionTransactionResource::collection($this->walletService->listCompetitionTransactions());
+        return CompetitionTransactionResource::collection($this->walletService->listCompetitionTransactions($request->perPage()));
     }
 
     /**
@@ -85,15 +85,5 @@ class CompetitionTransactionController extends Controller
         }
 
         return response()->json(['status' => 'Success'], 200);
-    }
-
-    public function validateGameTransaction($customerId, $amount)
-    {
-        $customer = Customer::with('wallet')->find($customerId);
-        if (! $customer || ! $customer->wallet || $customer->wallet->balance < $amount) {
-            return false;
-        }
-
-        return true;
     }
 }

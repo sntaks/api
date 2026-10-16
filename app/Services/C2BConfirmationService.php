@@ -45,14 +45,15 @@ class C2BConfirmationService
 
             $customer = Customer::where('account_no', $normalizedAccountNo)->first();
 
+            // The money has arrived either way: it is kept as unmatched and resolved through /deposits/unmatched.
             if (! $customer) {
-                $deposit->update(['status' => 0]);
+                $deposit->update(['status' => Deposit::STATUS_UNMATCHED]);
                 Log::channel('mpesa')->error('MPESA Confirmation Received [Invalid Customer]:', $depositData);
 
                 return [
-                    'ResultCode' => 'C2B00016',
-                    'ResultDesc' => 'Invalid customer',
-                    'status' => 500,
+                    'ResultCode' => '0',
+                    'ResultDesc' => 'Accepted',
+                    'status' => 200,
                 ];
             }
 

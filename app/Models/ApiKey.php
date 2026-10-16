@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class ApiKey extends Model
 {
-    /** @use HasFactory<\Database\Factories\WalletFactory> */
     use HasFactory;
 
     protected $table = 'api_keys';
@@ -15,6 +14,6 @@ class ApiKey extends Model
     protected $fillable = [
         'key',
         'name',
-        'is_active'
+        'is_active',
     ];
 }

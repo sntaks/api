@@ -85,7 +85,7 @@ class WalletController extends Controller
     public function update_balance(Request $request, $encryptedIdentifier): JsonResponse
     {
         $request->validate([
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => 'required|numeric|min:0',
             'reason' => 'nullable|string|max:255',
         ]);
 

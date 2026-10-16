@@ -48,7 +48,7 @@ function unmatchedDeposit(float $amount = 100, string $billRef = '0799000111', s
         'BillRefNumber' => $billRef,
         'MSISDN' => $msisdn,
         'FirstName' => 'Jane',
-    ]);
+    ])->assertOk()->assertExactJson(['ResultCode' => '0', 'ResultDesc' => 'Accepted']);
 
     $deposit = Deposit::where('trans_id', $transId)->sole();
     expect((int) $deposit->status)->toBe(Deposit::STATUS_UNMATCHED);

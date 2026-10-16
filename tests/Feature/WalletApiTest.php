@@ -53,10 +53,11 @@ it('validates balance amount minimum', function () {
     $encryptedId = encryptId($wallet->id);
 
     $response = $this->putJson("/api/v1/wallets/{$encryptedId}/balance", [
-        'amount' => 0,
+        'amount' => -0.01,
     ], apiHeaders($this->apiKey->key));
 
     $response->assertStatus(422);
+    expect((float) $wallet->fresh()->balance)->toBe(100.0);
 });
 
 it('withdraws from wallet', function () {

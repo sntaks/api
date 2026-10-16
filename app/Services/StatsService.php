@@ -73,7 +73,7 @@ class StatsService
 
         $getCompetitionIncomeByRounds = function ($gameType, $rounds) use ($today) {
             return DB::table('competition_wallets as C')
-                ->join('wallet_transactions as W', 'W.sender_id', '=', 'C.id')
+                ->join('wallet_transactions as W', fn ($join) => $join->on('W.sender_id', '=', 'C.id')->where('W.transaction_type', 'c2w'))
                 ->where('C.game_type', $gameType)
                 ->whereIn('C.jp_rounds', $rounds)
                 ->whereDate('C.created_at', $today)
@@ -119,52 +119,48 @@ class StatsService
     {
         $endDate = Carbon::today();
         $startDate = Carbon::today()->subDays(29);
+        $range = [$startDate->copy(), $endDate->copy()->addDay()];
+
+        // Per day and game wallet: the players who staked that day. Only 2-4 player games count.
+        $stakedGames = DB::table('game_transactions')
+            ->selectRaw('DATE(created_at) as day, game_wallet_id')
+            ->where('payment_type', 'deposit')
+            ->where('created_at', '>=', $range[0])
+            ->where('created_at', '<', $range[1])
+            ->groupByRaw('DATE(created_at), game_wallet_id')
+            ->havingRaw('COUNT(DISTINCT customer_id) BETWEEN 2 AND 4');
+
+        $singleGamesIncome = DB::table('game_transactions as P')
+            ->joinSub($stakedGames, 'S', fn ($join) => $join->on('S.game_wallet_id', '=', 'P.game_wallet_id')->whereRaw('S.day = DATE(P.created_at)'))
+            ->selectRaw('DATE(P.created_at) as day, SUM(P.amount) as income')
+            ->where('P.payment_type', 'payout')
+            ->where('P.customer_id', 1)
+            ->where('P.created_at', '>=', $range[0])
+            ->where('P.created_at', '<', $range[1])
+            ->groupByRaw('DATE(P.created_at)')
+            ->pluck('income', 'day');
+
+        $competitionIncome = DB::table('competition_wallets as C')
+            ->join('wallet_transactions as W', fn ($join) => $join->on('W.sender_id', '=', 'C.id')->where('W.transaction_type', 'c2w'))
+            ->selectRaw('DATE(C.created_at) as day, C.game_type, SUM(W.amount) as income')
+            ->where(fn ($query) => $query
+                ->where(fn ($tournaments) => $tournaments->where('C.game_type', 1)->whereIn('C.jp_rounds', [3, 4, 5]))
+                ->orWhere(fn ($jackpots) => $jackpots->where('C.game_type', 2)->whereIn('C.jp_rounds', [13, 17, 21])))
+            ->where('C.created_at', '>=', $range[0])
+            ->where('C.created_at', '<', $range[1])
+            ->groupByRaw('DATE(C.created_at), C.game_type')
+            ->get()
+            ->groupBy('game_type')
+            ->map(fn ($rows) => $rows->pluck('income', 'day'));
+
         $dailyStats = [];
 
         for ($i = 0; $i < 30; $i++) {
-            $currentDate = $startDate->copy()->addDays($i);
-            $dateString = $currentDate->format('Y-m-d');
+            $dateString = $startDate->copy()->addDays($i)->format('Y-m-d');
 
-            $getSingleGamesIncomeByPlayerCount = function ($playerCount) use ($currentDate) {
-                $gameWalletIds = DB::table('game_transactions')
-                    ->select('game_wallet_id')
-                    ->where('payment_type', 'deposit')
-                    ->whereDate('created_at', $currentDate)
-                    ->groupBy('game_wallet_id')
-                    ->havingRaw('COUNT(DISTINCT customer_id) = ?', [$playerCount])
-                    ->pluck('game_wallet_id');
-
-                return DB::table('game_transactions')
-                    ->where('payment_type', 'payout')
-                    ->where('customer_id', 1)
-                    ->whereDate('created_at', $currentDate)
-                    ->whereIn('game_wallet_id', $gameWalletIds)
-                    ->sum('amount');
-            };
-
-            $singleGames2PlayersIncome = $getSingleGamesIncomeByPlayerCount(2);
-            $singleGames3PlayersIncome = $getSingleGamesIncomeByPlayerCount(3);
-            $singleGames4PlayersIncome = $getSingleGamesIncomeByPlayerCount(4);
-            $totalSingleGamesIncome = $singleGames2PlayersIncome + $singleGames3PlayersIncome + $singleGames4PlayersIncome;
-
-            $getCompetitionIncomeByRounds = function ($gameType, $rounds) use ($currentDate) {
-                return DB::table('competition_wallets as C')
-                    ->join('wallet_transactions as W', 'W.sender_id', '=', 'C.id')
-                    ->where('C.game_type', $gameType)
-                    ->whereIn('C.jp_rounds', $rounds)
-                    ->whereDate('C.created_at', $currentDate)
-                    ->sum('W.amount');
-            };
-
-            $tournaments3RoundsIncome = $getCompetitionIncomeByRounds(1, [3]);
-            $tournaments4RoundsIncome = $getCompetitionIncomeByRounds(1, [4]);
-            $tournaments5RoundsIncome = $getCompetitionIncomeByRounds(1, [5]);
-            $totalTournamentsIncome = $tournaments3RoundsIncome + $tournaments4RoundsIncome + $tournaments5RoundsIncome;
-
-            $jackpots13RoundsIncome = $getCompetitionIncomeByRounds(2, [13]);
-            $jackpots17RoundsIncome = $getCompetitionIncomeByRounds(2, [17]);
-            $jackpots21RoundsIncome = $getCompetitionIncomeByRounds(2, [21]);
-            $totalJackpotsIncome = $jackpots13RoundsIncome + $jackpots17RoundsIncome + $jackpots21RoundsIncome;
+            $totalSingleGamesIncome = (float) ($singleGamesIncome[$dateString] ?? 0);
+            $totalTournamentsIncome = (float) ($competitionIncome[1][$dateString] ?? 0);
+            $totalJackpotsIncome = (float) ($competitionIncome[2][$dateString] ?? 0);
 
             $dailyStats[$dateString] = [
                 'single_games' => $totalSingleGamesIncome,

@@ -46,7 +46,6 @@
                             <thead class="bg-gradient-navy">
                             <tr>
                                 <th>Name</th>
-                                <th>Status</th>
                                 <th>Action</th>
                             </tr>
                             </thead>
@@ -54,7 +53,6 @@
                             @foreach($roles as $role)
                                 <tr>
                                     <td>{{ $role->name }}</td>
-                                    <td>{!! $role->getStatusBadge() !!}</td>
                                     <td>
                                         <a class="mr-3" href="{{ url('/roles/edit/'.encryptOpenSSL($role->id)) }}">
                                             <img src="{{ url('/assets/images/icons/edit.svg') }}" alt="img">

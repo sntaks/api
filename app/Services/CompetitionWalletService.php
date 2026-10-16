@@ -7,6 +7,7 @@ use App\Models\CompetitionWallet;
 use App\Models\Customer;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -14,9 +15,12 @@ class CompetitionWalletService
 {
     public function __construct(private LedgerService $ledgerService) {}
 
-    public function listCompetitionWallets(): Collection
+    /**
+     * Every competition wallet, or one page of them (newest first) when a page size is given.
+     */
+    public function listCompetitionWallets(?int $perPage = null): Collection|LengthAwarePaginator
     {
-        return CompetitionWallet::all();
+        return $perPage === null ? CompetitionWallet::all() : CompetitionWallet::latest('id')->paginate($perPage);
     }
 
     public function createCompetitionWallet(array $data): CompetitionWallet
@@ -38,7 +42,7 @@ class CompetitionWalletService
     public function getCompetitionIncome(string $gameType, ?string $startDate = null, ?string $endDate = null): array
     {
         return DB::table('competition_wallets as C')
-            ->join('wallet_transactions as W', 'W.sender_id', '=', 'C.id')
+            ->join('wallet_transactions as W', fn ($join) => $join->on('W.sender_id', '=', 'C.id')->where('W.transaction_type', 'c2w'))
             ->select('C.jp_rounds', DB::raw('SUM(W.amount) as total_income'))
             ->selectRaw('COUNT(DISTINCT C.id) as games_played')
             ->where('C.game_type', $gameType)
@@ -207,9 +211,12 @@ class CompetitionWalletService
         return ['status' => 'success'];
     }
 
-    public function listCompetitionTransactions(): Collection
+    /**
+     * Every competition transaction, or one page of them (newest first) when a page size is given.
+     */
+    public function listCompetitionTransactions(?int $perPage = null): Collection|LengthAwarePaginator
     {
-        return CompetitionTransaction::all();
+        return $perPage === null ? CompetitionTransaction::all() : CompetitionTransaction::latest('id')->paginate($perPage);
     }
 
     public function createCompetitionTransaction(array $data): CompetitionTransaction

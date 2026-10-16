@@ -48,9 +48,7 @@ function playGame(object $test, Wallet $player, string $gameId): void
 {
     $gameWallet = GameWallet::create(['game_id' => $gameId, 'game_type' => 1, 'balance' => 0]);
 
-    $test->postJson('/api/v1/game/credit', [
-        'customer_id' => $player->customer_id, 'game_wallet_id' => $gameWallet->id, 'amount' => 100,
-    ], $test->headers)->assertStatus(201);
+    legacyGameCreditStake($player, $gameWallet, 100);
 
     $test->postJson('/api/v1/game/withdraw/'.encryptId($gameWallet->id), [
         'customer_id' => (string) $player->customer_id,
@@ -115,16 +113,16 @@ it('reports revenue by stream and leaves out test customers', function () {
 
     $data = $this->getJson('/api/v1/finance/income-statement', $this->headers)->assertOk()->json('data');
 
-    expect($data['revenue']['games'])->toEqual(10);
-    expect($data['revenue']['games_by_source'])->toEqual(['game_credit' => 5, 'game_withdrawal' => 5]);
+    expect($data['revenue']['games'])->toEqual(9);
+    expect($data['revenue']['games_by_source'])->toEqual(['game_credit' => 5, 'game_withdrawal' => 4]);
     expect($data['revenue']['tournaments']['total'])->toEqual(5);
     expect($data['revenue']['tournaments']['by_rounds'])->toEqual(['3' => 5]);
     expect($data['revenue']['jackpots']['total'])->toEqual(20);
     expect($data['revenue']['jackpots']['by_rounds'])->toEqual(['13' => 20]);
     expect($data['revenue']['gift_emoji_sales'])->toEqual(['total' => 100, 'gift' => 100, 'emoji' => 0]);
-    expect($data['revenue']['total'])->toEqual(135);
+    expect($data['revenue']['total'])->toEqual(134);
     expect($data['expenses'])->toEqual(['tracked' => true, 'total' => 0, 'by_category' => []]);
-    expect($data['net_income'])->toEqual(135);
+    expect($data['net_income'])->toEqual(134);
     expect($data['memo']['load_margin'])->toEqual(['cash_received' => 300, 'wallet_credited' => 280, 'margin' => 20]);
     expect($data['meta']['period'])->toMatchArray(['from' => '2026-09-20', 'to' => '2026-09-20', 'group_by' => 'day', 'exclude_test' => true]);
 });
@@ -134,10 +132,10 @@ it('includes test customers when exclude_test is off', function () {
 
     $data = $this->getJson('/api/v1/finance/income-statement?exclude_test=0', $this->headers)->assertOk()->json('data');
 
-    expect($data['revenue']['games'])->toEqual(20);
+    expect($data['revenue']['games'])->toEqual(18);
     expect($data['revenue']['tournaments']['total'])->toEqual(10);
     expect($data['revenue']['gift_emoji_sales']['total'])->toEqual(150);
-    expect($data['revenue']['total'])->toEqual(200);
+    expect($data['revenue']['total'])->toEqual(198);
 });
 
 it('returns a zero-filled series grouped by day, week or month', function () {
@@ -146,11 +144,11 @@ it('returns a zero-filled series grouped by day, week or month', function () {
     $days = $this->getJson('/api/v1/finance/income-statement?from=2026-09-18&to=2026-09-20', $this->headers)->json('data.series');
     expect(array_column($days, 'period'))->toBe(['2026-09-18', '2026-09-19', '2026-09-20']);
     expect($days[0]['total'])->toEqual(0);
-    expect($days[2]['total'])->toEqual(135);
+    expect($days[2]['total'])->toEqual(134);
 
     $weeks = $this->getJson('/api/v1/finance/income-statement?from=2026-09-01&to=2026-09-20&group_by=week', $this->headers)->json('data.series');
     expect(array_column($weeks, 'period'))->toBe(['2026-08-31', '2026-09-07', '2026-09-14']);
-    expect($weeks[2]['total'])->toEqual(135);
+    expect($weeks[2]['total'])->toEqual(134);
 
     $months = $this->getJson('/api/v1/finance/income-statement?from=2026-09-01&to=2026-09-20&group_by=month', $this->headers)->json('data.series');
     expect(array_column($months, 'period'))->toBe(['2026-09']);
@@ -180,7 +178,7 @@ it('splits cash in by what it bought and cash out by status', function () {
     $totals = $this->getJson('/api/v1/finance/cash-flow', $this->headers)->assertOk()->json('data.totals');
 
     expect($totals['cash_in'])->toEqual([
-        'wallet_deposit' => 500, 'load' => 300, 'gift' => 100, 'emoji' => 0, 'unmatched' => 200, 'other' => 0, 'total' => 1100,
+        'wallet_deposit' => 500, 'load' => 300, 'gift' => 100, 'emoji' => 0, 'unmatched' => 200, 'house_funding' => 0, 'other' => 0, 'total' => 1100,
     ]);
     expect($totals['cash_out'])->toEqual(['paid' => 150, 'pending' => 40, 'failed' => 60]);
     expect($totals['net_cash'])->toEqual(950);
@@ -204,13 +202,13 @@ it('summarises every window and the current position', function () {
     $data = $this->getJson('/api/v1/finance/summary', $this->headers)->assertOk()->json('data');
 
     foreach (['today', 'week', 'month', 'year', 'all_time'] as $window) {
-        expect($data['windows'][$window]['revenue']['total'])->toEqual(135);
+        expect($data['windows'][$window]['revenue']['total'])->toEqual(134);
         expect($data['windows'][$window]['cash_in'])->toEqual(1100);
         expect($data['windows'][$window]['cash_out'])->toEqual(150);
     }
 
     expect($data['windows']['today']['stakes'])->toEqual(250);
-    expect($data['windows']['today']['payouts'])->toEqual(90);
+    expect($data['windows']['today']['payouts'])->toEqual(91);
     expect($data['windows']['today']['refunds'])->toEqual(0);
     expect($data['all_time_from'])->toBe('2026-09-01');
     expect($data['position']['source'])->toBe('live');
@@ -264,7 +262,7 @@ it('shows movement by account and confirms paired entries balance', function () 
 
     $lines = collect($data['lines']);
     $houseCuts = $lines->firstWhere(fn ($line) => $line['account'] === 'house_wallet' && $line['entry_type'] === 'house_cut');
-    expect($houseCuts['credit'])->toEqual(50);
+    expect($houseCuts['credit'])->toEqual(48);
     expect($houseCuts['category'])->toBe('house_revenue');
     expect($lines->firstWhere('entry_type', 'deposit')['category'])->toBe('cash_in');
 });

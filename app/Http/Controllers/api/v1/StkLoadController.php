@@ -39,7 +39,7 @@ class StkLoadController extends Controller
         } catch (\Exception $e) {
             Log::channel('mpesa')->error('MPESA StkPush Load Response Error', ['error' => $e->getMessage()]);
 
-            return response()->json(['message' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Could not start the M-Pesa payment, please try again'], 500);
         }
     }
 }

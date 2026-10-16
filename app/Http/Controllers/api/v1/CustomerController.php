@@ -9,6 +9,7 @@ use App\Http\Resources\CustomerResource;
 use App\Services\CustomerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 
 class CustomerController extends Controller
@@ -205,23 +206,19 @@ class CustomerController extends Controller
     {
         $request->validate(['amount' => 'required|numeric', 'reason' => 'nullable|string|max:255']);
 
-        $updated = $this->customerService->updateCustomerWallet($encryptedIdentifier, (float) $request->amount, $request->input('reason'), $this->actorFor($request));
+        $result = $this->customerService->updateCustomerWallet($encryptedIdentifier, (float) $request->amount, $request->input('reason'), $this->actorFor($request));
 
-        if (! $updated) {
-            return response()->json(['message' => 'Customer not found'], 404);
+        if (! $result['success']) {
+            return response()->json(['message' => $result['message']], $result['status_code']);
         }
 
         return response()->json(['status' => 'success'], 201);
     }
 
-    public function destroy($encryptedIdentifier)
+    public function destroy($encryptedIdentifier): JsonResponse
     {
-        $deleted = $this->customerService->deleteCustomer($encryptedIdentifier);
+        $result = $this->customerService->deleteCustomer($encryptedIdentifier);
 
-        if (! $deleted) {
-            return response()->json(['message' => 'Customer not found'], 404);
-        }
-
-        return response()->json(['message' => 'Customer deleted successfully'], 200);
+        return response()->json(Arr::except($result, ['success', 'status_code']), $result['status_code']);
     }
 }
