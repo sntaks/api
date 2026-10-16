@@ -30,7 +30,7 @@ class CompetitionTransactionController extends Controller
     public function store(StoreCompetitionTransactionRequest $request)
     {
         try {
-            $this->walletService->createCompetitionTransaction($request->validated());
+            $this->walletService->createCompetitionTransaction($request->stakeData());
 
             return response()->json(['status' => 'Success'], 201);
         } catch (\InvalidArgumentException $e) {
