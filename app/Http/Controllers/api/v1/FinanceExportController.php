@@ -114,7 +114,7 @@ class FinanceExportController extends Controller
      */
     private function cashFlowRows(FinanceDateRange $range): array
     {
-        $columns = ['period', 'wallet_deposit', 'load', 'gift', 'emoji', 'unmatched', 'house_funding', 'other', 'cash_in_total', 'paid', 'pending', 'failed', 'excise_withheld', 'excise_remitted', 'net_cash', 'referral_paid', 'referral_pending', 'referral_failed', 'deposit_refunded'];
+        $columns = ['period', 'wallet_deposit', 'load', 'gift', 'emoji', 'unmatched', 'house_funding', 'shop_float', 'other', 'cash_in_total', 'paid', 'pending', 'failed', 'excise_withheld', 'excise_remitted', 'net_cash', 'referral_paid', 'referral_pending', 'referral_failed', 'deposit_refunded'];
 
         $rows = (function () use ($range) {
             foreach ($this->reports->cashFlow($range)['series'] as $row) {

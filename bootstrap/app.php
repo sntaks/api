@@ -5,7 +5,9 @@ use App\Http\Middleware\CheckUserRole;
 use App\Http\Middleware\CheckUserSession;
 use App\Http\Middleware\DecryptIdentifier;
 use App\Http\Middleware\EnsureIdempotency;
+use App\Http\Middleware\EnsureShopKey;
 use App\Http\Middleware\LogRequests;
+use App\Http\Middleware\RequireIdempotencyKey;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -25,6 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'session.checker' => CheckUserSession::class,
             'role.checker' => CheckUserRole::class,
             'idempotency' => EnsureIdempotency::class,
+            'idempotency.required' => RequireIdempotencyKey::class,
+            'shop.key' => EnsureShopKey::class,
             'log.requests' => LogRequests::class,
         ]);
     })

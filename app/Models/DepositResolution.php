@@ -18,6 +18,9 @@ class DepositResolution extends Model
     /** Owner money credited to the house wallet (HouseFunding). Removed if the funding is voided. */
     public const ACTION_HOUSE_FUNDED = 'house_funded';
 
+    /** A shop owner's float purchase (BetShopFloatPurchase). Removed if the purchase is voided. */
+    public const ACTION_SHOP_FLOAT = 'shop_float';
+
     protected $fillable = [
         'deposit_id',
         'action',

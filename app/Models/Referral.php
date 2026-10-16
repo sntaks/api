@@ -22,6 +22,7 @@ class Referral extends Model
         'code_used',
         'verified_at',
         'first_deposit_id',
+        'first_bet_shop_load_id',
         'first_deposited_at',
     ];
 

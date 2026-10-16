@@ -6,6 +6,9 @@ use App\Http\Controllers\api\v1\B2Controller;
 use App\Http\Controllers\api\v1\B2CPaymentController;
 use App\Http\Controllers\api\v1\B2CResultController;
 use App\Http\Controllers\api\v1\B2CTimeOutController;
+use App\Http\Controllers\api\v1\BetShopController;
+use App\Http\Controllers\api\v1\BetShopFloatController;
+use App\Http\Controllers\api\v1\BetShopLoadController;
 use App\Http\Controllers\api\v1\C2BBalanceResultController;
 use App\Http\Controllers\api\v1\C2BBalanceTimeoutController;
 use App\Http\Controllers\api\v1\CoinBuyController;
@@ -46,6 +49,7 @@ use App\Http\Controllers\api\v1\ReferralB2CTimeoutController;
 use App\Http\Controllers\api\v1\ReferralController;
 use App\Http\Controllers\api\v1\ReferralWithdrawalController;
 use App\Http\Controllers\api\v1\RegisterC2BUrlsController;
+use App\Http\Controllers\api\v1\ShopController;
 use App\Http\Controllers\api\v1\StatsController;
 use App\Http\Controllers\api\v1\StkCallbackController;
 use App\Http\Controllers\api\v1\StkDepositController;
@@ -128,6 +132,19 @@ Route::prefix('/v1')->group(function () {
         Route::get('/b2c/balance', [B2Controller::class, 'index']);
         // Send from the main B2C shortcode to any phone (no wallet, no ledger)
         Route::post('/b2c/send', B2CPaymentController::class)->middleware(['throttle:financial', 'idempotency']);
+
+        // Bet shops (GMS)
+        Route::get('/bet-shops', [BetShopController::class, 'index']);
+        Route::post('/bet-shops', [BetShopController::class, 'store'])->middleware(['idempotency', 'throttle:write']);
+        Route::get('/bet-shops/loads', [BetShopLoadController::class, 'index']);
+
+        // Shop system: shop API keys only, always acting for the key's own shop
+        Route::prefix('/shop')->middleware(['shop.key', 'throttle:shop'])->group(function () {
+            Route::get('/me', [ShopController::class, 'me']);
+            Route::get('/players/{playerNo}', [ShopController::class, 'player'])->middleware('throttle:shop-lookup');
+            Route::post('/loads', [ShopController::class, 'storeLoad'])->middleware(['idempotency.required', 'idempotency']);
+            Route::get('/loads', [ShopController::class, 'loads']);
+        });
 
         // Stats routes
         Route::middleware('throttle:stats')->group(function () {
@@ -254,6 +271,23 @@ Route::prefix('/v1')->group(function () {
             // Owner money paid to the paybill: credit it to the house wallet, or void that
             Route::post('/deposits/{encryptedIdentifier}/house-funding', [HouseFundingController::class, 'store'])->middleware(['idempotency', 'throttle:write']);
             Route::post('/finance/house-funding/{encryptedIdentifier}/void', [HouseFundingController::class, 'void'])->middleware(['idempotency', 'throttle:write']);
+            // A shop owner's paybill payment (bill ref SHOP-<shop_no>): credit it to the shop float, or void that
+            Route::post('/deposits/{encryptedIdentifier}/shop-float', [BetShopFloatController::class, 'store'])->middleware(['idempotency', 'throttle:write']);
+            Route::post('/bet-shops/float-purchases/{encryptedIdentifier}/void', [BetShopFloatController::class, 'void'])->middleware(['idempotency', 'throttle:write']);
+
+            // Bet shops (GMS)
+            Route::get('/bet-shops/{encryptedIdentifier}', [BetShopController::class, 'show']);
+            Route::put('/bet-shops/{encryptedIdentifier}', [BetShopController::class, 'update'])->middleware('throttle:write');
+            Route::post('/bet-shops/{encryptedIdentifier}/suspend', [BetShopController::class, 'suspend'])->middleware(['idempotency', 'throttle:write']);
+            Route::post('/bet-shops/{encryptedIdentifier}/activate', [BetShopController::class, 'activate'])->middleware(['idempotency', 'throttle:write']);
+            Route::post('/bet-shops/{encryptedIdentifier}/close', [BetShopController::class, 'close'])->middleware(['idempotency', 'throttle:write']);
+            Route::get('/bet-shops/{encryptedIdentifier}/keys', [BetShopController::class, 'keys']);
+            // Not idempotent on purpose: a stored response would keep the new key in the database for 24 hours
+            Route::post('/bet-shops/{encryptedIdentifier}/keys', [BetShopController::class, 'issueKey'])->middleware('throttle:write');
+            Route::post('/bet-shop-keys/{encryptedIdentifier}/revoke', [BetShopController::class, 'revokeKey'])->middleware(['idempotency', 'throttle:write']);
+            Route::get('/bet-shops/{encryptedIdentifier}/float-purchases', [BetShopFloatController::class, 'index']);
+            Route::get('/bet-shops/{encryptedIdentifier}/loads', [BetShopLoadController::class, 'index']);
+            Route::post('/bet-shops/loads/{encryptedIdentifier}/reverse', [BetShopLoadController::class, 'reverse'])->middleware(['idempotency', 'throttle:write']);
 
             // Wallet Transfer Routes
             Route::post('/wallets/transfer/{encryptedIdentifier}', WalletTransferController::class)->middleware(['idempotency', 'throttle:write']);

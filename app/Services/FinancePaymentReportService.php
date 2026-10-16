@@ -15,7 +15,7 @@ class FinancePaymentReportService
 {
     use BuildsFinanceQueries;
 
-    private const DEPOSIT_KIND = "CASE WHEN h.id IS NOT NULL THEN 'house_funding' WHEN i.status IN (0, 4) THEN 'unmatched' WHEN p.purchase_type IS NOT NULL THEN p.purchase_type ELSE 'wallet_deposit' END";
+    private const DEPOSIT_KIND = "CASE WHEN h.id IS NOT NULL THEN 'house_funding' WHEN sf.id IS NOT NULL THEN 'shop_float' WHEN i.status IN (0, 4) THEN 'unmatched' WHEN p.purchase_type IS NOT NULL THEN p.purchase_type ELSE 'wallet_deposit' END";
 
     private const DEPOSIT_CUSTOMER = 'COALESCE(p.customer_id, l.customer_id)';
 
@@ -248,6 +248,7 @@ class FinancePaymentReportService
                     ->where('l.entry_type', 'deposit');
             })
             ->leftJoin('house_fundings as h', fn ($join) => $join->on('h.deposit_id', '=', 'i.id')->whereNull('h.voided_at'))
+            ->leftJoin('bet_shop_float_purchases as sf', fn ($join) => $join->on('sf.deposit_id', '=', 'i.id')->whereNull('sf.voided_at'))
             ->leftJoin('customers as c', fn ($join) => $join->whereRaw("c.id = {$customer}"))
             ->whereBetween('i.created_at', [$range->from, $range->to])
             ->when($excluded !== [], fn (Builder $query) => $query->whereRaw(

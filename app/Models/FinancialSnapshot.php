@@ -24,6 +24,7 @@ class FinancialSnapshot extends Model
         'excise_duty_payable',
         'disputed_funds_total',
         'referral_wallets_total',
+        'bet_shop_floats_total',
         'mpesa_balances',
         'taken_at',
     ];
@@ -46,6 +47,7 @@ class FinancialSnapshot extends Model
             'excise_duty_payable' => 'decimal:2',
             'disputed_funds_total' => 'decimal:2',
             'referral_wallets_total' => 'decimal:2',
+            'bet_shop_floats_total' => 'decimal:2',
             'mpesa_balances' => 'array',
             'taken_at' => 'datetime',
         ];

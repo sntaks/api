@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ApiKey;
+use App\Models\BetShop;
 use App\Models\CompetitionWallet;
 use App\Models\Customer;
 use App\Models\GameTransaction;
@@ -57,6 +58,28 @@ function createApiKey(string $key = 'test-api-key', bool $active = true): ApiKey
         'name' => 'Test API Key',
         'is_active' => $active,
     ]);
+}
+
+/**
+ * An active API key for a bet shop's system (scope `shop`).
+ */
+function createShopKey(BetShop $shop, ?string $key = null): ApiKey
+{
+    return ApiKey::create([
+        'key' => $key ?? 'shop_test_'.$shop->shop_no,
+        'name' => "Desk at {$shop->shop_no}",
+        'scope' => ApiKey::SCOPE_SHOP,
+        'bet_shop_id' => $shop->id,
+        'is_active' => true,
+    ]);
+}
+
+/**
+ * Headers for a shop system request; writes need an Idempotency-Key.
+ */
+function shopHeaders(ApiKey $key, ?string $idempotencyKey = null): array
+{
+    return apiHeaders($key->key) + array_filter(['Idempotency-Key' => $idempotencyKey]);
 }
 
 function encryptId(mixed $id): string

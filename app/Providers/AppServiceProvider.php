@@ -72,6 +72,15 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Shop systems are limited per shop API key, so one busy shop never slows another.
+        RateLimiter::for('shop', function (Request $request) {
+            return Limit::perMinute((int) config('bet_shops.rate_limits.requests'))->by('shop:'.hash('sha256', (string) $request->header('X-API-KEY')));
+        });
+
+        RateLimiter::for('shop-lookup', function (Request $request) {
+            return Limit::perMinute((int) config('bet_shops.rate_limits.player_lookups'))->by('shop-lookup:'.hash('sha256', (string) $request->header('X-API-KEY')));
+        });
+
         RateLimiter::for('public', function (Request $request) {
             return Limit::perMinute(100)->by($request->ip());
         });

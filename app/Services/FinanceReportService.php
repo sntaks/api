@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 
 class FinanceReportService
 {
-    private const CASH_IN_KINDS = ['wallet_deposit', 'load', 'gift', 'emoji', 'unmatched', 'house_funding', 'other'];
+    private const CASH_IN_KINDS = ['wallet_deposit', 'load', 'gift', 'emoji', 'unmatched', 'house_funding', 'shop_float', 'other'];
 
     private const REVENUE_LINES = ['games', 'tournaments', 'jackpots', 'competitions_unattributed', 'gift_emoji_sales', 'other'];
 
@@ -380,7 +380,7 @@ class FinanceReportService
 
             $position = $snapshot->only([
                 'customer_wallets_total', 'house_wallet_balance', 'game_escrow_total', 'competition_escrow_total',
-                'stuck_escrow_total', 'coin_liability', 'pending_holds_total', 'unmatched_deposits_total', 'excise_duty_payable', 'disputed_funds_total', 'referral_wallets_total', 'mpesa_balances',
+                'stuck_escrow_total', 'coin_liability', 'pending_holds_total', 'unmatched_deposits_total', 'excise_duty_payable', 'disputed_funds_total', 'referral_wallets_total', 'bet_shop_floats_total', 'mpesa_balances',
             ]);
             $source = 'snapshot';
             $date = $asOf;
@@ -405,6 +405,7 @@ class FinanceReportService
             'excise_duty_payable' => (float) $position['excise_duty_payable'],
             'disputed_funds' => (float) $position['disputed_funds_total'],
             'referral_wallets' => (float) $position['referral_wallets_total'],
+            'bet_shop_floats' => (float) $position['bet_shop_floats_total'],
         ];
         $totalLiabilities = array_sum($liabilities);
         $house = (float) $position['house_wallet_balance'];
@@ -422,6 +423,7 @@ class FinanceReportService
                 'excise_duty_payable is duty taken from deposits and owed to KRA until a remittance is recorded. Snapshots taken before it was tracked show 0.',
                 'disputed_funds is winnings held in dispute escrow while a complaint is pending. It is still owed to a customer, so it is a liability. Snapshots taken before complaints existed show 0.',
                 'referral_wallets is referral bonuses not yet withdrawn. Customers can withdraw them at any time, so they are a liability. Snapshots taken before referrals existed show 0.',
+                'bet_shop_floats is prepaid float bet shop owners paid in and have not yet loaded to players. It is owed to the shops, so it is a liability. Snapshots taken before bet shops existed show 0.',
             ],
         ]);
     }
@@ -475,7 +477,7 @@ class FinanceReportService
             $totalDebit += (float) $row->debit;
             $totalCredit += (float) $row->credit;
 
-            if (! in_array($category, ['cash_in', 'cash_out', 'adjustment', 'tax_withheld', 'referral_bonus', 'referral_payout', 'capital'], true)) {
+            if (! in_array($category, ['cash_in', 'cash_out', 'adjustment', 'tax_withheld', 'referral_bonus', 'referral_payout', 'capital', 'shop_float'], true)) {
                 $net = (float) $row->credit - (float) $row->debit;
                 $internalNet += $net;
                 $internalByCategory[$category] = ($internalByCategory[$category] ?? 0.0) + $net;
@@ -493,7 +495,7 @@ class FinanceReportService
                 'imbalance_by_category' => array_filter($internalByCategory, fn (float $net) => abs($net) > $tolerance),
             ],
             'notes' => [
-                'Deposits, withdrawals, adjustments, excise duty, referral bonuses, referral payouts and house funding (capital) are single-sided in the ledger (the cash side is M-Pesa, excise duty is owed to KRA, and referral bonuses cost the house nothing until they are paid out from the referral shortcode). All other entries are paired and must net to zero, which is what check.imbalance measures. Promotion credits (promo_credit) are paired: the house wallet pays what the customer wallet receives.',
+                'Deposits, withdrawals, adjustments, excise duty, referral bonuses, referral payouts, house funding (capital) and shop float purchases (shop_float) are single-sided in the ledger (the cash side is M-Pesa, excise duty is owed to KRA, and referral bonuses cost the house nothing until they are paid out from the referral shortcode). All other entries are paired and must net to zero, which is what check.imbalance measures. Promotion credits (promo_credit) are paired: the house wallet pays what the customer wallet receives.',
                 'Coin entries are in coins, not KES, and are left out of the totals and the check.',
                 'exclude_test does not apply here: the check only holds over the whole ledger.',
             ],
@@ -553,12 +555,13 @@ class FinanceReportService
                     ->where('l.entry_type', 'deposit');
             })
             ->leftJoin('house_fundings as h', fn ($join) => $join->on('h.deposit_id', '=', 'i.id')->whereNull('h.voided_at'))
+            ->leftJoin('bet_shop_float_purchases as sf', fn ($join) => $join->on('sf.deposit_id', '=', 'i.id')->whereNull('sf.voided_at'))
             ->whereBetween('i.created_at', [$range->from, $range->to])
             ->when($excluded !== [], fn (Builder $query) => $query->whereRaw(
                 "({$customer} IS NULL OR {$customer} NOT IN (".$this->placeholders($excluded).'))',
                 $excluded
             ))
-            ->selectRaw("DATE(i.created_at) as day, CASE WHEN h.id IS NOT NULL THEN 'house_funding' WHEN i.status IN (0, 4) THEN 'unmatched' WHEN p.purchase_type IS NOT NULL THEN p.purchase_type ELSE 'wallet_deposit' END as kind, SUM(i.trans_amount) as amount")
+            ->selectRaw("DATE(i.created_at) as day, CASE WHEN h.id IS NOT NULL THEN 'house_funding' WHEN sf.id IS NOT NULL THEN 'shop_float' WHEN i.status IN (0, 4) THEN 'unmatched' WHEN p.purchase_type IS NOT NULL THEN p.purchase_type ELSE 'wallet_deposit' END as kind, SUM(i.trans_amount) as amount")
             ->groupBy('day', 'kind')
             ->get();
     }

@@ -102,7 +102,8 @@ class ExciseDutyReportService
     }
 
     /**
-     * Excise duty per charge. `source` is `deposit` or `promotion`; a promotion charge has no deposit.
+     * Excise duty per charge. `source` is `deposit`, `promotion` or `shop_load` (cash loaded at a bet shop);
+     * only a deposit charge has a deposit.
      *
      * Filters: status (charged, reversed, remitted, unremitted), customer_id.
      *
@@ -150,9 +151,14 @@ class ExciseDutyReportService
             fn (object $row) => [
                 'id' => (int) $row->id,
                 'charged_at' => $this->moment($row->charged_at),
-                'source' => $row->promotion_credit_id === null ? 'deposit' : 'promotion',
+                'source' => match (true) {
+                    $row->promotion_credit_id !== null => 'promotion',
+                    $row->bet_shop_load_id !== null => 'shop_load',
+                    default => 'deposit',
+                },
                 'deposit_id' => $row->deposit_id === null ? null : (int) $row->deposit_id,
                 'promotion_credit_id' => $row->promotion_credit_id === null ? null : (int) $row->promotion_credit_id,
+                'bet_shop_load_id' => $row->bet_shop_load_id === null ? null : (int) $row->bet_shop_load_id,
                 'trans_id' => $row->trans_id,
                 'customer_id' => (int) $row->customer_id,
                 'customer_name' => $row->customer_name,
@@ -166,7 +172,7 @@ class ExciseDutyReportService
                 'kra_reference' => $row->kra_reference,
             ],
             $summary,
-            ['id', 'charged_at', 'source', 'deposit_id', 'promotion_credit_id', 'trans_id', 'customer_id', 'customer_name', 'msisdn', 'gross_amount', 'rate', 'excise_amount', 'net_amount', 'status', 'remittance_id', 'kra_reference'],
+            ['id', 'charged_at', 'source', 'deposit_id', 'promotion_credit_id', 'bet_shop_load_id', 'trans_id', 'customer_id', 'customer_name', 'msisdn', 'gross_amount', 'rate', 'excise_amount', 'net_amount', 'status', 'remittance_id', 'kra_reference'],
         );
     }
 

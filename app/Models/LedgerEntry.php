@@ -24,6 +24,8 @@ class LedgerEntry extends Model
 
     public const WALLET_TYPE_REFERRAL = 'referral';
 
+    public const WALLET_TYPE_BET_SHOP = 'bet_shop';
+
     protected $fillable = [
         'entry_id',
         'entry_type',

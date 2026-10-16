@@ -178,7 +178,7 @@ it('splits cash in by what it bought and cash out by status', function () {
     $totals = $this->getJson('/api/v1/finance/cash-flow', $this->headers)->assertOk()->json('data.totals');
 
     expect($totals['cash_in'])->toEqual([
-        'wallet_deposit' => 500, 'load' => 300, 'gift' => 100, 'emoji' => 0, 'unmatched' => 200, 'house_funding' => 0, 'other' => 0, 'total' => 1100,
+        'wallet_deposit' => 500, 'load' => 300, 'gift' => 100, 'emoji' => 0, 'unmatched' => 200, 'house_funding' => 0, 'shop_float' => 0, 'other' => 0, 'total' => 1100,
     ]);
     expect($totals['cash_out'])->toEqual(['paid' => 150, 'pending' => 40, 'failed' => 60]);
     expect($totals['net_cash'])->toEqual(950);

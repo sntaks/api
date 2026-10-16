@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Util\Badge;
+use App\Util\PlayerNumber;
 use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -76,6 +77,10 @@ class Customer extends Model
             $customer->save(); // Save the updated account number
         }*/
         // });
+
+        static::creating(function (Customer $customer) {
+            $customer->player_no ??= PlayerNumber::generateUnique();
+        });
 
         static::saving(function (Customer $customer) {
             if ($customer->isDirty('phone_no') || ! $customer->exists) {

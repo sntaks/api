@@ -24,6 +24,7 @@ class ExciseDutyCharge extends Model
     protected $fillable = [
         'deposit_id',
         'promotion_credit_id',
+        'bet_shop_load_id',
         'customer_id',
         'wallet_id',
         'ledger_entry_id',
@@ -74,6 +75,11 @@ class ExciseDutyCharge extends Model
     public function promotionCredit(): BelongsTo
     {
         return $this->belongsTo(PromotionCredit::class);
+    }
+
+    public function betShopLoad(): BelongsTo
+    {
+        return $this->belongsTo(BetShopLoad::class);
     }
 
     public function customer(): BelongsTo

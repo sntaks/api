@@ -211,8 +211,8 @@ class ReferralController extends Controller
     {
         return $query
             ->when(($filters['status'] ?? null) === 'pending_verification', fn (Builder $query) => $query->whereNull('verified_at'))
-            ->when(($filters['status'] ?? null) === 'verified', fn (Builder $query) => $query->whereNotNull('verified_at')->whereNull('first_deposit_id'))
-            ->when(($filters['status'] ?? null) === 'deposited', fn (Builder $query) => $query->whereNotNull('verified_at')->whereNotNull('first_deposit_id'))
+            ->when(($filters['status'] ?? null) === 'verified', fn (Builder $query) => $query->whereNotNull('verified_at')->whereNull('first_deposited_at'))
+            ->when(($filters['status'] ?? null) === 'deposited', fn (Builder $query) => $query->whereNotNull('verified_at')->whereNotNull('first_deposited_at'))
             ->when(isset($filters['from']), fn (Builder $query) => $query->where('created_at', '>=', $filters['from'].' 00:00:00'))
             ->when(isset($filters['to']), fn (Builder $query) => $query->where('created_at', '<=', $filters['to'].' 23:59:59'));
     }

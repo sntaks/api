@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BetShopLoad;
 use App\Models\CompetitionTransaction;
 use App\Models\CompetitionWallet;
 use App\Models\Complaint;
@@ -106,15 +107,15 @@ class CustomerService
             return ['customer' => $customer, 'wallet' => null, 'total' => 0, 'transactions' => collect()];
         }
 
+        // Cash loads at bet shops count as money in; a reversed one (status 3) is left out.
+        $shopLoads = fn ($query) => $query->where('payment_type', BetShopLoad::class)->where('status', 2);
+
         if ($paymentType === 'all') {
-            $transactions = $wallet->transactions()
-                ->whereIn('payment_type', [Deposit::class, Withdraw::class])
-                ->limit(10)
-                ->latest()
-                ->get();
-            $total = $wallet->transactions()
-                ->whereIn('payment_type', [Deposit::class, Withdraw::class])
-                ->sum('amount');
+            $history = fn () => $wallet->transactions()
+                ->where(fn ($query) => $query->whereIn('payment_type', [Deposit::class, Withdraw::class])->orWhere($shopLoads));
+
+            $transactions = $history()->limit(10)->latest()->get();
+            $total = $history()->sum('amount');
 
             return ['customer' => $customer, 'wallet' => $wallet, 'total' => $total, 'transactions' => $transactions];
         }
@@ -122,6 +123,7 @@ class CustomerService
         $type = match ($paymentType) {
             'deposit' => Deposit::class,
             'withdraw' => Withdraw::class,
+            'shop_load' => BetShopLoad::class,
             default => null,
         };
 
@@ -129,14 +131,12 @@ class CustomerService
             return ['customer' => $customer, 'wallet' => $wallet, 'invalid_type' => true, 'total' => 0, 'transactions' => collect()];
         }
 
-        $transactions = $wallet->transactions()
-            ->where('payment_type', $type)
-            ->limit(10)
-            ->latest()
-            ->get();
-        $total = $wallet->transactions()
-            ->where('payment_type', $type)
-            ->sum('amount');
+        $history = fn () => $type === BetShopLoad::class
+            ? $wallet->transactions()->where($shopLoads)
+            : $wallet->transactions()->where('payment_type', $type);
+
+        $transactions = $history()->limit(10)->latest()->get();
+        $total = $history()->sum('amount');
 
         return ['customer' => $customer, 'wallet' => $wallet, 'total' => $total, 'transactions' => $transactions];
     }

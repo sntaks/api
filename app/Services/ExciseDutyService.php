@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BetShopLoad;
 use App\Models\Deposit;
 use App\Models\ExciseDutyCharge;
 use App\Models\PromotionCredit;
@@ -17,6 +18,9 @@ use Throwable;
 class ExciseDutyService
 {
     public const KIND_WALLET_DEPOSIT = 'wallet_deposit';
+
+    /** Cash a player paid at a bet shop and had loaded to their wallet. */
+    public const KIND_SHOP_DEPOSIT = 'shop_deposit';
 
     public function __construct(private LedgerService $ledgerService) {}
 
@@ -137,6 +141,39 @@ class ExciseDutyService
             'rate' => $credit->rate,
             'excise_amount' => $credit->excise_amount,
             'net_amount' => $credit->net_amount,
+            'status' => ExciseDutyCharge::STATUS_CHARGED,
+            'charged_at' => now(),
+        ]);
+    }
+
+    /**
+     * Charge duty on cash loaded at a shop, already credited to the wallet, when the feature is on, the
+     * `shop_deposit` kind is listed in `applies_to` and today is on or after `effective_from`. Call inside
+     * the caller's transaction, with the wallet row locked.
+     */
+    public function chargeShopLoad(BetShopLoad $load, Wallet $wallet): ?ExciseDutyCharge
+    {
+        if (! $this->appliesNow() || ! in_array(self::KIND_SHOP_DEPOSIT, config('finance.excise_duty.applies_to', []), true)) {
+            return null;
+        }
+
+        $amounts = $this->calculate((float) $load->gross_amount);
+        if ($amounts['excise'] <= 0) {
+            return null;
+        }
+
+        $entry = $this->ledgerService->recordShopLoadExciseDuty($load, $wallet, $amounts['excise'], $amounts['rate']);
+
+        return ExciseDutyCharge::create([
+            'deposit_id' => null,
+            'bet_shop_load_id' => $load->id,
+            'customer_id' => $wallet->customer_id,
+            'wallet_id' => $wallet->id,
+            'ledger_entry_id' => $entry->id,
+            'gross_amount' => $amounts['gross'],
+            'rate' => $amounts['rate'],
+            'excise_amount' => $amounts['excise'],
+            'net_amount' => $amounts['net'],
             'status' => ExciseDutyCharge::STATUS_CHARGED,
             'charged_at' => now(),
         ]);
