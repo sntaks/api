@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CompetitionTransaction extends Model
 {
@@ -14,10 +15,19 @@ class CompetitionTransaction extends Model
     protected $fillable = [
         'competition_wallet_id',
         'customer_id',
+        'bet_shop_id',
         'payment_type',
         'amount',
         'status',
     ];
+
+    /**
+     * The bet shop the entry was made at, when the game server said so.
+     */
+    public function betShop(): BelongsTo
+    {
+        return $this->belongsTo(BetShop::class);
+    }
 
     public function wallet()
     {

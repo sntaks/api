@@ -21,7 +21,8 @@ class CompetitionTransactionResource extends JsonResource
             'payment_type' => $this->payment_type,
             'amount' => $this->amount,
             'status' => $this->status,
-            'created_at' => $this->created_at
+            'bet_shop_id' => $this->bet_shop_id,
+            'created_at' => $this->created_at,
         ];
     }
 }

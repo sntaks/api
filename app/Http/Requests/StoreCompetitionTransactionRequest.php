@@ -2,10 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\AttributesBetShop;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreCompetitionTransactionRequest extends FormRequest
 {
+    use AttributesBetShop;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -17,7 +21,7 @@ class StoreCompetitionTransactionRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -26,6 +30,7 @@ class StoreCompetitionTransactionRequest extends FormRequest
             'customer_id' => 'required|exists:customers,id',
             'payment_type' => 'required|string',
             'amount' => 'required|numeric',
+            'bet_shop_no' => $this->betShopNoRules(),
         ];
     }
 }

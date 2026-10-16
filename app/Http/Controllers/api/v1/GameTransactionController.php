@@ -8,6 +8,7 @@ use App\Http\Requests\StoreGameTransactionRequest;
 use App\Http\Resources\GameTransactionResource;
 use App\Services\GameWalletService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Arr;
 
 class GameTransactionController extends Controller
 {
@@ -29,7 +30,7 @@ class GameTransactionController extends Controller
     public function store(StoreGameTransactionRequest $request): JsonResponse
     {
         try {
-            $result = $this->gameWalletService->createGameTransaction($request->validated());
+            $result = $this->gameWalletService->createGameTransaction($request->stakeData());
 
             if ($result === false) {
                 return response()->json(['error' => 'Insufficient balance or Wallet not found.'], 400);
@@ -59,7 +60,8 @@ class GameTransactionController extends Controller
      */
     public function update(StoreGameTransactionRequest $request, $encryptedIdentifier): JsonResponse
     {
-        $gameTransaction = $this->gameWalletService->updateGameTransaction($encryptedIdentifier, $request->validated());
+        // A stake's shop is set when it is made and never changed.
+        $gameTransaction = $this->gameWalletService->updateGameTransaction($encryptedIdentifier, Arr::except($request->validated(), ['bet_shop_no']));
         if (! $gameTransaction) {
             return response()->json(['error' => 'Game Transaction not found'], 404);
         }
