@@ -128,6 +128,9 @@ class FinanceReportService
      * Referral payouts leave from the referral shortcode and are shown apart from main withdrawals.
      * deposit_refunds are unmatched deposits sent back to the payer, by the day the refund was recorded.
      * house_funding is owner money paid into the paybill and credited to the house wallet (capital).
+     * shop_float.redeemed is float paid back to bet shop owners (recorded by GMS, paid outside the API) and
+     * leaves net cash. shop_cash is cash that changed hands at shop counters (loaded = paid in by players,
+     * paid_out = paid out to them); it never reaches M-Pesa, so it is shown apart and not in net cash.
      *
      * @return array{totals: array<string, mixed>, series: list<array<string, mixed>>}
      */
@@ -139,6 +142,8 @@ class FinanceReportService
             'excise_duty' => ['withheld' => 0.0, 'remitted' => 0.0],
             'referral_payouts' => ['paid' => 0.0, 'pending' => 0.0, 'failed' => 0.0],
             'deposit_refunds' => ['refunded' => 0.0],
+            'shop_float' => ['redeemed' => 0.0],
+            'shop_cash' => ['loaded' => 0.0, 'paid_out' => 0.0],
         ];
 
         $series = [];
@@ -183,6 +188,10 @@ class FinanceReportService
             $series[$this->bucket($range, $row->day)]['deposit_refunds']['refunded'] += (float) $row->amount;
         }
 
+        foreach ($this->shopCashRows($range) as $row) {
+            $series[$this->bucket($range, $row->day)][$row->block][$row->kind] += (float) $row->amount;
+        }
+
         $totals = $template();
         $list = [];
         foreach ($series as $bucket => $figures) {
@@ -198,8 +207,10 @@ class FinanceReportService
             foreach ($figures['referral_payouts'] as $key => $value) {
                 $totals['referral_payouts'][$key] += $value;
             }
-            foreach ($figures['deposit_refunds'] as $key => $value) {
-                $totals['deposit_refunds'][$key] += $value;
+            foreach (['deposit_refunds', 'shop_float', 'shop_cash'] as $block) {
+                foreach ($figures[$block] as $key => $value) {
+                    $totals[$block][$key] += $value;
+                }
             }
 
             $list[] = ['period' => $bucket] + $figures + ['net_cash' => $this->netCash($figures)];
@@ -220,7 +231,32 @@ class FinanceReportService
     private function netCash(array $figures): float
     {
         return $figures['cash_in']['total'] - $figures['cash_out']['paid'] - $figures['excise_duty']['remitted']
-            - $figures['referral_payouts']['paid'] - $figures['deposit_refunds']['refunded'];
+            - $figures['referral_payouts']['paid'] - $figures['deposit_refunds']['refunded'] - $figures['shop_float']['redeemed'];
+    }
+
+    /**
+     * Float paid back to bet shop owners (not voided) and cash that changed hands at shop counters: completed
+     * loads by load day, paid cash withdrawals by payment day. Test customers' shop cash is left out.
+     *
+     * @return Collection<int, object{day: string, block: string, kind: string, amount: string}>
+     */
+    private function shopCashRows(FinanceDateRange $range)
+    {
+        $in = [$range->from, $range->to];
+        $excluded = $this->excludedCustomerIds($range);
+
+        $redeemed = DB::table('bet_shop_float_redemptions')->whereNull('voided_at')->whereBetween('created_at', $in)
+            ->selectRaw("DATE(created_at) as day, 'shop_float' as block, 'redeemed' as kind, SUM(amount) as amount")->groupByRaw('DATE(created_at)');
+
+        $loaded = DB::table('bet_shop_loads')->where('status', 'completed')->whereBetween('created_at', $in)
+            ->when($excluded !== [], fn (Builder $query) => $query->whereNotIn('customer_id', $excluded))
+            ->selectRaw("DATE(created_at) as day, 'shop_cash' as block, 'loaded' as kind, SUM(gross_amount) as amount")->groupByRaw('DATE(created_at)');
+
+        $paidOut = DB::table('shop_withdrawals')->where('status', 'paid')->whereBetween('closed_at', $in)
+            ->when($excluded !== [], fn (Builder $query) => $query->whereNotIn('customer_id', $excluded))
+            ->selectRaw("DATE(closed_at) as day, 'shop_cash' as block, 'paid_out' as kind, SUM(amount) as amount")->groupByRaw('DATE(closed_at)');
+
+        return $redeemed->unionAll($loaded)->unionAll($paidOut)->get();
     }
 
     /**

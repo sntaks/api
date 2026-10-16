@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BetShop;
 use App\Models\BetShopFloatPurchase;
+use App\Models\BetShopFloatRedemption;
 use App\Models\BetShopWallet;
 use App\Models\Deposit;
 use App\Models\DepositResolution;
@@ -130,6 +131,95 @@ class BetShopFloatService
 
             return ['success' => true, 'message' => 'Float purchase voided; the deposit is unmatched again', 'status_code' => 200, 'float_purchase' => $purchase->fresh()];
         });
+    }
+
+    /**
+     * Record float paid back to the owner (GMS paid them outside the API). The float goes down by the
+     * amount; refused when the float does not hold it.
+     *
+     * @return array{success: bool, message: string, status_code: int, redemption?: BetShopFloatRedemption, code?: string, float_balance?: float}
+     */
+    public function redeem(BetShop $shop, float $amount, string $paymentReference, string $note, ?string $actor): array
+    {
+        return DB::transaction(function () use ($shop, $amount, $paymentReference, $note, $actor) {
+            $float = BetShopWallet::lockForUpdate()->firstOrCreate(['bet_shop_id' => $shop->id], ['balance' => 0]);
+
+            if (round((float) $float->balance - $amount, 2) < 0) {
+                return $this->refused('The shop float does not hold this amount', 409, code: self::CODE_INSUFFICIENT_FLOAT) + ['float_balance' => round((float) $float->balance, 2)];
+            }
+
+            $redemption = BetShopFloatRedemption::create([
+                'bet_shop_id' => $shop->id,
+                'amount' => $amount,
+                'payment_reference' => $paymentReference,
+                'note' => $note,
+                'recorded_by' => $actor,
+            ]);
+
+            $entry = $this->ledgerService->recordShopFloatRedemption($redemption, $float);
+            $redemption->update(['ledger_entry_id' => $entry->id]);
+
+            Log::channel('mpesa')->info('Shop float redeemed', ['redemption_id' => $redemption->id, 'bet_shop_id' => $shop->id, 'amount' => $amount, 'reference' => $paymentReference, 'by' => $actor]);
+
+            return ['success' => true, 'message' => 'Float redemption recorded', 'status_code' => 201, 'redemption' => $redemption->fresh(), 'float_balance' => round((float) $float->balance, 2)];
+        });
+    }
+
+    /**
+     * Void a redemption recorded by mistake: the amount goes back on the float.
+     *
+     * @return array{success: bool, message: string, status_code: int, redemption?: BetShopFloatRedemption, code?: string}
+     */
+    public function voidRedemption(int $id, string $reason, ?string $actor): array
+    {
+        return DB::transaction(function () use ($id, $reason, $actor) {
+            $redemption = BetShopFloatRedemption::lockForUpdate()->find($id);
+
+            if (! $redemption) {
+                return $this->refused('Float redemption not found', 404);
+            }
+
+            if ($redemption->isVoided()) {
+                return $this->refused('Float redemption is already voided', 409, code: UnmatchedDepositService::CODE_ALREADY_RESOLVED) + ['redemption' => $redemption];
+            }
+
+            $float = BetShopWallet::lockForUpdate()->where('bet_shop_id', $redemption->bet_shop_id)->firstOrFail();
+            $reversal = $this->ledgerService->reverseShopFloatRedemption($redemption->ledgerEntry, $float, $reason);
+
+            $redemption->update([
+                'voided_at' => now(),
+                'voided_by' => $actor,
+                'void_reason' => $reason,
+                'void_ledger_entry_id' => $reversal->id,
+            ]);
+
+            return ['success' => true, 'message' => 'Float redemption voided; the amount is back on the float', 'status_code' => 200, 'redemption' => $redemption->fresh()];
+        });
+    }
+
+    public function paginateRedemptions(BetShop $shop, int $perPage): LengthAwarePaginator
+    {
+        return BetShopFloatRedemption::where('bet_shop_id', $shop->id)->latest('id')->paginate($perPage);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function presentRedemption(BetShopFloatRedemption $redemption): array
+    {
+        return [
+            'id' => $redemption->id,
+            'bet_shop_id' => $redemption->bet_shop_id,
+            'amount' => round((float) $redemption->amount, 2),
+            'payment_reference' => $redemption->payment_reference,
+            'note' => $redemption->note,
+            'status' => $redemption->isVoided() ? 'voided' : 'active',
+            'recorded_by' => $redemption->recorded_by,
+            'created_at' => $redemption->created_at?->toIso8601String(),
+            'voided_at' => $redemption->voided_at?->toIso8601String(),
+            'voided_by' => $redemption->voided_by,
+            'void_reason' => $redemption->void_reason,
+        ];
     }
 
     public function paginate(BetShop $shop, int $perPage): LengthAwarePaginator

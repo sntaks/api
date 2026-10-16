@@ -270,8 +270,9 @@ return [
     | when it is paid out (referral_payout), from the referral shortcode.
     |
     | bet_shop_floats are prepaid floats shop owners bought through the
-    | paybill. shop_float entries (shop_float_purchase) are single-sided like
-    | deposits: the cash side is M-Pesa. shop_load entries are paired: a shop
+    | paybill. shop_float entries (shop_float_purchase in, shop_float_redemption
+    | out when float is paid back to an owner) are single-sided like deposits:
+    | the cash side is M-Pesa. shop_load entries are paired: a shop
     | float goes down by what a player's wallet goes up when the shop loads
     | them with cash (excise duty is then taken as for deposits).
     |
@@ -319,6 +320,7 @@ return [
         'promo_credit' => 'promotion',
         'house_funding' => 'capital',
         'shop_float_purchase' => 'shop_float',
+        'shop_float_redemption' => 'shop_float',
         'shop_load' => 'shop_load',
         'shop_withdrawal_hold' => 'escrow_movement',
         'shop_withdrawal_release' => 'escrow_movement',

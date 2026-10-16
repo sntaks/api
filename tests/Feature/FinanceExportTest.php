@@ -127,7 +127,7 @@ it('exports the statements as flat rows', function () {
     Purchase::create(['customer_id' => 900, 'deposit_id' => $gift->id, 'purchase_type' => 'gift', 'amount' => 100, 'value' => 0]);
 
     $cash = downloadCsv($this, 'cash-flow?from=2026-09-19&to=2026-09-20');
-    expect($cash['header'])->toBe(['period', 'wallet_deposit', 'load', 'gift', 'emoji', 'unmatched', 'house_funding', 'shop_float', 'other', 'cash_in_total', 'paid', 'pending', 'failed', 'excise_withheld', 'excise_remitted', 'net_cash', 'referral_paid', 'referral_pending', 'referral_failed', 'deposit_refunded']);
+    expect($cash['header'])->toBe(['period', 'wallet_deposit', 'load', 'gift', 'emoji', 'unmatched', 'house_funding', 'shop_float', 'other', 'cash_in_total', 'paid', 'pending', 'failed', 'excise_withheld', 'excise_remitted', 'net_cash', 'referral_paid', 'referral_pending', 'referral_failed', 'deposit_refunded', 'shop_float_redeemed', 'shop_cash_loaded', 'shop_cash_paid_out']);
     expect(array_column($cash['rows'], 'period'))->toBe(['2026-09-19', '2026-09-20']);
     expect($cash['rows'][1])->toMatchArray(['wallet_deposit' => '500', 'gift' => '100', 'cash_in_total' => '600', 'net_cash' => '600']);
 

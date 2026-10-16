@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BetShopFloatRedemption;
 use App\Models\BetShopLoad;
 use App\Models\BetShopWallet;
 use App\Models\Coin;
@@ -165,6 +166,58 @@ class LedgerService
             balanceBefore: $balanceBefore,
             balanceAfter: $float->balance,
             metadata: ($purchase->metadata ?? []) + ['original_entry_id' => $purchase->entry_id, 'reason' => $reason]
+        );
+    }
+
+    /**
+     * Take float paid back to the shop owner out of the shop's float. Single-sided like a withdrawal: the
+     * cash side is the payment GMS made outside the API.
+     */
+    public function recordShopFloatRedemption(BetShopFloatRedemption $redemption, BetShopWallet $float): LedgerEntry
+    {
+        $amount = (float) $redemption->amount;
+
+        $balanceBefore = $float->balance;
+        $float->balance -= $amount;
+        $float->save();
+
+        return $this->createEntry(
+            entryType: 'shop_float_redemption',
+            referenceable: $redemption,
+            wallet: $float,
+            customerId: null,
+            debit: $amount,
+            credit: 0,
+            balanceBefore: $balanceBefore,
+            balanceAfter: $float->balance,
+            metadata: ['bet_shop_id' => $float->bet_shop_id, 'payment_reference' => $redemption->payment_reference]
+        );
+    }
+
+    /**
+     * Put a voided float redemption back on the shop's float.
+     */
+    public function reverseShopFloatRedemption(LedgerEntry $redemption, BetShopWallet $float, string $reason): LedgerEntry
+    {
+        $amount = (float) $redemption->debit;
+
+        $balanceBefore = $float->balance;
+        $float->balance += $amount;
+        $float->save();
+
+        $redemption->status = 'reversed';
+        $redemption->save();
+
+        return $this->createEntry(
+            entryType: 'shop_float_redemption_reversal',
+            referenceable: $redemption->referenceable,
+            wallet: $float,
+            customerId: null,
+            debit: 0,
+            credit: $amount,
+            balanceBefore: $balanceBefore,
+            balanceAfter: $float->balance,
+            metadata: ($redemption->metadata ?? []) + ['original_entry_id' => $redemption->entry_id, 'reason' => $reason]
         );
     }
 

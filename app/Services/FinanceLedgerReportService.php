@@ -227,7 +227,9 @@ class FinanceLedgerReportService
      *
      * Filters: sort (net_gaming, deposited, staked, won, withdrawn, balance), limit (default 10).
      * net_gaming is winnings plus refunds minus stakes: positive means the customer is up.
-     * deposited is the gross deposit; excise_paid is the duty taken from it.
+     * deposited is everything paid in, gross: M-Pesa deposits plus cash loaded at bet shops (shop_loaded,
+     * net of reversed loads); excise_paid is the duty taken from it. withdrawn is everything taken out:
+     * M-Pesa withdrawals plus shop cash withdrawals (shop_withdrawn: collected or waiting to be collected).
      *
      * @param  array<string, string>  $filters
      */
@@ -246,8 +248,10 @@ class FinanceLedgerReportService
             return "COALESCE(SUM(CASE WHEN l.entry_type IN ({$marks}) THEN {$amount} ELSE 0 END), 0)";
         };
 
-        $deposited = $sum('cash_in', 'credit');
-        $withdrawn = $sum('cash_out', 'debit');
+        $shopLoaded = $sum('shop_load', 'credit');
+        $shopWithdrawn = "COALESCE(SUM(CASE WHEN l.entry_type IN ('shop_withdrawal_hold', 'shop_withdrawal_release') THEN l.debit - l.credit ELSE 0 END), 0)";
+        $deposited = '('.$sum('cash_in', 'credit')." + {$shopLoaded})";
+        $withdrawn = '('.$sum('cash_out', 'debit')." + {$shopWithdrawn})";
         $staked = $sum('stake', 'debit');
         $won = $sum('payout', 'credit');
         $refunded = $sum('refund', 'credit');
@@ -261,7 +265,7 @@ class FinanceLedgerReportService
             ->whereNotNull('l.customer_id')
             ->whereBetween('l.created_at', [$range->from, $range->to])
             ->when($excluded !== [], fn (Builder $query) => $query->whereNotIn('l.customer_id', $excluded))
-            ->selectRaw("l.customer_id, c.name as customer_name, w.balance as balance, {$deposited} as deposited, {$excisePaid} as excise_paid, {$withdrawn} as withdrawn, {$staked} as staked, {$won} as won, {$refunded} as refunded, ({$won} + {$refunded} - {$staked}) as net_gaming")
+            ->selectRaw("l.customer_id, c.name as customer_name, w.balance as balance, {$deposited} as deposited, {$shopLoaded} as shop_loaded, {$excisePaid} as excise_paid, {$withdrawn} as withdrawn, {$shopWithdrawn} as shop_withdrawn, {$staked} as staked, {$won} as won, {$refunded} as refunded, ({$won} + {$refunded} - {$staked}) as net_gaming")
             ->groupBy('l.customer_id', 'c.name', 'w.balance')
             ->orderByDesc($sort)
             ->orderBy('l.customer_id')
@@ -291,8 +295,10 @@ class FinanceLedgerReportService
                 'customer_id' => (int) $row->customer_id,
                 'customer_name' => $row->customer_name,
                 'deposited' => $this->money($row->deposited),
+                'shop_loaded' => $this->money($row->shop_loaded),
                 'excise_paid' => $this->money($row->excise_paid),
                 'withdrawn' => $this->money($row->withdrawn),
+                'shop_withdrawn' => $this->money($row->shop_withdrawn),
                 'staked' => $this->money($row->staked),
                 'won' => $this->money($row->won),
                 'refunded' => $this->money($row->refunded),
@@ -300,7 +306,7 @@ class FinanceLedgerReportService
                 'balance' => $this->money($row->balance),
             ],
             $summary,
-            ['customer_id', 'customer_name', 'deposited', 'excise_paid', 'withdrawn', 'staked', 'won', 'refunded', 'net_gaming', 'balance'],
+            ['customer_id', 'customer_name', 'deposited', 'shop_loaded', 'excise_paid', 'withdrawn', 'shop_withdrawn', 'staked', 'won', 'refunded', 'net_gaming', 'balance'],
         );
     }
 

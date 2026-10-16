@@ -188,6 +188,9 @@ Route::prefix('/v1')->group(function () {
                 Route::get('/games', [FinanceDrilldownController::class, 'games']);
                 Route::get('/competitions', [FinanceDrilldownController::class, 'competitions']);
                 Route::get('/open-wallets', [FinanceDrilldownController::class, 'openWallets']);
+                Route::get('/bet-shops', [FinanceDrilldownController::class, 'betShops']);
+                Route::get('/bet-shops/loads', [FinanceDrilldownController::class, 'betShopLoads']);
+                Route::get('/bet-shops/withdrawals', [FinanceDrilldownController::class, 'betShopWithdrawals']);
                 Route::get('/ledger', [FinanceDrilldownController::class, 'ledger']);
                 Route::get('/adjustments', [FinanceDrilldownController::class, 'adjustments']);
                 Route::get('/disputes', [FinanceDrilldownController::class, 'disputes']);
@@ -291,6 +294,10 @@ Route::prefix('/v1')->group(function () {
             Route::post('/bet-shops/{encryptedIdentifier}/keys', [BetShopController::class, 'issueKey'])->middleware('throttle:write');
             Route::post('/bet-shop-keys/{encryptedIdentifier}/revoke', [BetShopController::class, 'revokeKey'])->middleware(['idempotency', 'throttle:write']);
             Route::get('/bet-shops/{encryptedIdentifier}/float-purchases', [BetShopFloatController::class, 'index']);
+            // Float paid back to an owner outside the API, recorded by GMS
+            Route::post('/bet-shops/{encryptedIdentifier}/float-redemptions', [BetShopFloatController::class, 'redeem'])->middleware(['idempotency', 'throttle:write']);
+            Route::get('/bet-shops/{encryptedIdentifier}/float-redemptions', [BetShopFloatController::class, 'redemptions']);
+            Route::post('/bet-shops/float-redemptions/{encryptedIdentifier}/void', [BetShopFloatController::class, 'voidRedemption'])->middleware(['idempotency', 'throttle:write']);
             Route::get('/bet-shops/{encryptedIdentifier}/loads', [BetShopLoadController::class, 'index']);
             Route::post('/bet-shops/loads/{encryptedIdentifier}/reverse', [BetShopLoadController::class, 'reverse'])->middleware(['idempotency', 'throttle:write']);
             Route::get('/bet-shops/{encryptedIdentifier}/withdrawals', [ShopWithdrawalController::class, 'gmsIndex']);

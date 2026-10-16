@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\FinanceDepositListRequest;
 use App\Http\Requests\FinanceListRequest;
 use App\Services\CustomerService;
+use App\Services\FinanceBetShopReportService;
 use App\Services\FinanceDateRange;
 use App\Services\FinanceDisputeReportService;
 use App\Services\FinanceExpenseService;
@@ -35,6 +36,7 @@ class FinanceDrilldownController extends Controller
         private FinanceReferralReportService $referrals,
         private FinancePromotionReportService $promotions,
         private HouseFundingService $houseFunding,
+        private FinanceBetShopReportService $betShops,
     ) {}
 
     public function deposits(FinanceDepositListRequest $request): JsonResponse
@@ -68,6 +70,24 @@ class FinanceDrilldownController extends Controller
     public function openWallets(FinanceListRequest $request): JsonResponse
     {
         return $this->paged($request, $this->games->openWallets($request->dateRange(), $request->filters()));
+    }
+
+    /**
+     * Per bet shop for the range: float, cash loads, cash withdrawals, play attributed and GGR.
+     */
+    public function betShops(FinanceListRequest $request): JsonResponse
+    {
+        return $this->paged($request, $this->betShops->shops($request->dateRange(), $request->filters()));
+    }
+
+    public function betShopLoads(FinanceListRequest $request): JsonResponse
+    {
+        return $this->paged($request, $this->betShops->loads($request->dateRange(), $request->filters()));
+    }
+
+    public function betShopWithdrawals(FinanceListRequest $request): JsonResponse
+    {
+        return $this->paged($request, $this->betShops->withdrawals($request->dateRange(), $request->filters()));
     }
 
     public function ledger(FinanceListRequest $request): JsonResponse
