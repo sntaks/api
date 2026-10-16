@@ -5892,7 +5892,7 @@ Accept: application/json</pre></div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">20/min</span></div>
 <div class="endpoint-section"><h4>Description</h4>
-<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Games are dated by when the game wallet was created. <code>house_take</code> is stakes minus what players were paid and refunded minus anything still in the game wallet, so it is only shown once the game is closed (<code>null</code> while open). It includes both the cut taken at credit and the cut taken at payout. A negative take means players were paid or refunded more than they staked. With <code>exclude_test</code> on, any game a test customer staked in is left out.</p>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Games are dated by when the game wallet was created. <code>house_take</code> is stakes minus what players were paid and refunded minus anything still in the game wallet, so it is only shown once the game is closed (<code>null</code> while open). It includes both the cut taken at credit and the cut taken at payout. A negative take means players were paid or refunded more than they staked. <code>players</code> counts the customers who staked; a stake whose customer was deleted before customers were soft-deleted counts as one player of its own. With <code>exclude_test</code> on, any game a test customer staked in is left out.</p>
 <table class="params-table"><tr><th>Outcome</th><th>Meaning</th></tr>
 <tr><td>open</td><td>The game wallet is still open</td></tr>
 <tr><td>completed</td><td>Closed and a player was paid</td></tr>
@@ -5944,6 +5944,66 @@ Accept: application/json</pre></div>
     ],
     "pagination": {"page": 1, "per_page": 50, "total": 2, "last_page": 1}
   }
+}</pre></div>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/finance/open-wallets</span><span class="endpoint-desc">Open game and competition wallets left untouched: money that may be stranded</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">20/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">A position as of now: every open (<code>status</code> 1) game wallet and competition wallet nothing has happened on for a while. <code>from</code> and <code>to</code> are not applied; <code>exclude_test</code> is (on by default, leaving out games a test customer staked in and competition wallets a test customer owns). A wallet's <code>last_activity_at</code> is its newest transaction (stake, entry, round, payout), or its creation when it has none; it is listed once that is at least the idle threshold old: <strong>30 minutes</strong> for single games and <strong>24 hours</strong> for tournaments and jackpots by default (<code>FINANCE_OPEN_GAME_IDLE_MINUTES</code>, <code>FINANCE_OPEN_COMPETITION_IDLE_MINUTES</code>), or <code>idle_minutes</code> for both when sent. Rows are ordered longest idle first.</p>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">One row per game wallet, with every player who staked in it (<code>participants</code>, each with their total stake), and one per competition wallet (each competition player has their own, so <code>participants</code> is its owner and their entries). <code>players</code> counts the customers who staked in a game; a stake whose customer was deleted before customers were soft-deleted has no customer left and counts as one player of its own (<code>customer_id</code> and <code>name</code> null). <code>under_complaint</code> is true while a pending complaint holds the wallet. The summary groups single games by players, always listing 1 to 4 (1-player games are stakes still waiting for an opponent), tournaments by rounds (3, 4, 5) and jackpots by rounds (13, 17, 21), plus any other value found; <code>held</code> is the money in the wallets.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>kind</td><td>string</td><td><span class="optional">Optional</span></td><td><code>game</code>, <code>tournament</code> or <code>jackpot</code>. Without it, all kinds</td></tr>
+<tr><td>players</td><td>integer</td><td><span class="optional">Optional</span></td><td>Single games with this many players (competition rows have none, so they drop out)</td></tr>
+<tr><td>jp_rounds</td><td>integer</td><td><span class="optional">Optional</span></td><td>Competitions with this many rounds (game rows drop out)</td></tr>
+<tr><td>idle_minutes</td><td>integer</td><td><span class="optional">Optional</span></td><td>0 to 525600. Replaces both default thresholds; <code>0</code> lists every open wallet</td></tr>
+<tr><td>exclude_test</td><td>boolean</td><td><span class="optional">Optional</span></td><td>Default true</td></tr>
+<tr><td>page, per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 1 and 50, <code>per_page</code> at most 200</td></tr></table></div>
+<div class="endpoint-section"><h4>Example Request</h4>
+<pre>GET /api/v1/finance/open-wallets?kind=game&amp;players=1 HTTP/1.1
+Host: api.kadi-kings.co.ke
+X-API-KEY: your-api-key-here
+Accept: application/json</pre></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "generated_at": "2026-10-16T12:00:00+03:00",
+    "meta": { "period": {"from": "2026-10-16", "to": "2026-10-16", "group_by": "day", "exclude_test": true}, "warnings": [] },
+    "summary": {
+      "games": {
+        "wallets": 3, "held": 350.00, "oldest_activity_at": "2026-10-16T10:30:00+03:00",
+        "by_players": [
+          {"players": 1, "wallets": 1, "held": 50.00, "oldest_activity_at": "2026-10-16T11:15:00+03:00"},
+          {"players": 2, "wallets": 2, "held": 300.00, "oldest_activity_at": "2026-10-16T10:30:00+03:00"},
+          {"players": 3, "wallets": 0, "held": 0.00, "oldest_activity_at": null},
+          {"players": 4, "wallets": 0, "held": 0.00, "oldest_activity_at": null}
+        ]
+      },
+      "tournaments": { "wallets": 1, "held": 80.00, "oldest_activity_at": "2026-10-15T02:40:00+03:00", "by_rounds": [{"rounds": 3, "wallets": 0, "held": 0.00, "oldest_activity_at": null}, {"rounds": 4, "wallets": 1, "held": 80.00, "oldest_activity_at": "2026-10-15T02:40:00+03:00"}, {"rounds": 5, "wallets": 0, "held": 0.00, "oldest_activity_at": null}] },
+      "jackpots": { "wallets": 0, "held": 0.00, "oldest_activity_at": null, "by_rounds": [{"rounds": 13, "wallets": 0, "held": 0.00, "oldest_activity_at": null}, {"rounds": 17, "wallets": 0, "held": 0.00, "oldest_activity_at": null}, {"rounds": 21, "wallets": 0, "held": 0.00, "oldest_activity_at": null}] },
+      "other_competitions": { "wallets": 0, "held": 0.00, "oldest_activity_at": null },
+      "total": { "wallets": 4, "held": 430.00, "oldest_activity_at": "2026-10-15T02:40:00+03:00" },
+      "idle_minutes": { "game": 30, "competition": 1440 }
+    },
+    "items": [
+      {
+        "kind": "game", "wallet_id": 881, "game_id": "G-20261016-0012", "cmp_uid": null, "competition_id": null, "game_type": 1,
+        "players": 1, "rounds": null, "level": null, "balance": 50.00, "status": 1,
+        "participants": [{"customer_id": 900, "name": "Alice Wanjiru", "stake": 50.00}],
+        "under_complaint": false, "created_at": "2026-10-16T11:14:00+03:00", "last_activity_at": "2026-10-16T11:15:00+03:00", "idle_minutes": 45
+      }
+    ],
+    "pagination": {"page": 1, "per_page": 50, "total": 1, "last_page": 1}
+  }
+}</pre></div>
+<div class="endpoint-section"><h4>Response (422)</h4>
+<pre>{
+  "message": "The kind must be one of: game, tournament, jackpot.",
+  "errors": { "kind": ["The kind must be one of: game, tournament, jackpot."] }
 }</pre></div>
 </div></div>
 
@@ -6654,7 +6714,8 @@ Idempotency-Key: excise-2026-08
 <tr><td>referral-bonuses</td><td>/finance/referrals/bonuses</td><td>One per bonus</td></tr>
 <tr><td>referral-withdrawals</td><td>/finance/referrals/withdrawals</td><td>One per referral withdrawal</td></tr>
 <tr><td>promotions</td><td>/finance/promotions</td><td>One per signup bonus</td></tr>
-<tr><td>house-funding</td><td>/finance/house-funding</td><td>One per house funding</td></tr></table>
+<tr><td>house-funding</td><td>/finance/house-funding</td><td>One per house funding</td></tr>
+<tr><td>open-wallets</td><td>/finance/open-wallets</td><td>One per untouched open wallet, as of now (<code>participants</code> as JSON)</td></tr></table>
 <p style="color:var(--text-secondary);font-size:13px;margin-top:8px;">The <code>cash-flow</code> export has a <code>house_funding</code> column after <code>unmatched</code>, <code>excise_withheld</code> and <code>excise_remitted</code> columns before <code>net_cash</code>, and <code>referral_paid</code>, <code>referral_pending</code>, <code>referral_failed</code> and <code>deposit_refunded</code> after it. The <code>income-statement</code> export has <code>referral_payouts</code> and <code>promotions</code> as its last columns.</p>
 <p style="color:var(--text-secondary);font-size:13px;margin-top:8px;">The customer statement cannot be exported yet.</p></div>
 <div class="endpoint-section"><h4>Request</h4>

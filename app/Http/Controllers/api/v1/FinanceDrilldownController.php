@@ -62,6 +62,14 @@ class FinanceDrilldownController extends Controller
         return $this->paged($request, $this->games->competitions($request->dateRange(), $request->filters()));
     }
 
+    /**
+     * Open game and competition wallets nothing has happened on for a while, as of now.
+     */
+    public function openWallets(FinanceListRequest $request): JsonResponse
+    {
+        return $this->paged($request, $this->games->openWallets($request->dateRange(), $request->filters()));
+    }
+
     public function ledger(FinanceListRequest $request): JsonResponse
     {
         return $this->paged($request, $this->ledger->ledger($request->dateRange(), $request->filters()));

@@ -27,7 +27,7 @@ class FinanceExportController extends Controller
         'ledger', 'deposits', 'withdrawals', 'purchases', 'adjustments', 'games', 'competitions',
         'customers-top', 'cash-flow', 'income-statement', 'trial-balance', 'expenses', 'taxes',
         'excise-duty', 'excise-duty-charges', 'excise-duty-returns', 'excise-duty-remittances', 'disputes',
-        'referral-bonuses', 'referral-withdrawals', 'promotions', 'house-funding',
+        'referral-bonuses', 'referral-withdrawals', 'promotions', 'house-funding', 'open-wallets',
     ];
 
     /** Days the top customers report covers when no range is given. */
@@ -83,6 +83,7 @@ class FinanceExportController extends Controller
             'referral-withdrawals' => $this->fromListing($this->referrals->withdrawals($range, $filters)),
             'promotions' => $this->fromListing($this->promotions->credits($range, $filters)),
             'house-funding' => $this->fromListing($this->houseFunding->listing($range, $filters)),
+            'open-wallets' => $this->fromListing($this->games->openWallets($range, $filters)),
         };
 
         $filename = "finance-{$report}-{$range->from->toDateString()}-{$range->to->toDateString()}.csv";

@@ -32,6 +32,7 @@ class FinanceListRequest extends FinanceReportRequest
             'players' => ['nullable', 'integer', 'min:1', 'max:20'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
             'sort' => ['nullable', 'in:net_gaming,deposited,staked,won,withdrawn,balance'],
+            'idle_minutes' => ['nullable', 'integer', 'min:0', 'max:525600'],
         ];
     }
 
@@ -55,7 +56,7 @@ class FinanceListRequest extends FinanceReportRequest
         return array_filter(
             $this->only([
                 'status', 'kind', 'type', 'entry_type', 'category', 'wallet_type', 'wallet_id', 'customer_id',
-                'game_type', 'jp_rounds', 'outcome', 'players', 'limit', 'sort',
+                'game_type', 'jp_rounds', 'outcome', 'players', 'limit', 'sort', 'idle_minutes',
             ]),
             fn ($value) => $value !== null && $value !== ''
         );
