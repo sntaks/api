@@ -39,6 +39,7 @@ class FinanceReconciliationService
             $this->ledgerDrift('competition_wallet_drift', 'Competition wallet balances match the ledger', 'competition_wallets', LedgerEntry::WALLET_TYPE_COMPETITION, true),
             $this->ledgerDrift('dispute_escrow_drift', 'Dispute escrow balances match the ledger', 'disputed_transactions', LedgerEntry::WALLET_TYPE_DISPUTE, false),
             $this->ledgerDrift('referral_wallet_drift', 'Referral wallet balances match the ledger', 'referral_wallets', LedgerEntry::WALLET_TYPE_REFERRAL, false),
+            $this->ledgerDrift('bet_shop_float_drift', 'Bet shop float balances match the ledger', 'bet_shop_wallets', LedgerEntry::WALLET_TYPE_BET_SHOP, false),
             $this->ledgerChain($range),
             $this->ledgerIdentity($range),
             $this->unclassifiedEntries(),
@@ -61,6 +62,8 @@ class FinanceReconciliationService
             $this->referralBonusesWithoutVerification(),
             $this->promotionCreditsLedger($range),
             $this->houseFundingLedger($range),
+            $this->shopFloatLedger($range),
+            $this->shopLoadsLedger($range),
             $this->houseCutRates($range),
             $this->mpesaBalanceFreshness(),
             $this->cashCoverage(),
@@ -219,7 +222,14 @@ class FinanceReconciliationService
             ->whereNull('r.id')
             ->get(['i.id', 'i.trans_id', 'i.trans_amount', 'i.status']);
 
-        $rows = $assignedWrong->concat($refundedWrong)->concat($houseFundedWrong)->concat($refundedWithoutRecord);
+        $shopFloatWrong = DB::table('deposit_resolutions as r')
+            ->join('incoming_payments as i', 'i.id', '=', 'r.deposit_id')
+            ->leftJoin('ledger_entries as l', 'l.id', '=', 'r.ledger_entry_id')
+            ->where('r.action', DepositResolution::ACTION_SHOP_FLOAT)
+            ->where(fn ($query) => $query->where('i.status', '!=', Deposit::STATUS_COMPLETED)->orWhereNull('l.id')->orWhere('l.entry_type', '!=', 'shop_float_purchase'))
+            ->get(['i.id', 'i.trans_id', 'i.trans_amount', 'i.status', 'r.action']);
+
+        $rows = $assignedWrong->concat($refundedWrong)->concat($houseFundedWrong)->concat($shopFloatWrong)->concat($refundedWithoutRecord);
 
         return $this->result(
             'deposit_resolutions',
@@ -228,7 +238,7 @@ class FinanceReconciliationService
             $rows->count(),
             (float) $rows->sum('trans_amount'),
             $rows->take(self::SAMPLE_SIZE)->map(fn ($row) => (array) $row)->values()->all(),
-            'An assigned deposit must be completed with a ledger credit; a house-funded deposit must be completed with a house_funding credit; a refunded deposit must have status 4 and a refund record.'
+            'An assigned deposit must be completed with a ledger credit; a house-funded deposit must be completed with a house_funding credit; a shop float deposit must be completed with a shop_float_purchase credit; a refunded deposit must have status 4 and a refund record.'
         );
     }
 
@@ -263,7 +273,7 @@ class FinanceReconciliationService
             ->leftJoin('ledger_entries as l', function ($join) {
                 $join->on('l.referenceable_id', '=', 'i.id')
                     ->where('l.referenceable_type', Deposit::class)
-                    ->whereIn('l.entry_type', ['deposit', 'house_funding']);
+                    ->whereIn('l.entry_type', ['deposit', 'house_funding', 'shop_float_purchase']);
             })
             ->leftJoin('purchases as p', 'p.deposit_id', '=', 'i.id')
             ->where('i.status', 2)
@@ -493,7 +503,7 @@ class FinanceReconciliationService
      */
     private function negativeBalances(): array
     {
-        $rows = collect(['wallets' => 'customer', 'game_wallets' => 'game', 'competition_wallets' => 'competition', 'referral_wallets' => 'referral'])
+        $rows = collect(['wallets' => 'customer', 'game_wallets' => 'game', 'competition_wallets' => 'competition', 'referral_wallets' => 'referral', 'bet_shop_wallets' => 'bet_shop'])
             ->flatMap(fn (string $kind, string $table) => DB::table($table)
                 ->where('balance', '<', 0)
                 ->get(['id', 'balance'])
@@ -667,6 +677,78 @@ class FinanceReconciliationService
     }
 
     /**
+     * Each shop float purchase has its credit to the shop's float for the full deposit, and each voided one
+     * has its reversal.
+     *
+     * @return array<string, mixed>
+     */
+    private function shopFloatLedger(FinanceDateRange $range): array
+    {
+        $tolerance = $this->tolerance();
+
+        $mismatched = DB::table('bet_shop_float_purchases as f')
+            ->join('incoming_payments as i', 'i.id', '=', 'f.deposit_id')
+            ->join('bet_shop_wallets as w', 'w.bet_shop_id', '=', 'f.bet_shop_id')
+            ->leftJoin('ledger_entries as l', 'l.id', '=', 'f.ledger_entry_id')
+            ->leftJoin('ledger_entries as v', 'v.id', '=', 'f.void_ledger_entry_id')
+            ->whereBetween('f.created_at', [$range->from, $range->to])
+            ->where(fn ($query) => $query
+                ->whereNull('l.id')
+                ->orWhere('l.entry_type', '!=', 'shop_float_purchase')
+                ->orWhere('l.wallet_type', '!=', LedgerEntry::WALLET_TYPE_BET_SHOP)
+                ->orWhereColumn('l.wallet_id', '!=', 'w.id')
+                ->orWhereRaw('ABS(l.credit - f.amount) > ?', [$tolerance])
+                ->orWhereRaw('ABS(f.amount - i.trans_amount) > ?', [$tolerance])
+                ->orWhereRaw('(f.voided_at IS NULL AND i.status <> ?)', [Deposit::STATUS_COMPLETED])
+                ->orWhereRaw("(f.voided_at IS NOT NULL AND (v.id IS NULL OR v.entry_type <> 'shop_float_purchase_reversal' OR ABS(v.debit - f.amount) > ?))", [$tolerance]));
+
+        return $this->result(
+            'shop_float_ledger',
+            'Bet shop float purchases match the ledger',
+            'fail',
+            (clone $mismatched)->count(),
+            (float) (clone $mismatched)->sum('f.amount'),
+            (clone $mismatched)->limit(self::SAMPLE_SIZE)->get(['f.id', 'f.bet_shop_id', 'f.deposit_id', 'i.trans_id', 'f.amount', 'f.voided_at', 'l.id as ledger_entry_id', 'v.id as void_ledger_entry_id'])->map(fn ($row) => (array) $row)->all()
+        );
+    }
+
+    /**
+     * Each shop load moved its gross amount from the shop float to the player's wallet (a matching pair of
+     * shop_load entries), and gross = excise + net.
+     *
+     * @return array<string, mixed>
+     */
+    private function shopLoadsLedger(FinanceDateRange $range): array
+    {
+        $tolerance = $this->tolerance();
+
+        $mismatched = DB::table('bet_shop_loads as s')
+            ->leftJoin('ledger_entries as f', 'f.id', '=', 's.shop_ledger_entry_id')
+            ->leftJoin('ledger_entries as c', 'c.id', '=', 's.customer_ledger_entry_id')
+            ->whereBetween('s.created_at', [$range->from, $range->to])
+            ->where(fn ($query) => $query
+                ->whereNull('f.id')
+                ->orWhereNull('c.id')
+                ->orWhere('f.entry_type', '!=', 'shop_load')
+                ->orWhere('c.entry_type', '!=', 'shop_load')
+                ->orWhere('f.wallet_type', '!=', LedgerEntry::WALLET_TYPE_BET_SHOP)
+                ->orWhere('c.wallet_type', '!=', LedgerEntry::WALLET_TYPE_WALLET)
+                ->orWhereColumn('c.wallet_id', '!=', 's.wallet_id')
+                ->orWhereRaw('ABS(f.debit - s.gross_amount) > ?', [$tolerance])
+                ->orWhereRaw('ABS(c.credit - s.gross_amount) > ?', [$tolerance])
+                ->orWhereRaw('ABS(s.gross_amount - s.excise_amount - s.net_amount) > ?', [$tolerance]));
+
+        return $this->result(
+            'shop_loads_ledger',
+            'Bet shop loads match the ledger',
+            'fail',
+            (clone $mismatched)->count(),
+            (float) (clone $mismatched)->sum('s.gross_amount'),
+            (clone $mismatched)->limit(self::SAMPLE_SIZE)->get(['s.id', 's.load_id', 's.bet_shop_id', 's.customer_id', 's.gross_amount', 's.excise_amount', 's.net_amount', 'f.id as shop_ledger_entry_id', 'c.id as customer_ledger_entry_id'])->map(fn ($row) => (array) $row)->all()
+        );
+    }
+
+    /**
      * Each house funding has its credit to the house wallet for the full deposit, and each voided one has its
      * reversal.
      *
@@ -786,7 +868,7 @@ class FinanceReconciliationService
         $owed = $position['customer_wallets_total'] + $position['game_escrow_total'] + $position['competition_escrow_total']
             + $position['stuck_escrow_total'] + $position['coin_liability'] + $position['pending_holds_total']
             + $position['unmatched_deposits_total'] + $position['excise_duty_payable'] + $position['disputed_funds_total']
-            + $position['referral_wallets_total'];
+            + $position['referral_wallets_total'] + $position['bet_shop_floats_total'];
 
         $shortfall = round($owed - $cash, 2);
 

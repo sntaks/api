@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\BetShopLoad;
+use App\Models\BetShopWallet;
 use App\Models\Coin;
 use App\Models\CompetitionTransaction;
 use App\Models\CompetitionWallet;
@@ -113,6 +115,172 @@ class LedgerService
             balanceAfter: $houseWallet->balance,
             metadata: ($funding->metadata ?? []) + ['original_entry_id' => $funding->entry_id, 'reason' => $reason]
         );
+    }
+
+    /**
+     * Credit float a shop owner bought through the paybill to the shop's float wallet. Single-sided like a
+     * deposit (the cash side is M-Pesa), and not a customer deposit: no excise duty, no referral hook.
+     */
+    public function recordShopFloatPurchase(Deposit $deposit, BetShopWallet $float, float $amount): LedgerEntry
+    {
+        $balanceBefore = $float->balance;
+        $float->balance += $amount;
+        $float->save();
+
+        return $this->createEntry(
+            entryType: 'shop_float_purchase',
+            referenceable: $deposit,
+            wallet: $float,
+            customerId: null,
+            debit: 0,
+            credit: $amount,
+            balanceBefore: $balanceBefore,
+            balanceAfter: $float->balance,
+            metadata: ['deposit_id' => $deposit->id, 'trans_id' => $deposit->trans_id, 'bet_shop_id' => $float->bet_shop_id]
+        );
+    }
+
+    /**
+     * Take a voided float purchase back out of the shop's float.
+     */
+    public function reverseShopFloatPurchase(LedgerEntry $purchase, BetShopWallet $float, string $reason): LedgerEntry
+    {
+        $amount = (float) $purchase->credit;
+
+        $balanceBefore = $float->balance;
+        $float->balance -= $amount;
+        $float->save();
+
+        $purchase->status = 'reversed';
+        $purchase->save();
+
+        return $this->createEntry(
+            entryType: 'shop_float_purchase_reversal',
+            referenceable: $purchase->referenceable,
+            wallet: $float,
+            customerId: null,
+            debit: $amount,
+            credit: 0,
+            balanceBefore: $balanceBefore,
+            balanceAfter: $float->balance,
+            metadata: ($purchase->metadata ?? []) + ['original_entry_id' => $purchase->entry_id, 'reason' => $reason]
+        );
+    }
+
+    /**
+     * Move cash a player paid at a shop from the shop's float to the player's wallet, gross. Paired, so it
+     * nets to zero; excise duty is then taken from the wallet with recordShopLoadExciseDuty().
+     *
+     * @return array{0: LedgerEntry, 1: LedgerEntry} [shop float entry, customer wallet entry]
+     */
+    public function recordShopLoad(BetShopLoad $load, BetShopWallet $float, Wallet $wallet, float $amount): array
+    {
+        $floatBefore = $float->balance;
+        $float->balance -= $amount;
+        $float->save();
+
+        $walletBefore = $wallet->balance;
+        $wallet->balance += $amount;
+        $wallet->save();
+
+        $metadata = ['bet_shop_id' => $load->bet_shop_id, 'load_id' => $load->load_id];
+
+        $floatEntry = $this->createEntry(
+            entryType: 'shop_load',
+            referenceable: $load,
+            wallet: $float,
+            customerId: null,
+            debit: $amount,
+            credit: 0,
+            balanceBefore: $floatBefore,
+            balanceAfter: $float->balance,
+            metadata: $metadata + ['customer_id' => $wallet->customer_id]
+        );
+
+        $walletEntry = $this->createEntry(
+            entryType: 'shop_load',
+            referenceable: $load,
+            wallet: $wallet,
+            customerId: $wallet->customer_id,
+            debit: 0,
+            credit: $amount,
+            balanceBefore: $walletBefore,
+            balanceAfter: $wallet->balance,
+            metadata: $metadata
+        );
+
+        return [$floatEntry, $walletEntry];
+    }
+
+    /**
+     * Take excise duty from a wallet that was just loaded at a shop.
+     */
+    public function recordShopLoadExciseDuty(BetShopLoad $load, Wallet $wallet, float $amount, float $rate): LedgerEntry
+    {
+        $balanceBefore = $wallet->balance;
+        $wallet->balance -= $amount;
+        $wallet->save();
+
+        return $this->createEntry(
+            entryType: 'excise_duty',
+            referenceable: $load,
+            wallet: $wallet,
+            customerId: $wallet->customer_id,
+            debit: $amount,
+            credit: 0,
+            balanceBefore: $balanceBefore,
+            balanceAfter: $wallet->balance,
+            metadata: ['bet_shop_load_id' => $load->id, 'rate' => $rate, 'gross_amount' => (float) $load->gross_amount]
+        );
+    }
+
+    /**
+     * Undo a shop load: the player's wallet gives back the gross amount and the shop float gets it back.
+     * Reverse the load's excise duty first, so the wallet holds the gross again.
+     *
+     * @return array{0: LedgerEntry, 1: LedgerEntry} [shop float entry, customer wallet entry]
+     */
+    public function reverseShopLoad(BetShopLoad $load, BetShopWallet $float, Wallet $wallet, string $reason): array
+    {
+        $amount = (float) $load->gross_amount;
+
+        $walletBefore = $wallet->balance;
+        $wallet->balance -= $amount;
+        $wallet->save();
+
+        $floatBefore = $float->balance;
+        $float->balance += $amount;
+        $float->save();
+
+        LedgerEntry::whereIn('id', [$load->shop_ledger_entry_id, $load->customer_ledger_entry_id])->update(['status' => 'reversed']);
+
+        $metadata = ['bet_shop_id' => $load->bet_shop_id, 'load_id' => $load->load_id, 'reason' => $reason];
+
+        $floatEntry = $this->createEntry(
+            entryType: 'shop_load_reversal',
+            referenceable: $load,
+            wallet: $float,
+            customerId: null,
+            debit: 0,
+            credit: $amount,
+            balanceBefore: $floatBefore,
+            balanceAfter: $float->balance,
+            metadata: $metadata + ['customer_id' => $wallet->customer_id]
+        );
+
+        $walletEntry = $this->createEntry(
+            entryType: 'shop_load_reversal',
+            referenceable: $load,
+            wallet: $wallet,
+            customerId: $wallet->customer_id,
+            debit: $amount,
+            credit: 0,
+            balanceBefore: $walletBefore,
+            balanceAfter: $wallet->balance,
+            metadata: $metadata
+        );
+
+        return [$floatEntry, $walletEntry];
     }
 
     /**
@@ -950,6 +1118,7 @@ class LedgerService
             $wallet instanceof Coin => LedgerEntry::WALLET_TYPE_COIN,
             $wallet instanceof DisputedTransaction => LedgerEntry::WALLET_TYPE_DISPUTE,
             $wallet instanceof ReferralWallet => LedgerEntry::WALLET_TYPE_REFERRAL,
+            $wallet instanceof BetShopWallet => LedgerEntry::WALLET_TYPE_BET_SHOP,
             default => LedgerEntry::WALLET_TYPE_WALLET,
         };
     }

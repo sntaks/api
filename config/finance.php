@@ -153,7 +153,7 @@ return [
         'enabled' => (bool) env('FINANCE_EXCISE_DUTY_ENABLED', false),
         'rate' => (float) env('FINANCE_EXCISE_DUTY_RATE', 0.05),
         'effective_from' => env('FINANCE_EXCISE_DUTY_EFFECTIVE_FROM'),
-        'applies_to' => ['wallet_deposit'],
+        'applies_to' => ['wallet_deposit', 'shop_deposit'],
         'filing_day' => 20,
     ],
 
@@ -254,7 +254,8 @@ return [
     |
     | Categories: cash_in, cash_out, stake, payout, house_revenue, refund,
     | adjustment, transfer, escrow_movement, coin, tax_withheld,
-    | referral_bonus, referral_payout, promotion, capital.
+    | referral_bonus, referral_payout, promotion, capital, shop_float,
+    | shop_load.
     |
     | capital entries (house_funding) are owner money paid into the paybill and
     | credited to the house wallet. Single-sided like deposits (the cash side
@@ -268,6 +269,12 @@ return [
     | a contingent amount, not a liability: a bonus becomes an expense only
     | when it is paid out (referral_payout), from the referral shortcode.
     |
+    | bet_shop_floats are prepaid floats shop owners bought through the
+    | paybill. shop_float entries (shop_float_purchase) are single-sided like
+    | deposits: the cash side is M-Pesa. shop_load entries are paired: a shop
+    | float goes down by what a player's wallet goes up when the shop loads
+    | them with cash (excise duty is then taken as for deposits).
+    |
     */
 
     'accounts' => [
@@ -278,6 +285,7 @@ return [
         'coin_wallets' => ['label' => 'Coin wallets', 'type' => 'liability'],
         'disputed_funds' => ['label' => 'Disputed funds (complaints)', 'type' => 'liability'],
         'referral_wallets' => ['label' => 'Referral wallets (unspent bonuses)', 'type' => 'contingent'],
+        'bet_shop_floats' => ['label' => 'Bet shop floats (prepaid)', 'type' => 'liability'],
     ],
 
     'entry_types' => [
@@ -304,6 +312,8 @@ return [
         'referral_withdrawal' => 'referral_payout',
         'promo_credit' => 'promotion',
         'house_funding' => 'capital',
+        'shop_float_purchase' => 'shop_float',
+        'shop_load' => 'shop_load',
     ],
 
 ];

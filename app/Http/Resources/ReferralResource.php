@@ -43,7 +43,7 @@ class ReferralResource extends JsonResource
     {
         return match (true) {
             $this->verified_at === null => 'pending_verification',
-            $this->first_deposit_id !== null => 'deposited',
+            $this->first_deposited_at !== null => 'deposited',
             default => 'verified',
         };
     }

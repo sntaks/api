@@ -300,7 +300,7 @@ it('exports the excise duty reports as CSV', function (string $report, array $he
     expect($lines[0])->toBe($header);
 })->with([
     'summary' => ['excise-duty', ['period', 'deposits', 'gross_deposits', 'excise_charged', 'excise_reversed', 'excise_net', 'excise_remitted']],
-    'charges' => ['excise-duty-charges', ['id', 'charged_at', 'source', 'deposit_id', 'promotion_credit_id', 'trans_id', 'customer_id', 'customer_name', 'msisdn', 'gross_amount', 'rate', 'excise_amount', 'net_amount', 'status', 'remittance_id', 'kra_reference']],
+    'charges' => ['excise-duty-charges', ['id', 'charged_at', 'source', 'deposit_id', 'promotion_credit_id', 'bet_shop_load_id', 'trans_id', 'customer_id', 'customer_name', 'msisdn', 'gross_amount', 'rate', 'excise_amount', 'net_amount', 'status', 'remittance_id', 'kra_reference']],
     'returns' => ['excise-duty-returns', ['period', 'period_start', 'period_end', 'due_date', 'charges', 'gross_deposits', 'excise_charged', 'excise_reversed', 'excise_due', 'excise_remitted', 'outstanding', 'overdue']],
     'remittances' => ['excise-duty-remittances', ['id', 'period_start', 'period_end', 'charges', 'amount_due', 'amount_paid', 'difference', 'kra_reference', 'paid_at', 'status', 'recorded_by', 'created_at', 'voided_at', 'voided_by', 'void_reason']],
 ]);

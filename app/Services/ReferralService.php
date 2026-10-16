@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BetShopLoad;
 use App\Models\Customer;
 use App\Models\Deposit;
 use App\Models\Referral;
@@ -114,8 +115,27 @@ class ReferralService
             return;
         }
 
-        if ($referral->first_deposit_id === null) {
+        if ($referral->first_deposited_at === null) {
             $referral->update(['first_deposit_id' => $deposit->id, 'first_deposited_at' => now()]);
+        }
+
+        $this->payDueBonuses($referral);
+    }
+
+    /**
+     * Note cash loaded at a bet shop as the referred customer's first deposit when they have none yet,
+     * and pay the bonus when they are already verified. Call inside the caller's load transaction.
+     */
+    public function recordShopLoad(BetShopLoad $load, int $customerId): void
+    {
+        $referral = Referral::where('referred_id', $customerId)->lockForUpdate()->first();
+
+        if (! $referral) {
+            return;
+        }
+
+        if ($referral->first_deposited_at === null) {
+            $referral->update(['first_bet_shop_load_id' => $load->id, 'first_deposited_at' => now()]);
         }
 
         $this->payDueBonuses($referral);
@@ -134,7 +154,7 @@ class ReferralService
         }
 
         $due = [ReferralBonus::MILESTONE_SIGNUP];
-        if ($referral->first_deposit_id !== null) {
+        if ($referral->first_deposited_at !== null) {
             $due[] = ReferralBonus::MILESTONE_FIRST_DEPOSIT;
         }
 
@@ -199,7 +219,7 @@ class ReferralService
             'referrals' => [
                 'total' => (clone $referrals)->count(),
                 'verified' => (clone $referrals)->whereNotNull('verified_at')->count(),
-                'deposited' => (clone $referrals)->whereNotNull('first_deposit_id')->count(),
+                'deposited' => (clone $referrals)->whereNotNull('first_deposited_at')->count(),
                 'pending_verification' => (clone $referrals)->whereNull('verified_at')->count(),
                 'today' => (clone $referrals)->where('created_at', '>=', $now->copy()->startOfDay())->count(),
                 'this_week' => (clone $referrals)->where('created_at', '>=', $now->copy()->startOfWeek())->count(),
@@ -247,7 +267,7 @@ class ReferralService
             'referrals' => [
                 'total' => Referral::count(),
                 'verified' => Referral::whereNotNull('verified_at')->count(),
-                'deposited' => Referral::whereNotNull('first_deposit_id')->count(),
+                'deposited' => Referral::whereNotNull('first_deposited_at')->count(),
                 'today' => Referral::where('created_at', '>=', $now->copy()->startOfDay())->count(),
                 'this_week' => Referral::where('created_at', '>=', $now->copy()->startOfWeek())->count(),
                 'this_month' => Referral::where('created_at', '>=', $now->copy()->startOfMonth())->count(),

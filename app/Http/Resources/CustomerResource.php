@@ -2,11 +2,11 @@
 
 namespace App\Http\Resources;
 
-use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
-
+use App\Models\BetShopLoad;
 use App\Models\Deposit;
 use App\Models\Withdraw;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 
 class CustomerResource extends JsonResource
 {
@@ -21,6 +21,7 @@ class CustomerResource extends JsonResource
             'id' => $this->id,
             'google_id' => $this->google_id,
             'account_no' => $this->account_no,
+            'player_no' => $this->player_no,
             'referral_code' => $this->referral_code,
             'name' => $this->name,
             'id_no' => $this->id_no,
@@ -36,14 +37,15 @@ class CustomerResource extends JsonResource
                 'wallet_id' => $wallet->id,
                 'balance' => $wallet->balance,
             ]);
-            
+
             $walletTransactions = $wallet->transactions;
             $customerArr = array_merge($customerArr, [
                 'deposits' => $walletTransactions->where('payment_type', Deposit::class)->sum('amount'),
+                'shop_loads' => $walletTransactions->where('payment_type', BetShopLoad::class)->where('status', 2)->sum('amount'),
                 'withdraws' => $walletTransactions->where('payment_type', Withdraw::class)->sum('amount'),
             ]);
         }
-        
+
         $purchases = $this->purchases;
         if ($purchases) {
             $customerArr = array_merge($customerArr, [
@@ -52,21 +54,21 @@ class CustomerResource extends JsonResource
                 'purchases_emojis' => $purchases->where('purchase_type', 'emoji')->sum('amount'),
             ]);
         }
-        
+
         $singlePlayed = $this->gameWalletTransactions;
         if ($singlePlayed) {
             $customerArr = array_merge($customerArr, [
                 'single_played' => $singlePlayed->where('payment_type', 'deposit')->count(),
             ]);
         }
-        
+
         $competitionPlayed = $this->allCompetitionTransactions;
         if ($competitionPlayed) {
             $customerArr = array_merge($customerArr, [
                 'competition_played' => $competitionPlayed->where('payment_type', '!=', 'payout')->count(),
             ]);
         }
-        
+
         $coin = $this->coin;
         if ($coin) {
             $customerArr = array_merge($customerArr, [
@@ -74,7 +76,7 @@ class CustomerResource extends JsonResource
                 'coins' => $coin->coins,
             ]);
         }
-        
+
         return $customerArr;
     }
 }

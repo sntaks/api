@@ -14,6 +14,7 @@ class C2BConfirmationService
         private LedgerService $ledgerService,
         private WalletDepositService $walletDepositService,
         private HouseFundingService $houseFunding,
+        private BetShopFloatService $shopFloat,
     ) {}
 
     public function processCallback(array $depositData): array
@@ -44,6 +45,15 @@ class C2BConfirmationService
             $normalizedAccountNo = $this->walletDepositService->normalizeAccountNo($rawAccountNo);
 
             $customer = Customer::where('account_no', $normalizedAccountNo)->first();
+
+            // A shop owner buying float (bill ref SHOP-<shop_no>): credited only when automatic crediting is on.
+            if (! $customer && $this->shopFloat->creditFromCallback($deposit)) {
+                return [
+                    'ResultCode' => '0',
+                    'ResultDesc' => 'Accepted',
+                    'status' => 200,
+                ];
+            }
 
             // The money has arrived either way: it is kept as unmatched and resolved through /deposits/unmatched.
             if (! $customer) {

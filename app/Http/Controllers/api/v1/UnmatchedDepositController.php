@@ -5,6 +5,7 @@ namespace App\Http\Controllers\api\v1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DepositResolutionResource;
 use App\Models\Deposit;
+use App\Services\BetShopFloatService;
 use App\Services\FinanceMasker;
 use App\Services\UnmatchedDepositService;
 use Illuminate\Database\Eloquent\Builder;
@@ -13,16 +14,19 @@ use Illuminate\Http\Request;
 
 class UnmatchedDepositController extends Controller
 {
-    public function __construct(private UnmatchedDepositService $unmatched) {}
+    public function __construct(
+        private UnmatchedDepositService $unmatched,
+        private BetShopFloatService $shopFloat,
+    ) {}
 
     /**
      * Deposits whose account number matched no customer (status 0), oldest first, each with suggested
-     * customers. Pass `status=refunded`, `status=assigned` or `status=house_funded` to see resolved ones instead.
+     * customers. Pass `status=refunded`, `status=assigned`, `status=house_funded` or `status=shop_float` to see resolved ones instead. An unmatched deposit whose bill ref names a bet shop (SHOP-<shop_no>) carries that shop in `bet_shop`, ready to credit with POST /deposits/{id}/shop-float.
      */
     public function index(Request $request): JsonResponse
     {
         $filters = $request->validate([
-            'status' => ['nullable', 'in:unmatched,assigned,refunded,house_funded'],
+            'status' => ['nullable', 'in:unmatched,assigned,refunded,house_funded,shop_float'],
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
@@ -60,6 +64,7 @@ class UnmatchedDepositController extends Controller
                     'status' => (int) $deposit->status,
                     'created_at' => $deposit->created_at?->toIso8601String(),
                     'suggestions' => $status === 'unmatched' ? $this->unmatched->suggestionsFor($deposit) : [],
+                    'bet_shop' => $status === 'unmatched' ? $this->shopFor($deposit) : null,
                     'resolution' => $deposit->resolution ? DepositResolutionResource::make($deposit->resolution) : null,
                 ])->values(),
                 'pagination' => [
@@ -148,5 +153,17 @@ class UnmatchedDepositController extends Controller
                 'resolution' => $deposit->resolution ? DepositResolutionResource::make($deposit->resolution) : null,
             ] : null,
         ], fn ($value) => $value !== null), $result['status_code']);
+    }
+
+    /**
+     * The bet shop an unmatched deposit's bill ref names, when it does.
+     *
+     * @return array{id: int, shop_no: string, name: string, status: string}|null
+     */
+    private function shopFor(Deposit $deposit): ?array
+    {
+        $shop = $this->shopFloat->shopFromBillRef($deposit->bill_ref_no);
+
+        return $shop ? ['id' => $shop->id, 'shop_no' => $shop->shop_no, 'name' => $shop->name, 'status' => $shop->status] : null;
     }
 }
