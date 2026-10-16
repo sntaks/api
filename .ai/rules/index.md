@@ -6,3 +6,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | --- | --- |
 | config/log-viewer.php | .ai/rules/config.md |
 | app/Http/Middleware/** | .ai/rules/middleware.md |
+| app/Http/Controllers/api/v1/Game*.php | .ai/rules/v1.md |

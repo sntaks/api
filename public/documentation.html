@@ -3015,7 +3015,7 @@ Accept: application/json</pre></div>
 
 <div class="doc-section" data-section="game-wallets">
 
-<div class="callback-note"><strong>How a single game works.</strong> The game server creates a <strong>game wallet</strong> (an escrow for one game), then each player stakes with <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/credit</a>: the stake leaves their wallet, 5% goes to the house and 95% into the game wallet. The game ends in one of three ways: <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/withdraw/{id}</a> pays the winner (less a further 5%, rounded up), <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/drop/{id}</a> settles a game where players disconnected, and <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/refund</a> gives every stake back. Game wallet <code>status</code>: 1 open, 3 closed. <code>game_type</code> is set by the game server (default 1). Fees are in the <a href="#" data-section="finance-overview" style="color:var(--accent-blue)">fee schedule</a>.</div>
+<div class="callback-note"><strong>How a single game works.</strong> The game server creates a <strong>game wallet</strong> (an escrow for one game), then each player stakes with <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/bets</a>: the stake leaves their wallet and goes into the game wallet. The game ends in one of four ways: <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/withdraw/{id}</a> pays the winner (less a further 5%, rounded up), <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/drop/{id}</a> settles a game where players disconnected, <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/credit</a> pays each remaining player their share when a dropped player voids the game, and <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/refund</a> gives every stake back. Game wallet <code>status</code>: 1 open, 3 closed. <code>game_type</code> is set by the game server (default 1). Fees are in the <a href="#" data-section="finance-overview" style="color:var(--accent-blue)">fee schedule</a>.</div>
 
 <button class="expand-all" onclick="toggleAll('game-wallets')">Expand / Collapse All</button>
 
@@ -3315,7 +3315,7 @@ Accept: application/json</pre></div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span></div>
-<p class="endpoint-note">Sums the house share taken at <code>/game/withdraw</code> in the range, grouped by how many players the game had. The 5% taken at <code>/game/credit</code> and drop-connection shares are <strong>not</strong> included; for full game revenue use <a href="#" data-section="finance-statements" style="color:var(--accent-blue)">GET /finance/income-statement</a>. Both dates are needed; without them the result is empty.</p>
+<p class="endpoint-note">Sums the house share taken at <code>/game/withdraw</code> in the range, grouped by how many players the game had. The 5% taken on older <code>/game/credit</code> stakes and drop-connection shares are <strong>not</strong> included; for full game revenue use <a href="#" data-section="finance-statements" style="color:var(--accent-blue)">GET /finance/income-statement</a>. Both dates are needed; without them the result is empty.</p>
 <div class="endpoint-section"><h4>Request Body</h4>
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -3364,13 +3364,13 @@ Content-Type: application/json
 <div class="endpoint-header" onclick="toggle(this)">
 <span class="method method-post">POST</span>
 <span class="endpoint-path">/api/v1/game/credit</span>
-<span class="endpoint-desc">Stake from a customer's wallet into a game</span>
+<span class="endpoint-desc">Pay a remaining player's share of a voided game</span>
 <span class="chevron">&#9654;</span>
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
-<div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-400">400 Bad Request</span> <span class="status-code status-422">422 Unprocessable</span> <span class="status-code status-500">500 Server Error</span></div>
-<p class="endpoint-note">The normal way to place a stake. The customer's wallet is debited <code>amount</code>; 5% goes to the house wallet and 95% to the game wallet. Signup bonus money can be staked. The game wallet's status is not checked, so do not stake into a closed game.</p>
+<div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-409">409 Conflict</span> <span class="status-code status-422">422 Unprocessable</span> <span class="status-code status-500">500 Server Error</span></div>
+<p class="endpoint-note">Used when a player drops out of a 3 or 4 player game and the game is void: the pot is shared between the players still in. The game server works out each share (the pot less the house's cut, split equally) and calls this once per remaining player. The share is paid from the game wallet into the player's wallet and the game is closed (status 3). Later shares of the same game are still accepted; once less than one share is left in the game wallet, that rest is the house's cut and moves to the house wallet. Each player can be paid once per game, only players who staked in the game can be paid, and a share can't be more than the game wallet holds. A game already paid out or refunded is refused.</p>
 <div class="endpoint-section"><h4>Request Body</h4>
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -3389,20 +3389,18 @@ Content-Type: application/json
 {
   "customer_id": 42,
   "game_wallet_id": 881,
-  "amount": 100
+  "amount": 25
 }</pre></div>
 <div class="endpoint-section"><h4>Response (201)</h4>
 <pre>{
   "status": "success"
 }</pre></div>
-<div class="endpoint-section"><h4>Response (400: not enough balance)</h4>
+<div class="endpoint-section"><h4>Response (409: already paid, game closed, or share too large)</h4>
 <pre>{
-  "error": "Insufficient wallet balance."
-}</pre></div>
-<div class="endpoint-section"><h4>Response (400: no wallet)</h4>
-<pre>{
-  "error": "Customer has no wallet."
-}</pre></div>
+  "status": "error",
+  "error": "Customer has already been paid for this game"
+}</pre>
+<p class="endpoint-note">Other 409 errors: <code>Game Wallet is already closed</code>, <code>Share is more than the game wallet balance</code>. 404: <code>Game Wallet not found</code>, <code>Customer wallet not found</code>. 422: <code>Customer did not stake in this game</code>.</p></div>
 <div class="endpoint-section"><h4>Response (422: validation failed)</h4>
 <pre>{
   "message": "The selected game wallet id is invalid.",
@@ -3414,7 +3412,8 @@ Content-Type: application/json
 }</pre></div>
 <div class="endpoint-section"><h4>Response (500)</h4>
 <pre>{
-  "error": "..."
+  "status": "error",
+  "error": "An error occurred while crediting the share."
 }</pre></div>
 <p class="endpoint-note">Also returns 401 (API key), 409 (Idempotency-Key reused), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
@@ -3583,7 +3582,7 @@ Content-Type: application/json
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span> <span class="status-code status-500">500 Server Error</span></div>
-<p class="endpoint-note">Gives every player back the full amount they staked with <code>/game/credit</code> (the 5% taken at the stake is not taken again), then closes the game. The game's status is not checked: <strong>do not call it for a game that was already paid out</strong>, or the stakes are paid back a second time.</p>
+<p class="endpoint-note">Gives every player back the full amount they staked, including any house share taken from older <code>/game/credit</code> stakes, then closes the game. The game's status is not checked: <strong>do not call it for a game that was already paid out</strong>, or the stakes are paid back a second time.</p>
 <div class="endpoint-section"><h4>Request Body</h4>
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -3705,13 +3704,13 @@ Accept: application/json</pre></div>
 <div class="endpoint-header" onclick="toggle(this)">
 <span class="method method-post">POST</span>
 <span class="endpoint-path">/api/v1/game/bets</span>
-<span class="endpoint-desc">Stake without the house share (legacy)</span>
+<span class="endpoint-desc">Stake into a game</span>
 <span class="chevron">&#9654;</span>
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-400">400 Bad Request</span> <span class="status-code status-422">422 Unprocessable</span> <span class="status-code status-500">500 Server Error</span></div>
-<p class="endpoint-note">Older stake endpoint: debits the customer's wallet and credits the full <code>amount</code> to the game wallet, with no 5% house share, whatever <code>payment_type</code> says. Use <code>POST /game/credit</code> instead.</p>
+<p class="endpoint-note">The stake endpoint: debits the customer's wallet and credits the full <code>amount</code> to the game wallet, whatever <code>payment_type</code> says. The house takes its share when the game is settled.</p>
 <div class="endpoint-section"><h4>Request Body</h4>
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -5478,7 +5477,8 @@ Accept: application/json</pre></div>
 <h3>House fee schedule</h3>
 <table class="params-table">
 <tr><th>Where</th><th>Rate</th></tr>
-<tr><td>Game credit (<code>POST /game/credit</code>)</td><td>5% of the stake, taken when it is credited</td></tr>
+<tr><td>Game credit, older stakes (before <code>POST /game/credit</code> became the voided game share)</td><td>5% of the stake, taken when it was credited</td></tr>
+<tr><td>Voided game share (<code>POST /game/credit</code>)</td><td>what is left of the pot after the game server's shares (about 5%)</td></tr>
 <tr><td>Game payout (<code>POST /game/withdraw</code>)</td><td>a further 5% of the pool, rounded up</td></tr>
 <tr><td>Dropped game (<code>POST /game/drop</code>)</td><td>10% of the dropped players' stakes, rounded up</td></tr>
 <tr><td>Tournament entry</td><td>10%</td></tr>

@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\ApiKey;
+use App\Models\IdempotencyKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 
 uses(RefreshDatabase::class);
 
@@ -38,4 +40,47 @@ it('same api key same body generates same request hash', function () {
     $hash2 = hash('sha256', json_encode($payload).'store@v1/customers'.$apiKey->key);
 
     expect($hash1)->toBe($hash2);
+});
+
+beforeEach(function () {
+    $this->calls = 0;
+    $this->status = 201;
+
+    Route::post('/_test/idempotent', function () {
+        $this->calls++;
+
+        return response()->json(['call' => $this->calls], $this->status);
+    })->middleware('idempotency');
+});
+
+it('replays a successful response for the same key without running again', function () {
+    $headers = ['Idempotency-Key' => 'key-success'];
+
+    $this->postJson('/_test/idempotent', ['a' => 1], $headers)->assertCreated()->assertJson(['call' => 1]);
+    $this->postJson('/_test/idempotent', ['a' => 1], $headers)->assertCreated()->assertJson(['call' => 1]);
+
+    expect($this->calls)->toBe(1);
+});
+
+it('replays a client error response for the same key', function () {
+    $this->status = 409;
+    $headers = ['Idempotency-Key' => 'key-conflict'];
+
+    $this->postJson('/_test/idempotent', ['a' => 1], $headers)->assertStatus(409);
+    $this->postJson('/_test/idempotent', ['a' => 1], $headers)->assertStatus(409)->assertJson(['call' => 1]);
+
+    expect($this->calls)->toBe(1);
+});
+
+it('does not store a server error, so a retry with the same key runs again', function () {
+    $this->status = 500;
+    $headers = ['Idempotency-Key' => 'key-server-error'];
+
+    $this->postJson('/_test/idempotent', ['a' => 1], $headers)->assertStatus(500);
+    expect(IdempotencyKey::where('idempotency_key', 'key-server-error')->exists())->toBeFalse();
+
+    $this->status = 201;
+    $this->postJson('/_test/idempotent', ['a' => 1], $headers)->assertCreated()->assertJson(['call' => 2]);
+
+    expect($this->calls)->toBe(2);
 });
