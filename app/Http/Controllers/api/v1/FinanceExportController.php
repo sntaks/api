@@ -5,6 +5,7 @@ namespace App\Http\Controllers\api\v1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FinanceListRequest;
 use App\Services\ExciseDutyReportService;
+use App\Services\FinanceBetShopReportService;
 use App\Services\FinanceDateRange;
 use App\Services\FinanceDisputeReportService;
 use App\Services\FinanceExpenseService;
@@ -27,7 +28,7 @@ class FinanceExportController extends Controller
         'ledger', 'deposits', 'withdrawals', 'purchases', 'adjustments', 'games', 'competitions',
         'customers-top', 'cash-flow', 'income-statement', 'trial-balance', 'expenses', 'taxes',
         'excise-duty', 'excise-duty-charges', 'excise-duty-returns', 'excise-duty-remittances', 'disputes',
-        'referral-bonuses', 'referral-withdrawals', 'promotions', 'house-funding', 'open-wallets',
+        'referral-bonuses', 'referral-withdrawals', 'promotions', 'house-funding', 'open-wallets', 'bet-shops', 'bet-shop-loads', 'bet-shop-withdrawals',
     ];
 
     /** Days the top customers report covers when no range is given. */
@@ -45,6 +46,7 @@ class FinanceExportController extends Controller
         private FinanceReferralReportService $referrals,
         private FinancePromotionReportService $promotions,
         private HouseFundingService $houseFunding,
+        private FinanceBetShopReportService $betShops,
     ) {}
 
     /**
@@ -84,6 +86,9 @@ class FinanceExportController extends Controller
             'promotions' => $this->fromListing($this->promotions->credits($range, $filters)),
             'house-funding' => $this->fromListing($this->houseFunding->listing($range, $filters)),
             'open-wallets' => $this->fromListing($this->games->openWallets($range, $filters)),
+            'bet-shops' => $this->fromListing($this->betShops->shops($range, $filters)),
+            'bet-shop-loads' => $this->fromListing($this->betShops->loads($range, $filters)),
+            'bet-shop-withdrawals' => $this->fromListing($this->betShops->withdrawals($range, $filters)),
         };
 
         $filename = "finance-{$report}-{$range->from->toDateString()}-{$range->to->toDateString()}.csv";
@@ -114,7 +119,7 @@ class FinanceExportController extends Controller
      */
     private function cashFlowRows(FinanceDateRange $range): array
     {
-        $columns = ['period', 'wallet_deposit', 'load', 'gift', 'emoji', 'unmatched', 'house_funding', 'shop_float', 'other', 'cash_in_total', 'paid', 'pending', 'failed', 'excise_withheld', 'excise_remitted', 'net_cash', 'referral_paid', 'referral_pending', 'referral_failed', 'deposit_refunded'];
+        $columns = ['period', 'wallet_deposit', 'load', 'gift', 'emoji', 'unmatched', 'house_funding', 'shop_float', 'other', 'cash_in_total', 'paid', 'pending', 'failed', 'excise_withheld', 'excise_remitted', 'net_cash', 'referral_paid', 'referral_pending', 'referral_failed', 'deposit_refunded', 'shop_float_redeemed', 'shop_cash_loaded', 'shop_cash_paid_out'];
 
         $rows = (function () use ($range) {
             foreach ($this->reports->cashFlow($range)['series'] as $row) {
@@ -125,7 +130,8 @@ class FinanceExportController extends Controller
                     + ['excise_withheld' => $row['excise_duty']['withheld'], 'excise_remitted' => $row['excise_duty']['remitted']]
                     + ['net_cash' => $row['net_cash']]
                     + ['referral_paid' => $row['referral_payouts']['paid'], 'referral_pending' => $row['referral_payouts']['pending'], 'referral_failed' => $row['referral_payouts']['failed']]
-                    + ['deposit_refunded' => $row['deposit_refunds']['refunded']];
+                    + ['deposit_refunded' => $row['deposit_refunds']['refunded']]
+                    + ['shop_float_redeemed' => $row['shop_float']['redeemed'], 'shop_cash_loaded' => $row['shop_cash']['loaded'], 'shop_cash_paid_out' => $row['shop_cash']['paid_out']];
             }
         })();
 
