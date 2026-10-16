@@ -165,6 +165,7 @@ Route::prefix('/v1')->group(function () {
                 Route::get('/purchases', [FinanceDrilldownController::class, 'purchases']);
                 Route::get('/games', [FinanceDrilldownController::class, 'games']);
                 Route::get('/competitions', [FinanceDrilldownController::class, 'competitions']);
+                Route::get('/open-wallets', [FinanceDrilldownController::class, 'openWallets']);
                 Route::get('/ledger', [FinanceDrilldownController::class, 'ledger']);
                 Route::get('/adjustments', [FinanceDrilldownController::class, 'adjustments']);
                 Route::get('/disputes', [FinanceDrilldownController::class, 'disputes']);

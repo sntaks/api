@@ -174,6 +174,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Open wallets report
+    |--------------------------------------------------------------------------
+    |
+    | An open game or competition wallet counts as untouched once nothing has
+    | happened on it (no stake, entry or round) for this many minutes. Single
+    | games normally finish within minutes; competitions run over many rounds.
+    | GET /finance/open-wallets?idle_minutes= overrides both for one request.
+    |
+    */
+
+    'open_wallets' => [
+        'game_idle_minutes' => (int) env('FINANCE_OPEN_GAME_IDLE_MINUTES', 30),
+        'competition_idle_minutes' => (int) env('FINANCE_OPEN_COMPETITION_IDLE_MINUTES', 1440),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Ledger Dates
     |--------------------------------------------------------------------------
     |
