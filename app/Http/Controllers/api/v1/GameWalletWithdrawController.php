@@ -30,7 +30,7 @@ class GameWalletWithdrawController extends Controller
             );
 
             if (isset($result['error'])) {
-                return response()->json(['error' => $result['error']], $result['status']);
+                return response()->json(array_filter(['error' => $result['error'], 'code' => $result['code'] ?? null]), $result['status']);
             }
 
             return response()->json(['status' => 'success'], 201);

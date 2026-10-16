@@ -36,6 +36,10 @@ class GameTransactionController extends Controller
                 return response()->json(['error' => 'Insufficient balance or Wallet not found.'], 400);
             }
 
+            if (is_array($result)) {
+                return response()->json(['error' => $result['error'], 'code' => $result['code']], $result['status']);
+            }
+
             return response()->json(['status' => 'success'], 201);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
