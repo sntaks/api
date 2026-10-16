@@ -22,6 +22,7 @@ class CompetitionTransactionResource extends JsonResource
             'amount' => $this->amount,
             'status' => $this->status,
             'bet_shop_id' => $this->bet_shop_id,
+            'bet_shop_no' => $this->bet_shop_id ? $this->betShop?->shop_no : null,
             'created_at' => $this->created_at,
         ];
     }

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 
 class ApiKey extends Model
 {
@@ -23,6 +24,7 @@ class ApiKey extends Model
         'name',
         'scope',
         'bet_shop_id',
+        'rate_limit_multiplier',
         'is_active',
         'revoked_at',
         'revoked_by',
@@ -44,6 +46,7 @@ class ApiKey extends Model
     {
         return [
             'is_active' => 'boolean',
+            'rate_limit_multiplier' => 'integer',
             'revoked_at' => 'datetime',
         ];
     }
@@ -51,6 +54,42 @@ class ApiKey extends Model
     public function betShop(): BelongsTo
     {
         return $this->belongsTo(BetShop::class);
+    }
+
+    /**
+     * What the rate limiter needs about an active key (its id and multiplier), or null for a missing or
+     * unknown key. Known keys are cached for five minutes (apikey:rate-limit clears it); unknown ones are
+     * not cached, so made-up keys cannot fill the cache.
+     *
+     * @return array{id: int, multiplier: int}|null
+     */
+    public static function rateLimitProfileFor(?string $plainKey): ?array
+    {
+        if (blank($plainKey)) {
+            return null;
+        }
+
+        $cacheKey = self::multiplierCacheKey($plainKey);
+
+        if ($cached = Cache::get($cacheKey)) {
+            return $cached;
+        }
+
+        $key = self::where('key', $plainKey)->where('is_active', true)->first(['id', 'rate_limit_multiplier']);
+
+        if (! $key) {
+            return null;
+        }
+
+        $profile = ['id' => (int) $key->id, 'multiplier' => max(1, (int) $key->rate_limit_multiplier)];
+        Cache::put($cacheKey, $profile, now()->addMinutes(5));
+
+        return $profile;
+    }
+
+    public static function multiplierCacheKey(string $plainKey): string
+    {
+        return 'api-key-rate-limit:'.hash('sha256', $plainKey);
     }
 
     public function isShopKey(): bool

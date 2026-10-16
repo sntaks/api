@@ -8,8 +8,8 @@ use App\Models\Customer;
 use App\Models\ShopWithdrawal;
 use App\Models\Transaction;
 use App\Models\Wallet;
-use App\Util\PlayerNumber;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -276,9 +276,9 @@ class ShopWithdrawalService
     }
 
     /**
-     * Withdrawals, newest first, filtered by shop, customer and status.
+     * Withdrawals, newest first, filtered by shop, customer, status and the Nairobi day they were asked for.
      *
-     * @param  array{status?: ?string}  $filters
+     * @param  array{status?: ?string, customer_id?: ?int, from?: ?string, to?: ?string}  $filters
      */
     public function paginate(?BetShop $shop, ?Customer $customer, array $filters, int $perPage): LengthAwarePaginator
     {
@@ -286,6 +286,9 @@ class ShopWithdrawalService
             ->when($shop, fn ($query) => $query->where('bet_shop_id', $shop->id))
             ->when($customer, fn ($query) => $query->where('customer_id', $customer->id))
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
+            ->when($filters['customer_id'] ?? null, fn ($query, int|string $customerId) => $query->where('customer_id', (int) $customerId))
+            ->when($filters['from'] ?? null, fn ($query, string $from) => $query->where('created_at', '>=', Carbon::parse($from, config('app.timezone'))->startOfDay()))
+            ->when($filters['to'] ?? null, fn ($query, string $to) => $query->where('created_at', '<=', Carbon::parse($to, config('app.timezone'))->endOfDay()))
             ->latest('id')
             ->paginate($perPage);
     }
@@ -313,7 +316,7 @@ class ShopWithdrawalService
 
         if ($audience !== 'customer') {
             $row['player'] = $customer ? [
-                'player_no' => PlayerNumber::format($customer->player_no),
+                'player_no' => $customer->player_no,
                 'name' => $this->masker->name($customer->name),
             ] : null;
             $row['failed_attempts'] = $withdrawal->failed_attempts;

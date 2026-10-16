@@ -82,18 +82,22 @@ class BetShopController extends Controller
         return $this->changeStatus($request, $encryptedIdentifier, BetShop::STATUS_CLOSED, true);
     }
 
-    public function keys(string $encryptedIdentifier): JsonResponse
+    public function keys(Request $request, string $encryptedIdentifier): JsonResponse
     {
+        $validated = $request->validate([
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
         $shop = BetShop::find($encryptedIdentifier);
 
         if (! $shop) {
             return $this->notFound();
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $shop->apiKeys()->latest('id')->get()->map(fn (ApiKey $key) => $this->shops->presentKey($key))->all(),
-        ]);
+        return $this->pagedResponse(
+            $shop->apiKeys()->latest('id')->paginate((int) ($validated['per_page'] ?? 50)),
+            fn (ApiKey $key) => $this->shops->presentKey($key)
+        );
     }
 
     /**

@@ -91,6 +91,7 @@ it('leaves a phone-number bill ref unmatched at C2B and suggests the customer tw
         'customer_id' => $this->doris->id,
         'name' => 'Doris',
         'account_no' => 'KK-6AA8B1DAAF392',
+        'player_no' => $this->doris->fresh()->player_no,
         'phone_no' => '+2547****1214',
         'match' => 'payer_phone',
         'matches' => ['payer_phone', 'bill_ref_phone'],

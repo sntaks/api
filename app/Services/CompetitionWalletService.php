@@ -216,7 +216,9 @@ class CompetitionWalletService
      */
     public function listCompetitionTransactions(?int $perPage = null): Collection|LengthAwarePaginator
     {
-        return $perPage === null ? CompetitionTransaction::all() : CompetitionTransaction::latest('id')->paginate($perPage);
+        $query = CompetitionTransaction::with('betShop:id,shop_no');
+
+        return $perPage === null ? $query->get() : $query->latest('id')->paginate($perPage);
     }
 
     public function createCompetitionTransaction(array $data): CompetitionTransaction

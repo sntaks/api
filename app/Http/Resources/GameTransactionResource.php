@@ -20,6 +20,7 @@ class GameTransactionResource extends JsonResource
             'amount' => $this->amount,
             'status' => $this->status,
             'bet_shop_id' => $this->bet_shop_id,
+            'bet_shop_no' => $this->bet_shop_id ? $this->betShop?->shop_no : null,
         ];
         $gameWallet = $this->gameWallet;
         if ($gameWallet) {
@@ -33,6 +34,7 @@ class GameTransactionResource extends JsonResource
             $gameTransactionArr = array_merge($gameTransactionArr, [
                 'customer_id' => $customer->id,
                 'account_no' => $customer->account_no,
+                'player_no' => $customer->player_no,
                 'customer_name' => $customer->name,
             ]);
         }

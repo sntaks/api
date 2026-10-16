@@ -230,6 +230,7 @@ class UnmatchedDepositService
                         'bill_ref_no' => $deposit->bill_ref_no,
                         'customer_id' => $customer->id,
                         'account_no' => $accountNo,
+                        'player_no' => $customer->player_no,
                         'assigned' => ! $dryRun && $outcome['success'],
                         'message' => $outcome['message'],
                     ]);
@@ -266,6 +267,7 @@ class UnmatchedDepositService
             'customer_id' => $customer->id,
             'name' => $customer->name,
             'account_no' => $customer->account_no,
+            'player_no' => $customer->player_no,
             'phone_no' => app(FinanceMasker::class)->phone($customer->phone_no),
             'match' => $matches[0],
             'matches' => $matches,

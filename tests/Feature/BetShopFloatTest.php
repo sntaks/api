@@ -71,7 +71,9 @@ it('refuses to credit an unknown or closed shop', function () {
     $deposit = shopFloatPayment($this, 500);
     $closed = BetShop::factory()->withFloat()->create(['shop_no' => 'S900', 'status' => BetShop::STATUS_CLOSED]);
 
-    $this->postJson('/api/v1/deposits/'.encryptId($deposit->id).'/shop-float', ['shop_no' => 'NOPE', 'note' => 'Checked'], $this->gms)->assertNotFound();
+    $this->postJson('/api/v1/deposits/'.encryptId($deposit->id).'/shop-float', ['shop_no' => 'NOPE', 'note' => 'Checked'], $this->gms)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['shop_no' => 'No bet shop has that number.']);
     $this->postJson('/api/v1/deposits/'.encryptId($deposit->id).'/shop-float', ['shop_no' => 'S900', 'note' => 'Checked'], $this->gms)
         ->assertConflict()->assertJsonPath('code', 'shop_closed');
 

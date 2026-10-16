@@ -27,6 +27,8 @@ class BetShopFloatService
 
     public const CODE_SHOP_CLOSED = 'shop_closed';
 
+    public const CODE_DEPOSIT_NOT_FOUND = 'deposit_not_found';
+
     /** Who an automatic credit is recorded as. */
     public const CALLBACK_ACTOR = 'c2b:auto';
 
@@ -57,7 +59,7 @@ class BetShopFloatService
             $deposit = Deposit::lockForUpdate()->find($depositId);
 
             if (! $deposit) {
-                return $this->refused('Deposit not found', 404);
+                return $this->refused('Deposit not found', 404, code: self::CODE_DEPOSIT_NOT_FOUND);
             }
 
             if ((int) $deposit->status !== Deposit::STATUS_UNMATCHED) {
@@ -112,7 +114,7 @@ class BetShopFloatService
             $amount = (float) $purchase->amount;
 
             if (round((float) $float->balance - $amount, 2) < 0) {
-                return $this->refused('The shop float no longer holds this amount, so it cannot be reversed', 409, code: self::CODE_INSUFFICIENT_FLOAT) + ['float_purchase' => $purchase];
+                return $this->refused('The shop float no longer holds this amount, so it cannot be reversed', 409, code: self::CODE_INSUFFICIENT_FLOAT) + ['float_purchase' => $purchase, 'float_balance' => round((float) $float->balance, 2)];
             }
 
             $reversal = $this->ledgerService->reverseShopFloatPurchase($purchase->ledgerEntry, $float, $reason);
