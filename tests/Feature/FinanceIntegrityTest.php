@@ -43,11 +43,7 @@ it('tags ledger entries with the wallet table they point at', function () {
     $wallet = walletFor(200);
     $gameWallet = GameWallet::create(['game_id' => 'FIN_001', 'game_type' => 1, 'balance' => 0]);
 
-    $this->postJson('/api/v1/game/credit', [
-        'customer_id' => $wallet->customer_id,
-        'game_wallet_id' => $gameWallet->id,
-        'amount' => 100,
-    ], apiHeaders($this->apiKey->key))->assertStatus(201);
+    legacyGameCreditStake($wallet, $gameWallet, 100);
 
     expect(LedgerEntry::where('wallet_type', 'wallet')->where('wallet_id', $wallet->id)->where('entry_type', 'game_bet')->exists())->toBeTrue();
     expect(LedgerEntry::where('wallet_type', 'game_wallet')->where('wallet_id', $gameWallet->id)->where('entry_type', 'game_bet')->exists())->toBeTrue();
@@ -57,11 +53,7 @@ it('links house cuts to their source transaction and game', function () {
     $wallet = walletFor(200);
     $gameWallet = GameWallet::create(['game_id' => 'FIN_002', 'game_type' => 1, 'balance' => 0]);
 
-    $this->postJson('/api/v1/game/credit', [
-        'customer_id' => $wallet->customer_id,
-        'game_wallet_id' => $gameWallet->id,
-        'amount' => 100,
-    ], apiHeaders($this->apiKey->key))->assertStatus(201);
+    legacyGameCreditStake($wallet, $gameWallet, 100);
 
     $houseCut = LedgerEntry::where('entry_type', 'house_cut')->firstOrFail();
 
@@ -75,11 +67,7 @@ it('does not confuse a game wallet with a customer wallet that shares its id', f
     $wallet = walletFor(500);
     $gameWallet = GameWallet::forceCreate(['id' => $wallet->id, 'game_id' => 'FIN_COLLIDE', 'game_type' => 1, 'balance' => 0]);
 
-    $this->postJson('/api/v1/game/credit', [
-        'customer_id' => $wallet->customer_id,
-        'game_wallet_id' => $gameWallet->id,
-        'amount' => 100,
-    ], apiHeaders($this->apiKey->key))->assertStatus(201);
+    legacyGameCreditStake($wallet, $gameWallet, 100);
 
     expect(ledgerNet('wallet', $wallet->id))->toBe(-100.0);
     expect(ledgerNet('game_wallet', $gameWallet->id))->toBe(95.0);
@@ -91,11 +79,7 @@ it('ledgers the escrow release when a game wallet is paid out', function () {
     $winner = walletFor(200);
     $gameWallet = GameWallet::create(['game_id' => 'FIN_003', 'game_type' => 1, 'balance' => 0]);
 
-    $this->postJson('/api/v1/game/credit', [
-        'customer_id' => $winner->customer_id,
-        'game_wallet_id' => $gameWallet->id,
-        'amount' => 100,
-    ], apiHeaders($this->apiKey->key))->assertStatus(201);
+    legacyGameCreditStake($winner, $gameWallet, 100);
 
     $this->postJson('/api/v1/game/withdraw/'.encryptId($gameWallet->id), [
         'customer_id' => (string) $winner->customer_id,
@@ -110,11 +94,7 @@ it('ledgers the escrow release when a game wallet is fully refunded', function (
     $player = walletFor(200);
     $gameWallet = GameWallet::create(['game_id' => 'FIN_004', 'game_type' => 1, 'balance' => 0]);
 
-    $this->postJson('/api/v1/game/credit', [
-        'customer_id' => $player->customer_id,
-        'game_wallet_id' => $gameWallet->id,
-        'amount' => 100,
-    ], apiHeaders($this->apiKey->key))->assertStatus(201);
+    legacyGameCreditStake($player, $gameWallet, 100);
 
     $this->postJson('/api/v1/game/refund', ['game_wallet_id' => $gameWallet->id], apiHeaders($this->apiKey->key))->assertOk();
 
@@ -181,6 +161,41 @@ it('ledgers customer wallet updates and wallet PUT balance changes', function ()
     expect((float) $wallet->fresh()->balance)->toBe(200.0);
     expect(LedgerEntry::where('entry_type', 'adjustment')->count())->toBe(2);
     expect(ledgerNet('wallet', $wallet->id))->toBe(100.0);
+});
+
+it('refuses a customer wallet adjustment that would leave the balance below 0', function () {
+    $wallet = walletFor(30);
+    $headers = apiHeaders($this->apiKey->key);
+
+    $this->putJson('/api/v1/customers/'.encryptId($wallet->customer_id).'/wallet', ['amount' => -31, 'reason' => 'clawback'], $headers)
+        ->assertStatus(422)
+        ->assertJson(['message' => 'Adjustment would leave the wallet balance below 0']);
+
+    $this->putJson('/api/v1/customers/'.encryptId($wallet->customer_id).'/wallet', ['amount' => -30, 'reason' => 'clawback'], $headers)
+        ->assertStatus(201);
+
+    expect((float) $wallet->fresh()->balance)->toBe(0.0);
+    expect(LedgerEntry::where('entry_type', 'adjustment')->count())->toBe(1);
+});
+
+it('allows a credit adjustment to a wallet that is already negative', function () {
+    $wallet = walletFor(-50);
+
+    $this->putJson('/api/v1/customers/'.encryptId($wallet->customer_id).'/wallet', ['amount' => 20, 'reason' => 'partial fix'], apiHeaders($this->apiKey->key))
+        ->assertStatus(201);
+
+    expect((float) $wallet->fresh()->balance)->toBe(-30.0);
+});
+
+it('sets a wallet balance to 0', function () {
+    $wallet = walletFor(75);
+
+    $this->putJson('/api/v1/wallets/'.encryptId($wallet->id).'/balance', ['amount' => 0, 'reason' => 'closing'], apiHeaders($this->apiKey->key))
+        ->assertStatus(201)
+        ->assertJson(['balance_after' => 0]);
+
+    expect((float) $wallet->fresh()->balance)->toBe(0.0);
+    expect(ledgerNet('wallet', $wallet->id))->toBe(-75.0);
 });
 
 it('writes no ledger entry when a rejected or no-op adjustment changes nothing', function () {
@@ -288,11 +303,7 @@ it('ignores game wallet entries that share an id with a customer wallet when rec
     $wallet = walletFor(500);
     $gameWallet = GameWallet::forceCreate(['id' => $wallet->id, 'game_id' => 'FIN_REC', 'game_type' => 1, 'balance' => 0]);
 
-    $this->postJson('/api/v1/game/credit', [
-        'customer_id' => $wallet->customer_id,
-        'game_wallet_id' => $gameWallet->id,
-        'amount' => 100,
-    ], apiHeaders($this->apiKey->key))->assertStatus(201);
+    legacyGameCreditStake($wallet, $gameWallet, 100);
 
     $this->artisan('wallet:reconcile', ['--wallet-id' => $wallet->id])->assertSuccessful();
 });

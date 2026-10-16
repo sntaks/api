@@ -89,7 +89,7 @@ function closeComplaint(object $test, Complaint $complaint, string $action, stri
 
 it('refunds every game player their full stake and reverses the house cuts', function () {
     ['game' => $game, 'complainant' => $complainant, 'winner' => $winner, 'complainantWallet' => $complainantWallet, 'winnerWallet' => $winnerWallet] = settledGame($this);
-    expect((float) $winnerWallet->balance)->toBe(180.0)->and((float) $this->houseWallet->fresh()->balance)->toBe(20.0);
+    expect((float) $winnerWallet->balance)->toBe(181.0)->and((float) $this->houseWallet->fresh()->balance)->toBe(19.0);
     $complaint = openComplaint($this, ['customer_id' => $complainant->id, 'game_wallet_id' => $game->id]);
 
     $response = closeComplaint($this, $complaint, 'resolve', 'Winner used a bot');
@@ -97,7 +97,7 @@ it('refunds every game player their full stake and reverses the house cuts', fun
     $response->assertOk()
         ->assertJsonPath('data.status', 'resolved')
         ->assertJsonPath('data.refunded_amount', 200)
-        ->assertJsonPath('data.house_cuts_reversed', 20)
+        ->assertJsonPath('data.house_cuts_reversed', 19)
         ->assertJsonPath('data.resolution_note', 'Winner used a bot')
         ->assertJsonPath('data.closed_by', 'api_key:'.$this->apiKey->id)
         ->assertJsonPath('data.disputed_transactions.0.status', 'reversed')
@@ -131,9 +131,9 @@ it('shares what there is in proportion to stakes when the winner had spent some'
 
     $response = closeComplaint($this, $complaint, 'resolve');
 
-    $response->assertOk()->assertJsonPath('data.refunded_amount', 120)->assertJsonPath('data.shortfall_amount', 80);
-    expect((float) $complainantWallet->fresh()->balance)->toBe(60.0);
-    expect((float) $winnerWallet->fresh()->balance)->toBe(60.0);
+    $response->assertOk()->assertJsonPath('data.refunded_amount', 119)->assertJsonPath('data.shortfall_amount', 81);
+    expect((float) $complainantWallet->fresh()->balance)->toBe(59.5);
+    expect((float) $winnerWallet->fresh()->balance)->toBe(59.5);
 });
 
 // resolving tournaments and jackpots
@@ -176,12 +176,12 @@ it('gives the held money back to the winner when a complaint is rejected', funct
 
     $response->assertOk()
         ->assertJsonPath('data.status', 'rejected')
-        ->assertJsonPath('data.released_amount', 180)
+        ->assertJsonPath('data.released_amount', 181)
         ->assertJsonPath('data.refunded_amount', 0)
         ->assertJsonPath('data.disputed_transactions.0.status', 'released')
         ->assertJsonCount(0, 'data.refunds');
-    expect((float) $winnerWallet->fresh()->balance)->toBe(180.0);
-    expect((float) $this->houseWallet->fresh()->balance)->toBe(20.0);
+    expect((float) $winnerWallet->fresh()->balance)->toBe(181.0);
+    expect((float) $this->houseWallet->fresh()->balance)->toBe(19.0);
     expect(DisputedTransaction::sole()->balance)->toBe('0.00');
 });
 
@@ -204,7 +204,7 @@ it('refuses to close a complaint twice', function () {
     $response = closeComplaint($this, $complaint, 'resolve');
 
     $response->assertConflict()->assertJsonPath('message', 'Complaint is already rejected.');
-    expect((float) $winnerWallet->fresh()->balance)->toBe(180.0);
+    expect((float) $winnerWallet->fresh()->balance)->toBe(181.0);
 });
 
 it('requires a note to close a complaint', function () {
@@ -231,7 +231,7 @@ it('flags complaints pending longer than the configured days', function () {
 
     $checks = collect($this->getJson('/api/v1/finance/reconciliation', $this->headers)->assertOk()->json('data.checks'))->keyBy('key');
 
-    expect($checks['aged_disputes'])->toMatchArray(['status' => 'warn', 'count' => 1, 'amount' => 180]);
+    expect($checks['aged_disputes'])->toMatchArray(['status' => 'warn', 'count' => 1, 'amount' => 181]);
     expect($checks['dispute_escrow_drift']['status'])->toBe('pass');
     expect($checks['held_on_closed_complaints']['status'])->toBe('pass');
 });
@@ -253,7 +253,7 @@ it('lists complaints with what they held, refunded and released', function () {
 
     $data = $this->getJson('/api/v1/finance/disputes', $this->headers)->assertOk()->json('data');
 
-    expect($data['summary']['by_status']['resolved'])->toMatchArray(['complaints' => 1, 'held' => 180, 'refunded' => 200, 'house_cuts_reversed' => 20]);
+    expect($data['summary']['by_status']['resolved'])->toMatchArray(['complaints' => 1, 'held' => 181, 'refunded' => 200, 'house_cuts_reversed' => 19]);
     expect($data['summary']['by_status']['pending_dispute']['complaints'])->toBe(1);
     expect($data['summary']['currently_held'])->toEqual(0);
     expect(collect($data['items'])->firstWhere('id', $complaint->id))->toMatchArray(['status' => 'resolved', 'still_held' => 0, 'refunded_amount' => 200]);

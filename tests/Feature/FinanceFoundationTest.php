@@ -16,6 +16,7 @@ use App\Services\FinanceDateRange;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
@@ -38,22 +39,28 @@ function snapshotWallet(int $customerId, float $balance, ?int $walletId = null):
 
 // fee schedule
 
-it('reads the game credit fee from config', function () {
+it('checks legacy game credit cuts against the configured fee', function () {
     config(['finance.fees.game_credit' => 0.10]);
 
     $apiKey = createApiKey('test-finance-foundation-key');
     snapshotWallet(1, 0);
     $player = snapshotWallet(900, 200);
     $gameWallet = GameWallet::create(['game_id' => 'FOUND_001', 'game_type' => 1, 'balance' => 0]);
+    legacyGameCreditStake($player, $gameWallet, 100);
 
-    $this->postJson('/api/v1/game/credit', [
-        'customer_id' => $player->customer_id,
-        'game_wallet_id' => $gameWallet->id,
-        'amount' => 100,
-    ], apiHeaders($apiKey->key))->assertStatus(201);
+    $houseCutRates = function () use ($apiKey) {
+        Cache::flush();
 
-    expect((float) $gameWallet->fresh()->balance)->toBe(90.0);
+        return collect($this->getJson('/api/v1/finance/reconciliation', apiHeaders($apiKey->key))->assertOk()->json('data.checks'))
+            ->keyBy('key')['house_cut_rates'];
+    };
+
     expect((float) Wallet::find(1)->balance)->toBe(10.0);
+    expect($houseCutRates())->toMatchArray(['status' => 'pass', 'count' => 0]);
+
+    config(['finance.fees.game_credit' => 0.05]);
+
+    expect($houseCutRates())->toMatchArray(['status' => 'warn', 'count' => 1, 'amount' => 5]);
 });
 
 it('ships the current fee schedule and the game fees stack as confirmed', function () {

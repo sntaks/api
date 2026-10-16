@@ -7,6 +7,7 @@ use App\Models\GameTransaction;
 use App\Models\GameWallet;
 use App\Models\LedgerEntry;
 use App\Models\Wallet;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -15,9 +16,12 @@ class GameWalletService
 {
     public function __construct(private LedgerService $ledgerService) {}
 
-    public function listGameWallets(): Collection
+    /**
+     * Every game wallet, or one page of them (newest first) when a page size is given.
+     */
+    public function listGameWallets(?int $perPage = null): Collection|LengthAwarePaginator
     {
-        return GameWallet::all();
+        return $perPage === null ? GameWallet::all() : GameWallet::latest('id')->paginate($perPage);
     }
 
     public function createGameWallet(array $data): GameWallet
@@ -259,7 +263,7 @@ class GameWalletService
         }
 
         $totalBalance = $gameWallet->balance;
-        $houseShare = ceil($totalBalance * config('finance.fees.game_withdrawal'));
+        $houseShare = floor($totalBalance * config('finance.fees.game_withdrawal'));
         $playerShare = $totalBalance - $houseShare;
 
         DB::transaction(function () use ($gameWallet, $customer, $wallet, $playerShare, $houseShare, $totalBalance) {
@@ -503,9 +507,14 @@ class GameWalletService
         ]);
     }
 
-    public function listGameTransactions(): Collection
+    /**
+     * Every game transaction, or one page of them (newest first) when a page size is given.
+     */
+    public function listGameTransactions(?int $perPage = null): Collection|LengthAwarePaginator
     {
-        return GameTransaction::with(['gameWallet'])->get();
+        $query = GameTransaction::with(['gameWallet']);
+
+        return $perPage === null ? $query->get() : $query->latest('id')->paginate($perPage);
     }
 
     public function createGameTransaction(array $data): GameTransaction|false

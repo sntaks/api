@@ -82,7 +82,7 @@ it('keeps phone_hash in step with phone_no', function () {
 // Doris: paid the paybill with her phone number as the account
 
 it('leaves a phone-number bill ref unmatched at C2B and suggests the customer twice over', function () {
-    c2bPayment('0705171214', DORIS_MSISDN_HASH, 'UIO2E8BUH5')->assertStatus(500);
+    c2bPayment('0705171214', DORIS_MSISDN_HASH, 'UIO2E8BUH5')->assertOk();
 
     expect((int) Deposit::where('trans_id', 'UIO2E8BUH5')->sole()->status)->toBe(Deposit::STATUS_UNMATCHED)
         ->and((float) $this->dorisWallet->fresh()->balance)->toBe(0.0);

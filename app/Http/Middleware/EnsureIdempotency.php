@@ -16,19 +16,20 @@ class EnsureIdempotency
         $apiKey = $request->header('X-API-KEY') ?? '';
         $requestHash = hash('sha256', json_encode($request->except(['X-API-KEY', 'Idempotency-Key'])).$endpoint.$apiKey);
 
-        $idempotencyKey = $request->header('Idempotency-Key');
+        $clientKey = $request->header('Idempotency-Key');
 
-        // Auto-generate key from request hash when client doesn't send one
-        if (! $idempotencyKey) {
-            $apiKey = $request->header('X-API-KEY') ?? '';
-            $idempotencyKey = hash('sha256', $requestHash.$apiKey);
-        }
-
-        if (Str::length($idempotencyKey) > 64) {
+        if ($clientKey && Str::length($clientKey) > 64) {
             return response()->json(['message' => 'Idempotency-Key must be 64 characters or fewer'], 400);
         }
 
-        $existing = IdempotencyKey::where('idempotency_key', $idempotencyKey)->first();
+        // A client's key is stored per API key, so two clients that pick the same key never meet. Without
+        // one, the key comes from the request hash, which already includes the API key.
+        $idempotencyKey = $clientKey
+            ? hash('sha256', $apiKey.'|'.$clientKey)
+            : hash('sha256', $requestHash.$apiKey);
+
+        $existing = IdempotencyKey::where('idempotency_key', $idempotencyKey)->first()
+            ?? ($clientKey ? IdempotencyKey::where('idempotency_key', $clientKey)->first() : null);
 
         if ($existing) {
             if ($existing->isExpired()) {

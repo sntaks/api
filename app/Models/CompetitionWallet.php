@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class CompetitionWallet extends Model {
-    /** @use HasFactory<\Database\Factories\WalletFactory> */
+class CompetitionWallet extends Model
+{
     use HasFactory;
 
     protected $table = 'competition_wallets';
@@ -25,22 +25,26 @@ class CompetitionWallet extends Model {
         'comments', // Logs
     ];
 
-    public function customer(){
-        return $this->belongsTo(Customer::class);
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class)->withTrashed();
     }
-    
-    public function transactions() {
+
+    public function transactions()
+    {
         return $this->hasMany(CompetitionTransaction::class, 'competition_wallet_id');
     }
 
-    public function complaints(): HasMany {
+    public function complaints(): HasMany
+    {
         return $this->hasMany(Complaint::class);
     }
 
     /**
      * A wallet with a pending complaint is frozen: no payout to or from it and no withdrawal.
      */
-    public function isUnderDispute(): bool {
+    public function isUnderDispute(): bool
+    {
         return $this->complaints()->pending()->exists();
     }
 
@@ -50,25 +54,27 @@ class CompetitionWallet extends Model {
      * @return string Returns "Tournament" if game_type is 1, "Jackpot" if game_type is 2,
      *                or "Unknown" if game_type does not match any predefined type.
      */
-   public function getCompetitionType(int $game_type): string {
+    public function getCompetitionType(int $game_type): string
+    {
         return match ($game_type) {
-            1 => "Tournament",
-            2 => "Jackpot",
-            default => "Unknown",
+            1 => 'Tournament',
+            2 => 'Jackpot',
+            default => 'Unknown',
         };
     }
 
     /**
      * Boot method to handle model events.
      */
-    protected static function boot(): void {
+    protected static function boot(): void
+    {
         parent::boot();
 
         static::creating(function ($competitionWallet) {
             // Set comments if not explicitly set
             if (empty($competitionWallet->comments)) {
                 $competitionName = $competitionWallet->getCompetitionType($competitionWallet->game_type);
-                $competitionWallet->comments = Badge::set('info', $competitionName)." Wallet Initialized";
+                $competitionWallet->comments = Badge::set('info', $competitionName).' Wallet Initialized';
             }
         });
     }

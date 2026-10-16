@@ -119,7 +119,7 @@ it('does not charge coin loads, gifts or emoji', function (string $billRef) {
 ]);
 
 it('does not charge a deposit with no matching customer', function () {
-    confirmMpesaDeposit(100, 'UNKNOWN')->assertStatus(500);
+    confirmMpesaDeposit(100, 'UNKNOWN')->assertOk();
 
     expect(ExciseDutyCharge::count())->toBe(0)
         ->and((int) Deposit::sole()->status)->toBe(0);

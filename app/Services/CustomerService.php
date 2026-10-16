@@ -4,10 +4,14 @@ namespace App\Services;
 
 use App\Models\CompetitionTransaction;
 use App\Models\CompetitionWallet;
+use App\Models\Complaint;
 use App\Models\Customer;
 use App\Models\Deposit;
+use App\Models\DisputedTransaction;
 use App\Models\GameTransaction;
 use App\Models\GameWallet;
+use App\Models\PendingBalance;
+use App\Models\ReferralWithdrawal;
 use App\Models\Wallet;
 use App\Models\Withdraw;
 use Illuminate\Support\Arr;
@@ -553,7 +557,13 @@ class CustomerService
     /**
      * Apply a signed amount to the customer's wallet as a ledgered adjustment.
      */
-    public function updateCustomerWallet($identifier, float $amount, ?string $reason = null, ?string $actor = null): bool
+    /**
+     * A signed, audited adjustment of the customer's wallet. A debit that would leave the balance below 0
+     * is refused; a credit is always allowed, so a balance that is already negative can be brought back up.
+     *
+     * @return array{success: bool, message: string, status_code: int}
+     */
+    public function updateCustomerWallet($identifier, float $amount, ?string $reason = null, ?string $actor = null): array
     {
         $customer = Customer::query()
             ->where('id', $identifier)
@@ -561,11 +571,15 @@ class CustomerService
             ->first();
 
         if (! $customer || ! $customer->wallet) {
-            return false;
+            return ['success' => false, 'message' => 'Customer not found', 'status_code' => 404];
         }
 
-        DB::transaction(function () use ($customer, $amount, $reason, $actor) {
+        return DB::transaction(function () use ($customer, $amount, $reason, $actor) {
             $wallet = Wallet::lockForUpdate()->find($customer->wallet->id);
+
+            if ($amount < 0 && round((float) $wallet->balance + $amount, 2) < 0) {
+                return ['success' => false, 'message' => 'Adjustment would leave the wallet balance below 0', 'status_code' => 422];
+            }
 
             $this->ledgerService->recordAdjustment(
                 $wallet,
@@ -574,24 +588,131 @@ class CustomerService
                 $actor,
                 ['operation' => 'update_customer_wallet']
             );
-        });
 
-        return true;
+            return ['success' => true, 'message' => 'success', 'status_code' => 201];
+        });
     }
 
-    public function deleteCustomer($identifier): bool
+    /**
+     * Soft-delete a customer who holds no money and has nothing in progress. The wallet row is kept, so
+     * ledger entries, deposits and reports still point at a real customer and wallet.
+     *
+     * @return array{success: bool, message: string, status_code: int, open?: list<string>}
+     */
+    public function deleteCustomer($identifier): array
     {
         $customer = Customer::where('id', $identifier)
             ->orWhere('account_no', $identifier)
             ->first();
 
         if (! $customer) {
-            return false;
+            return ['success' => false, 'message' => 'Customer not found', 'status_code' => 404];
         }
 
-        $customer->wallet?->delete();
+        $open = $this->openObligations($customer);
+
+        if ($open !== []) {
+            return [
+                'success' => false,
+                'message' => 'Customer cannot be deleted while they hold money or have activity in progress',
+                'status_code' => 409,
+                'open' => $open,
+            ];
+        }
+
         $customer->delete();
 
-        return true;
+        return ['success' => true, 'message' => 'Customer deleted successfully', 'status_code' => 200];
+    }
+
+    /**
+     * What stops the customer from being deleted: money the platform owes them, or activity that can
+     * still move money into or out of their wallets.
+     *
+     * @return list<string>
+     */
+    public function openObligations(Customer $customer): array
+    {
+        $wallet = $customer->wallet;
+        $open = [];
+
+        if ($wallet && (int) $wallet->id === (int) config('wallets.house_wallet_id', 1)) {
+            return ['house_wallet'];
+        }
+
+        if ($wallet && (float) $wallet->balance !== 0.0) {
+            $open[] = 'wallet_balance';
+        }
+
+        if ((float) ($customer->coin?->coins ?? 0) > 0) {
+            $open[] = 'coin_balance';
+        }
+
+        if ((float) ($customer->referralWallet?->balance ?? 0) > 0) {
+            $open[] = 'referral_balance';
+        }
+
+        $hasOpenGame = GameWallet::query()
+            ->where('balance', '>', 0)
+            ->whereIn('id', GameTransaction::query()->select('game_wallet_id')->where('customer_id', $customer->id))
+            ->exists();
+
+        if ($hasOpenGame) {
+            $open[] = 'open_game';
+        }
+
+        $hasOpenCompetition = CompetitionWallet::query()
+            ->where('customer_id', $customer->id)
+            ->where(fn ($query) => $query->where('status', 1)->orWhere('balance', '>', 0))
+            ->exists();
+
+        if ($hasOpenCompetition) {
+            $open[] = 'open_competition';
+        }
+
+        if ($wallet && $this->hasPendingWithdrawal($wallet)) {
+            $open[] = 'pending_withdrawal';
+        }
+
+        $hasPendingReferralWithdrawal = ReferralWithdrawal::query()
+            ->where('customer_id', $customer->id)
+            ->whereIn('status', [ReferralWithdrawal::STATUS_PENDING, ReferralWithdrawal::STATUS_PROCESSING])
+            ->exists();
+
+        if ($hasPendingReferralWithdrawal) {
+            $open[] = 'pending_referral_withdrawal';
+        }
+
+        if (PendingBalance::where('customer_id', $customer->id)->where('status', 'holding')->exists()) {
+            $open[] = 'pending_hold';
+        }
+
+        $hasOpenDispute = Complaint::where('customer_id', $customer->id)->where('status', Complaint::STATUS_PENDING)->exists()
+            || DisputedTransaction::where('customer_id', $customer->id)->where('status', DisputedTransaction::STATUS_HELD)->exists();
+
+        if ($hasOpenDispute) {
+            $open[] = 'open_dispute';
+        }
+
+        return $open;
+    }
+
+    /**
+     * A withdrawal still waiting on M-Pesa: reserved but not yet sent (status 1), or accepted and still
+     * carrying its ConversationID because the B2C result has not arrived (a result replaces it).
+     */
+    private function hasPendingWithdrawal(Wallet $wallet): bool
+    {
+        return $wallet->transactions()
+            ->where('payment_type', Withdraw::class)
+            ->where(function ($query) {
+                $query->where('status', 1)
+                    ->orWhere(fn ($accepted) => $accepted->where('status', 2)
+                        ->whereExists(fn ($payout) => $payout->select(DB::raw(1))
+                            ->from('outgoing_payments')
+                            ->whereColumn('outgoing_payments.id', 'transactions.payment_id')
+                            ->whereColumn('outgoing_payments.receipt', 'transactions.payment_ref')));
+            })
+            ->exists();
     }
 }

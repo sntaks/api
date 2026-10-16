@@ -69,7 +69,7 @@ class ReferralService
 
         $referralCode = $this->findCode($code);
 
-        if (! $referralCode || $referralCode->customer_id === $referred->id) {
+        if (! $referralCode || $referralCode->customer_id === $referred->id || $this->isDeletedCustomer($referralCode->customer_id)) {
             return null;
         }
 
@@ -129,7 +129,7 @@ class ReferralService
      */
     private function payDueBonuses(Referral $referral): array
     {
-        if (! $this->isEnabled() || $referral->verified_at === null) {
+        if (! $this->isEnabled() || $referral->verified_at === null || $this->isDeletedCustomer($referral->referrer_id)) {
             return [];
         }
 
@@ -150,6 +150,15 @@ class ReferralService
         }
 
         return $bonuses;
+    }
+
+    /**
+     * A deleted customer's code stops matching signups, and they earn no further bonuses, so no money
+     * builds up in the referral wallet of someone who can no longer withdraw it.
+     */
+    private function isDeletedCustomer(?int $customerId): bool
+    {
+        return $customerId !== null && Customer::onlyTrashed()->whereKey($customerId)->exists();
     }
 
     private function payBonus(Referral $referral, string $milestone, float $amount): ReferralBonus

@@ -370,7 +370,7 @@ Content-Type: application/json</pre>
 </div>
 <div class="auth-box">
 <h3>Idempotency</h3>
-<p>Endpoints tagged <span class="tag tag-idempotent">Idempotent</span> store their response for 24 hours under an idempotency key and replay it for a repeat of the same request: the same status and body, without running the action again.</p><ul><li>Send your own <code>Idempotency-Key</code> header (up to 64 characters; longer returns <code>400</code>): one new key per user action, and the same key when retrying that action after a timeout.</li><li>Reusing a key with a different body returns <code>409 {"message": "Idempotency-Key reused with different request body"}</code>.</li><li><strong>Without a header</strong>, the key is made from the API key, endpoint and body. Two identical requests within 24 hours (for example two withdrawals of the same amount for the same customer) are then treated as one: the second gets the first response and nothing happens. Error responses are stored too, so an identical retry of a refused request gets the same refusal for 24 hours. Always send a fresh key for a new action.</li></ul><pre>Idempotency-Key: 5f0c2b4e-8a1d-4f7e-9c33-1d2e3f4a5b6c</pre>
+<p>Endpoints tagged <span class="tag tag-idempotent">Idempotent</span> store their response for 24 hours under an idempotency key and replay it for a repeat of the same request: the same status and body, without running the action again.</p><ul><li>Send your own <code>Idempotency-Key</code> header (up to 64 characters; longer returns <code>400</code>): one new key per user action, and the same key when retrying that action after a timeout.</li><li>Reusing a key with a different body returns <code>409 {"message": "Idempotency-Key reused with different request body"}</code>.</li><li>Keys are kept per API key: another integration that happens to send the same key value never gets your response or a <code>409</code> because of it.</li><li><strong>Without a header</strong>, the key is made from the API key, endpoint and body. Two identical requests within 24 hours (for example two withdrawals of the same amount for the same customer) are then treated as one: the second gets the first response and nothing happens. Client error responses (4xx) are stored too, so an identical retry of a refused request gets the same refusal for 24 hours; server errors (5xx) are not, so a retry after one runs again. Always send a fresh key for a new action.</li></ul><pre>Idempotency-Key: 5f0c2b4e-8a1d-4f7e-9c33-1d2e3f4a5b6c</pre>
 </div>
 <div class="auth-box">
 <h3>Rate Limits</h3>
@@ -766,13 +766,13 @@ Content-Type: application/json
 <div class="endpoint-header" onclick="toggle(this)">
 <span class="method method-delete">DELETE</span>
 <span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}</span>
-<span class="endpoint-desc">Delete a customer and their wallet</span>
+<span class="endpoint-desc">Delete a customer</span>
 <span class="chevron">&#9654;</span>
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span></div>
-<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-500">500 Server Error</span></div>
-<p class="endpoint-note">Permanent. A customer with any history (wallet transactions, games, competitions, coins, excise duty, referral codes or bonuses) cannot be deleted: the database refuses and it returns <code>500</code>. Set <code>status</code> to 0 instead.</p>
+<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-409">409 Conflict</span></div>
+<p class="endpoint-note">A soft delete: the customer stops appearing in lookups, searches and lists, but the customer row and their wallet are kept, so their history (ledger, deposits, games, finance reports) still points at them. Payments later made to their account number are kept as <a href="#" data-section="deposits" style="color:var(--accent-blue)">unmatched deposits</a>, their referral code stops matching signups and they earn no further referral bonuses. Refused with <code>409</code> while the customer holds money or has activity in progress; <code>open</code> lists what is in the way: <code>wallet_balance</code> (not 0, including negative), <code>coin_balance</code>, <code>referral_balance</code>, <code>open_game</code> (a stake in a game that still holds money), <code>open_competition</code>, <code>pending_withdrawal</code> (waiting on M-Pesa), <code>pending_referral_withdrawal</code>, <code>pending_hold</code>, <code>open_dispute</code>, or <code>house_wallet</code> (the house customer can never be deleted). To stop a customer without deleting them, set <code>status</code> to 0.</p>
 <div class="endpoint-section"><h4>Path Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -791,9 +791,13 @@ Accept: application/json</pre></div>
 <pre>{
   "message": "Customer not found"
 }</pre></div>
-<div class="endpoint-section"><h4>Response (500: the customer has history)</h4>
+<div class="endpoint-section"><h4>Response (409: money or activity still open)</h4>
 <pre>{
-  "message": "Server Error"
+  "message": "Customer cannot be deleted while they hold money or have activity in progress",
+  "open": [
+    "wallet_balance",
+    "pending_withdrawal"
+  ]
 }</pre></div>
 <p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
@@ -808,7 +812,7 @@ Accept: application/json</pre></div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span></div>
-<p class="endpoint-note">Adds <code>amount</code> to the balance (negative to take away). Recorded in the ledger as an adjustment with the reason and the API key; listed at <a href="#" data-section="finance-reports" style="color:var(--accent-blue)">GET /finance/adjustments</a>. To set an exact balance use <a href="#" data-section="wallets" style="color:var(--accent-blue)">PUT /wallets/{id}/balance</a>.</p>
+<p class="endpoint-note">Adds <code>amount</code> to the balance (negative to take away). A negative amount that would leave the balance below 0 is refused with <code>422</code>; a positive amount is always accepted, so a balance that is already negative can be brought back up. Recorded in the ledger as an adjustment with the reason and the API key; listed at <a href="#" data-section="finance-reports" style="color:var(--accent-blue)">GET /finance/adjustments</a>. To set an exact balance use <a href="#" data-section="wallets" style="color:var(--accent-blue)">PUT /wallets/{id}/balance</a>.</p>
 <div class="endpoint-section"><h4>Path Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -838,6 +842,10 @@ Content-Type: application/json
 <div class="endpoint-section"><h4>Response (404: no customer, or no wallet)</h4>
 <pre>{
   "message": "Customer not found"
+}</pre></div>
+<div class="endpoint-section"><h4>Response (422: the balance would go below 0)</h4>
+<pre>{
+  "message": "Adjustment would leave the wallet balance below 0"
 }</pre></div>
 <div class="endpoint-section"><h4>Response (422: validation failed)</h4>
 <pre>{
@@ -1764,7 +1772,7 @@ Content-Type: application/json
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span></div>
-<p class="endpoint-note">Same as <code>PUT /wallets/{id}</code> but <code>amount</code> must be at least 0.01 and the response has the balances. Recorded in the ledger as an adjustment with the reason and the API key, and listed at <a href="#" data-section="finance-reports" style="color:var(--accent-blue)">GET /finance/adjustments</a>. No M-Pesa money moves.</p>
+<p class="endpoint-note">Same as <code>PUT /wallets/{id}</code> but <code>amount</code> must be 0 or more and the response has the balances. Recorded in the ledger as an adjustment with the reason and the API key, and listed at <a href="#" data-section="finance-reports" style="color:var(--accent-blue)">GET /finance/adjustments</a>. No M-Pesa money moves.</p>
 <div class="endpoint-section"><h4>Path Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -1773,7 +1781,7 @@ Content-Type: application/json
 <div class="endpoint-section"><h4>Request Body</h4>
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-<tr><td>amount</td><td>number</td><td><span class="required">Required</span></td><td>New balance, at least 0.01</td></tr>
+<tr><td>amount</td><td>number</td><td><span class="required">Required</span></td><td>New balance, 0 or more</td></tr>
 <tr><td>reason</td><td>string</td><td><span class="optional">Optional</span></td><td>Why, up to 255 characters</td></tr>
 </table></div>
 <div class="endpoint-section"><h4>Example Request</h4>
@@ -2032,8 +2040,14 @@ Accept: application/json</pre></div>
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span></div>
-<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span></div>
-<p class="endpoint-note">Every wallet transaction: customer transfers and competition house cuts. <code>sender_id</code> and <code>receiver_id</code> are wallet ids (for house cuts the sender is the competition wallet and the receiver the house wallet). Not paginated.</p>
+<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-422">422 Unprocessable</span></div>
+<p class="endpoint-note">Every wallet transaction: customer transfers and competition house cuts. <code>sender_id</code> and <code>receiver_id</code> are wallet ids (for house cuts the sender is the competition wallet and the receiver the house wallet). Without <code>per_page</code> every row is returned, oldest first; with it, one page, newest first, with <code>links</code> and <code>meta</code> (<code>current_page</code>, <code>last_page</code>, <code>per_page</code>, <code>total</code>) added beside <code>data</code>.</p>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table">
+<tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 200. Turns paging on</td></tr>
+<tr><td>page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 1</td></tr>
+</table></div>
 <div class="endpoint-section"><h4>Example Request</h4>
 <pre>GET /api/v1/wallets/transactions HTTP/1.1
 Host: api.kadi-kings.co.ke
@@ -3015,7 +3029,7 @@ Accept: application/json</pre></div>
 
 <div class="doc-section" data-section="game-wallets">
 
-<div class="callback-note"><strong>How a single game works.</strong> The game server creates a <strong>game wallet</strong> (an escrow for one game), then each player stakes with <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/bets</a>: the stake leaves their wallet and goes into the game wallet. The game ends in one of four ways: <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/withdraw/{id}</a> pays the winner (less a further 5%, rounded up), <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/drop/{id}</a> settles a game where players disconnected, <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/credit</a> pays each remaining player their share when a dropped player voids the game, and <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/refund</a> gives every stake back. Game wallet <code>status</code>: 1 open, 3 closed. <code>game_type</code> is set by the game server (default 1). Fees are in the <a href="#" data-section="finance-overview" style="color:var(--accent-blue)">fee schedule</a>.</div>
+<div class="callback-note"><strong>How a single game works.</strong> The game server creates a <strong>game wallet</strong> (an escrow for one game), then each player stakes with <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/bets</a>: the stake leaves their wallet and goes into the game wallet. The game ends in one of four ways: <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/withdraw/{id}</a> pays the winner (less a further 5%, rounded down), <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/drop/{id}</a> settles a game where players disconnected, <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/credit</a> pays each remaining player their share when a dropped player voids the game, and <a href="#" data-section="game-bets" style="color:var(--accent-blue)">POST /game/refund</a> gives every stake back. Game wallet <code>status</code>: 1 open, 3 closed. <code>game_type</code> is set by the game server (default 1). Fees are in the <a href="#" data-section="finance-overview" style="color:var(--accent-blue)">fee schedule</a>.</div>
 
 <button class="expand-all" onclick="toggleAll('game-wallets')">Expand / Collapse All</button>
 
@@ -3028,8 +3042,14 @@ Accept: application/json</pre></div>
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span></div>
-<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span></div>
-<p class="endpoint-note">Every game wallet. Not paginated; for date ranges and filters use <a href="#" data-section="finance-reports" style="color:var(--accent-blue)">GET /finance/games</a>.</p>
+<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-422">422 Unprocessable</span></div>
+<p class="endpoint-note">Every game wallet. Without <code>per_page</code> every row is returned, oldest first; with it, one page, newest first, with <code>links</code> and <code>meta</code> (<code>current_page</code>, <code>last_page</code>, <code>per_page</code>, <code>total</code>) added beside <code>data</code>. For date ranges and filters use <a href="#" data-section="finance-reports" style="color:var(--accent-blue)">GET /finance/games</a>.</p>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table">
+<tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 200. Turns paging on</td></tr>
+<tr><td>page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 1</td></tr>
+</table></div>
 <div class="endpoint-section"><h4>Example Request</h4>
 <pre>GET /api/v1/game/wallets HTTP/1.1
 Host: api.kadi-kings.co.ke
@@ -3428,7 +3448,7 @@ Content-Type: application/json
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-400">400 Bad Request</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span> <span class="status-code status-500">500 Server Error</span></div>
-<p class="endpoint-note">Pays the game wallet's whole balance to <code>customer_id</code> (the winner), less a 5% house share rounded up to a whole shilling, then closes the game (status 3). Only an open game can be paid.</p>
+<p class="endpoint-note">Pays the game wallet's whole balance to <code>customer_id</code> (the winner), less a 5% house share rounded down to a whole shilling (so it never takes more than 5%), then closes the game (status 3). Only an open game can be paid.</p>
 <div class="endpoint-section"><h4>Path Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -3633,8 +3653,14 @@ Content-Type: application/json
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span></div>
-<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span></div>
-<p class="endpoint-note">Every stake, payout and refund on every game. <code>payment_type</code>: <code>deposit</code> (stake), <code>payout</code>, <code>payout|dropped</code>, <code>refund|full</code>, <code>refund|dropped</code>. <code>balance</code> is the game wallet's current balance. Not paginated.</p>
+<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-422">422 Unprocessable</span></div>
+<p class="endpoint-note">Every stake, payout and refund on every game. <code>payment_type</code>: <code>deposit</code> (stake), <code>payout</code>, <code>payout|dropped</code>, <code>refund|full</code>, <code>refund|dropped</code>. <code>balance</code> is the game wallet's current balance. Without <code>per_page</code> every row is returned, oldest first; with it, one page, newest first, with <code>links</code> and <code>meta</code> (<code>current_page</code>, <code>last_page</code>, <code>per_page</code>, <code>total</code>) added beside <code>data</code>.</p>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table">
+<tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 200. Turns paging on</td></tr>
+<tr><td>page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 1</td></tr>
+</table></div>
 <div class="endpoint-section"><h4>Example Request</h4>
 <pre>GET /api/v1/game/bets HTTP/1.1
 Host: api.kadi-kings.co.ke
@@ -3866,8 +3892,14 @@ Accept: application/json</pre></div>
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span></div>
-<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span></div>
-<p class="endpoint-note">Not paginated; for date ranges and filters use <a href="#" data-section="finance-reports" style="color:var(--accent-blue)">GET /finance/competitions</a>.</p>
+<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-422">422 Unprocessable</span></div>
+<p class="endpoint-note">Without <code>per_page</code> every row is returned, oldest first; with it, one page, newest first, with <code>links</code> and <code>meta</code> (<code>current_page</code>, <code>last_page</code>, <code>per_page</code>, <code>total</code>) added beside <code>data</code>. For date ranges and filters use <a href="#" data-section="finance-reports" style="color:var(--accent-blue)">GET /finance/competitions</a>.</p>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table">
+<tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 200. Turns paging on</td></tr>
+<tr><td>page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 1</td></tr>
+</table></div>
 <div class="endpoint-section"><h4>Example Request</h4>
 <pre>GET /api/v1/competition/wallets HTTP/1.1
 Host: api.kadi-kings.co.ke
@@ -4466,8 +4498,14 @@ Content-Type: application/json
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span></div>
-<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span></div>
-<p class="endpoint-note"><code>payment_type</code>: the entry (as sent), <code>win</code>, <code>loss</code>, <code>payout</code>. Not paginated.</p>
+<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-422">422 Unprocessable</span></div>
+<p class="endpoint-note"><code>payment_type</code>: the entry (as sent), <code>win</code>, <code>loss</code>, <code>payout</code>. Without <code>per_page</code> every row is returned, oldest first; with it, one page, newest first, with <code>links</code> and <code>meta</code> (<code>current_page</code>, <code>last_page</code>, <code>per_page</code>, <code>total</code>) added beside <code>data</code>.</p>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table">
+<tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 200. Turns paging on</td></tr>
+<tr><td>page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 1</td></tr>
+</table></div>
 <div class="endpoint-section"><h4>Example Request</h4>
 <pre>GET /api/v1/competition/transactions HTTP/1.1
 Host: api.kadi-kings.co.ke
@@ -5479,7 +5517,7 @@ Accept: application/json</pre></div>
 <tr><th>Where</th><th>Rate</th></tr>
 <tr><td>Game credit, older stakes (before <code>POST /game/credit</code> became the voided game share)</td><td>5% of the stake, taken when it was credited</td></tr>
 <tr><td>Voided game share (<code>POST /game/credit</code>)</td><td>what is left of the pot after the game server's shares (about 5%)</td></tr>
-<tr><td>Game payout (<code>POST /game/withdraw</code>)</td><td>a further 5% of the pool, rounded up</td></tr>
+<tr><td>Game payout (<code>POST /game/withdraw</code>)</td><td>a further 5% of the pool, rounded down</td></tr>
 <tr><td>Dropped game (<code>POST /game/drop</code>)</td><td>10% of the dropped players' stakes, rounded up</td></tr>
 <tr><td>Tournament entry</td><td>10%</td></tr>
 <tr><td>Jackpot entry</td><td>20%</td></tr>

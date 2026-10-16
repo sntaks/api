@@ -8,7 +8,6 @@ use Illuminate\Notifications\Notifiable;
 
 class Stock extends Model
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
     protected $table = 'stocks';
@@ -21,19 +20,23 @@ class Stock extends Model
     protected $fillable = [
         'user_id',
         'amount',
-        'status'
+        'status',
     ];
 
-    public function user(){
+    public function user()
+    {
         return $this->belongsTo(User::class);
     }
 
-    public static function getRemainingShares(): int {
+    public static function getRemainingShares(): int
+    {
         $totalActiveShares = Stock::where('status', 1)->sum('amount');
+
         return $totalActiveShares < 100 ? 100 - $totalActiveShares : 0;
     }
 
-    public static function getActiveShares(): int {
+    public static function getActiveShares(): int
+    {
         return Stock::where('status', 1)->sum('amount');
     }
 }

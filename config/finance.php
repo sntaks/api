@@ -31,7 +31,8 @@ return [
     | that the cuts actually taken match the schedule.
     |
     | game_credit      taken from each stake when it is credited to a game wallet
-    | game_withdrawal  taken from the pool when a game is paid out (rounded up)
+    | game_withdrawal  taken from the pool when a game is paid out (rounded down,
+    |                  so it never exceeds the rate)
     | game_drop        taken from a dropped player's stake pool (rounded up)
     | tournament       taken from each tournament entry (competition game_type 1)
     | jackpot          taken from each jackpot entry (competition game_type 2)

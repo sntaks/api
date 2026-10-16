@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Coin extends Model
 {
-    /** @use HasFactory<\Database\Factories\WalletFactory> */
     use HasFactory;
 
     protected $table = 'coins';
@@ -15,10 +14,11 @@ class Coin extends Model
     protected $fillable = [
         'customer_id',
         'coins',
-        'status'
+        'status',
     ];
 
-    public function customer(){
-        return $this->belongsTo(Customer::class);
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class)->withTrashed();
     }
 }

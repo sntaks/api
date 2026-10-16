@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class GameWallet extends Model
 {
-    /** @use HasFactory<\Database\Factories\WalletFactory> */
     use HasFactory;
 
     protected $table = 'game_wallets';
@@ -16,17 +15,19 @@ class GameWallet extends Model
         'game_id',
         'game_type',
         'balance',
-        'status'
+        'status',
     ];
 
-    public function gameTransactions(){
+    public function gameTransactions()
+    {
         return $this->hasMany(GameTransaction::class, 'game_wallet_id');
     }
 
     /**
      * Boot method to handle model events.
      */
-    protected static function boot() {
+    protected static function boot()
+    {
         parent::boot();
 
         static::creating(function ($gameWallet) {

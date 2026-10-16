@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\api\v1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PagedListRequest;
 use App\Http\Requests\StoreCompetitionWalletRequest;
 use App\Http\Requests\UpdateCompetitionWalletRequest;
 use App\Http\Resources\CompetitionWalletResource;
@@ -20,9 +21,9 @@ class CompetitionWalletController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(PagedListRequest $request)
     {
-        return CompetitionWalletResource::collection($this->walletService->listCompetitionWallets());
+        return CompetitionWalletResource::collection($this->walletService->listCompetitionWallets($request->perPage()));
     }
 
     /**

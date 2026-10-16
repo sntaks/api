@@ -2,13 +2,11 @@
 
 namespace App\Models;
 
-use Database\Factories\WalletFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class GameTransaction extends Model
 {
-    /** @use HasFactory<WalletFactory> */
     use HasFactory;
 
     protected $table = 'game_transactions';
@@ -33,6 +31,6 @@ class GameTransaction extends Model
 
     public function customer()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Customer::class)->withTrashed();
     }
 }

@@ -11,7 +11,7 @@ beforeEach(function () {
     $this->walletService = app(WalletService::class);
 });
 
-it('reduce balance rejects zero amount', function () {
+it('leaves the balance unchanged when reducing by zero at the service level', function () {
     $customer = Customer::factory()->create();
     $wallet = Wallet::factory()->create(['customer_id' => $customer->id, 'balance' => 100]);
 
@@ -21,7 +21,7 @@ it('reduce balance rejects zero amount', function () {
     expect((float) $result['balance_after'])->toBe(100.0);
 });
 
-it('set balance rejects negative amount', function () {
+it('stores a negative balance at the service level, so the controller validation is the guard', function () {
     $customer = Customer::factory()->create();
     $wallet = Wallet::factory()->create(['customer_id' => $customer->id, 'balance' => 100]);
 

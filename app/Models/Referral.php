@@ -38,12 +38,12 @@ class Referral extends Model
 
     public function referrer(): BelongsTo
     {
-        return $this->belongsTo(Customer::class, 'referrer_id');
+        return $this->belongsTo(Customer::class, 'referrer_id')->withTrashed();
     }
 
     public function referred(): BelongsTo
     {
-        return $this->belongsTo(Customer::class, 'referred_id');
+        return $this->belongsTo(Customer::class, 'referred_id')->withTrashed();
     }
 
     public function firstDeposit(): BelongsTo
