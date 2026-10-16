@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\BetShopLoad;
 use App\Models\ShopWithdrawal;
 use App\Services\Concerns\BuildsFinanceQueries;
-use App\Util\PlayerNumber;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -37,7 +36,7 @@ class FinanceBetShopReportService
      * One row per shop. Float, loads, cash withdrawals and play are for the range; float_balance and the
      * pending withdrawals are as of now.
      *
-     * Filters: status (shop status).
+     * Filters: status (shop status), bet_shop_id (one shop; the summary then totals just that shop).
      *
      * @param  array<string, string>  $filters
      */
@@ -101,14 +100,16 @@ class FinanceBetShopReportService
         };
 
         return new FinanceListing(
-            $base()->select('x.*', 's.shop_no', 'c.name as customer_name', 'c.player_no')->orderByDesc('x.id'),
+            $base()->select('x.*', 's.shop_no', 's.name as shop_name', 'c.name as customer_name', 'c.player_no')->orderByDesc('x.id'),
             fn (object $row) => [
                 'id' => (int) $row->id,
                 'load_id' => $row->load_id,
+                'bet_shop_id' => (int) $row->bet_shop_id,
                 'shop_no' => $row->shop_no,
+                'shop_name' => $row->shop_name,
                 'customer_id' => (int) $row->customer_id,
                 'customer_name' => $row->customer_name,
-                'player_no' => PlayerNumber::format($row->player_no),
+                'player_no' => $row->player_no,
                 'gross_amount' => $this->money($row->gross_amount),
                 'excise_amount' => $this->money($row->excise_amount),
                 'net_amount' => $this->money($row->net_amount),
@@ -119,7 +120,7 @@ class FinanceBetShopReportService
                 'reversal_reason' => $row->reversal_reason,
             ],
             $summary,
-            ['id', 'load_id', 'shop_no', 'customer_id', 'customer_name', 'player_no', 'gross_amount', 'excise_amount', 'net_amount', 'status', 'loaded_by', 'loaded_at', 'reversed_at', 'reversal_reason'],
+            ['id', 'load_id', 'bet_shop_id', 'shop_no', 'shop_name', 'customer_id', 'customer_name', 'player_no', 'gross_amount', 'excise_amount', 'net_amount', 'status', 'loaded_by', 'loaded_at', 'reversed_at', 'reversal_reason'],
         );
     }
 
@@ -151,14 +152,16 @@ class FinanceBetShopReportService
         };
 
         return new FinanceListing(
-            $base()->select('x.*', 's.shop_no', 'c.name as customer_name', 'c.player_no')->orderByDesc('x.id'),
+            $base()->select('x.*', 's.shop_no', 's.name as shop_name', 'c.name as customer_name', 'c.player_no')->orderByDesc('x.id'),
             fn (object $row) => [
                 'id' => (int) $row->id,
                 'withdrawal_id' => $row->withdrawal_id,
+                'bet_shop_id' => (int) $row->bet_shop_id,
                 'shop_no' => $row->shop_no,
+                'shop_name' => $row->shop_name,
                 'customer_id' => (int) $row->customer_id,
                 'customer_name' => $row->customer_name,
-                'player_no' => PlayerNumber::format($row->player_no),
+                'player_no' => $row->player_no,
                 'amount' => $this->money($row->amount),
                 'status' => $row->status,
                 'failed_attempts' => (int) $row->failed_attempts,
@@ -169,7 +172,7 @@ class FinanceBetShopReportService
                 'close_reason' => $row->close_reason,
             ],
             $summary,
-            ['id', 'withdrawal_id', 'shop_no', 'customer_id', 'customer_name', 'player_no', 'amount', 'status', 'failed_attempts', 'requested_at', 'expires_at', 'closed_at', 'closed_by', 'close_reason'],
+            ['id', 'withdrawal_id', 'bet_shop_id', 'shop_no', 'shop_name', 'customer_id', 'customer_name', 'player_no', 'amount', 'status', 'failed_attempts', 'requested_at', 'expires_at', 'closed_at', 'closed_by', 'close_reason'],
         );
     }
 
@@ -288,6 +291,7 @@ class FinanceBetShopReportService
             ->leftJoinSub($games, 'gm', 'gm.bet_shop_id', '=', 's.id')
             ->leftJoinSub($competitions, 'cm', 'cm.bet_shop_id', '=', 's.id')
             ->when(isset($filters['status']), fn (Builder $query) => $query->where('s.status', $filters['status']))
+            ->when(isset($filters['bet_shop_id']), fn (Builder $query) => $query->where('s.id', (int) $filters['bet_shop_id']))
             ->selectRaw('s.id as bet_shop_id, s.shop_no, s.name, s.status,
                 COALESCE(fw.balance, 0) as float_balance, fp.float_purchased, fr.float_redeemed,
                 ld.loads, ld.loads_gross, ld.loads_excise, ld.loads_net, ld.loads_reversed,

@@ -225,7 +225,7 @@ class FinanceLedgerReportService
     /**
      * The customers with the most activity in the range, and how concentrated wallet balances are.
      *
-     * Filters: sort (net_gaming, deposited, staked, won, withdrawn, balance), limit (default 10).
+     * Filters: sort (net_gaming, deposited, staked, won, withdrawn, balance, shop_loaded, shop_withdrawn), limit (default 10).
      * net_gaming is winnings plus refunds minus stakes: positive means the customer is up.
      * deposited is everything paid in, gross: M-Pesa deposits plus cash loaded at bet shops (shop_loaded,
      * net of reversed loads); excise_paid is the duty taken from it. withdrawn is everything taken out:

@@ -232,7 +232,7 @@ class BetShopLoadService
     public function presentPlayer(Customer $customer): array
     {
         return [
-            'player_no' => PlayerNumber::format($customer->player_no),
+            'player_no' => $customer->player_no,
             'name' => $this->masker->name($customer->name),
             'active' => (int) $customer->status === 1 && ! $customer->trashed(),
         ];

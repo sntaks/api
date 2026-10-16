@@ -60,7 +60,7 @@ class ShopWithdrawalController extends Controller
         }
 
         return $this->pagedResponse(
-            $this->withdrawals->paginate(null, $customer, $filters, (int) ($filters['per_page'] ?? 50)),
+            $this->withdrawals->paginate(null, $customer, ['customer_id' => null] + $filters, (int) ($filters['per_page'] ?? 50)),
             fn (ShopWithdrawal $withdrawal) => $this->withdrawals->present($withdrawal, 'customer')
         );
     }
@@ -99,12 +99,15 @@ class ShopWithdrawalController extends Controller
     }
 
     /**
-     * @return array{status?: string, per_page?: int, page?: int}
+     * @return array{status?: string, customer_id?: int, from?: string, to?: string, per_page?: int, page?: int}
      */
     private function listFilters(Request $request): array
     {
         return $request->validate([
             'status' => ['nullable', 'in:'.implode(',', ShopWithdrawal::STATUSES)],
+            'customer_id' => ['nullable', 'integer', 'min:1'],
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);

@@ -8,6 +8,7 @@ use App\Models\BetShop;
 use App\Models\BetShopFloatPurchase;
 use App\Models\BetShopFloatRedemption;
 use App\Services\BetShopFloatService;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -21,16 +22,18 @@ class BetShopFloatController extends Controller
 
     public function store(Request $request, string $encryptedIdentifier): JsonResponse
     {
+        // An unknown shop number is a bad input (422 on shop_no), not a missing resource: a 404 here only ever
+        // means the deposit is gone.
         $validated = $request->validate([
-            'shop_no' => ['required', 'string', 'max:10'],
+            'shop_no' => ['required', 'string', 'max:10', function (string $attribute, mixed $value, Closure $fail) {
+                if (! BetShop::where('shop_no', strtoupper(trim((string) $value)))->exists()) {
+                    $fail('No bet shop has that number.');
+                }
+            }],
             'note' => ['required', 'string', 'min:3', 'max:255'],
         ]);
 
-        $shop = BetShop::where('shop_no', strtoupper(trim($validated['shop_no'])))->first();
-
-        if (! $shop) {
-            return response()->json(['success' => false, 'message' => 'Shop not found'], 404);
-        }
+        $shop = BetShop::where('shop_no', strtoupper(trim($validated['shop_no'])))->firstOrFail();
 
         return $this->respond($this->floats->credit((int) $encryptedIdentifier, $shop, $validated['note'], $this->actorFor($request)));
     }
@@ -136,6 +139,7 @@ class BetShopFloatController extends Controller
             'success' => $result['success'],
             'code' => $result['code'] ?? null,
             'message' => $result['message'],
+            'float_balance' => $result['float_balance'] ?? null,
             'data' => $deposit || $purchase ? array_filter([
                 'float_purchase' => $purchase ? $this->floats->present($purchase) : null,
                 'deposit' => $deposit ? [

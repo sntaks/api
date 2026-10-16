@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\ApiKey;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Observers\WalletObserver;
@@ -48,37 +49,55 @@ class AppServiceProvider extends ServiceProvider
             });
         }
 
-        RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        // Callers are told apart by their API key: every request through one server (the GMS, the game
+        // server) shares an IP, so limiting by IP would make all of that server's users share one budget.
+        // Laravel's middleware priority runs throttling before CheckApiKey, so only an active key gets a
+        // budget of its own; a missing or unknown key is limited by IP, so guessing keys is not a way round it.
+        $caller = function (Request $request): string {
+            if ($request->user()?->id) {
+                return 'user:'.$request->user()->id;
+            }
+
+            $key = ApiKey::rateLimitProfileFor($request->header('X-API-KEY'));
+
+            return $key ? 'key:'.$key['id'] : 'ip:'.$request->ip();
+        };
+
+        // A key's limits are multiplied by its rate_limit_multiplier (php artisan apikey:rate-limit), e.g. for the GMS,
+        // which many staff work through. An unknown key gets the standard limits.
+        $limit = fn (int $perMinute, Request $request): int => $perMinute * (ApiKey::rateLimitProfileFor($request->header('X-API-KEY'))['multiplier'] ?? 1);
+
+        RateLimiter::for('api', function (Request $request) use ($caller, $limit) {
+            return Limit::perMinute($limit(60, $request))->by($caller($request));
         });
 
-        RateLimiter::for('write', function (Request $request) {
-            return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
+        RateLimiter::for('write', function (Request $request) use ($caller, $limit) {
+            return Limit::perMinute($limit(30, $request))->by($caller($request));
         });
 
-        RateLimiter::for('financial', function (Request $request) {
-            return Limit::perMinute(5)->by($request->user()?->id ?: $request->ip());
+        RateLimiter::for('financial', function (Request $request) use ($caller, $limit) {
+            return Limit::perMinute($limit(5, $request))->by($caller($request));
         });
 
-        RateLimiter::for('sensitive', function (Request $request) {
-            return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
+        RateLimiter::for('sensitive', function (Request $request) use ($caller, $limit) {
+            return Limit::perMinute($limit(10, $request))->by($caller($request));
         });
 
         RateLimiter::for('callback', function (Request $request) {
             return Limit::perMinute(100)->by($request->ip());
         });
 
-        RateLimiter::for('stats', function (Request $request) {
-            return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
+        RateLimiter::for('stats', function (Request $request) use ($caller, $limit) {
+            return Limit::perMinute($limit(20, $request))->by($caller($request));
         });
 
         // Shop systems are limited per shop API key, so one busy shop never slows another.
-        RateLimiter::for('shop', function (Request $request) {
-            return Limit::perMinute((int) config('bet_shops.rate_limits.requests'))->by('shop:'.hash('sha256', (string) $request->header('X-API-KEY')));
+        RateLimiter::for('shop', function (Request $request) use ($caller) {
+            return Limit::perMinute((int) config('bet_shops.rate_limits.requests'))->by('shop:'.$caller($request));
         });
 
-        RateLimiter::for('shop-lookup', function (Request $request) {
-            return Limit::perMinute((int) config('bet_shops.rate_limits.player_lookups'))->by('shop-lookup:'.hash('sha256', (string) $request->header('X-API-KEY')));
+        RateLimiter::for('shop-lookup', function (Request $request) use ($caller) {
+            return Limit::perMinute((int) config('bet_shops.rate_limits.player_lookups'))->by('shop-lookup:'.$caller($request));
         });
 
         RateLimiter::for('public', function (Request $request) {

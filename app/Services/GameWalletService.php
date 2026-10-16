@@ -539,7 +539,7 @@ class GameWalletService
      */
     public function listGameTransactions(?int $perPage = null): Collection|LengthAwarePaginator
     {
-        $query = GameTransaction::with(['gameWallet']);
+        $query = GameTransaction::with(['gameWallet', 'betShop:id,shop_no']);
 
         return $perPage === null ? $query->get() : $query->latest('id')->paginate($perPage);
     }

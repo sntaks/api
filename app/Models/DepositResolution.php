@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * How an unmatched deposit was resolved: `assigned` to a customer's wallet, or `refunded` to the payer
@@ -35,6 +36,14 @@ class DepositResolution extends Model
     public function deposit(): BelongsTo
     {
         return $this->belongsTo(Deposit::class);
+    }
+
+    /**
+     * For a `shop_float` resolution: the float purchase it made (not voided).
+     */
+    public function shopFloatPurchase(): HasOne
+    {
+        return $this->hasOne(BetShopFloatPurchase::class, 'deposit_id', 'deposit_id')->whereNull('voided_at')->latestOfMany();
     }
 
     public function customer(): BelongsTo

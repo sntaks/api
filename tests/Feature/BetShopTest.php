@@ -110,7 +110,7 @@ it('issues a shop key once and lists it without the key', function () {
     expect($issued['key'])->toStartWith('shop_')->toHaveLength(45)
         ->and($issued['key_hint'])->toBe('…'.substr($issued['key'], -4));
 
-    $listed = $this->getJson('/api/v1/bet-shops/'.encryptId($shop->id).'/keys', $this->gms)->assertOk()->json('data');
+    $listed = $this->getJson('/api/v1/bet-shops/'.encryptId($shop->id).'/keys', $this->gms)->assertOk()->assertJsonPath('data.pagination.total', 1)->json('data.items');
     expect($listed)->toHaveCount(1)
         ->and($listed[0])->not->toHaveKey('key')
         ->and(ApiKey::find($issued['id']))->toMatchArray(['scope' => 'shop', 'bet_shop_id' => $shop->id]);

@@ -9,7 +9,6 @@ use App\Models\Customer;
 use App\Models\Deposit;
 use App\Models\GameWallet;
 use App\Models\Wallet;
-use App\Util\PlayerNumber;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -182,7 +181,7 @@ it('lists loads and withdrawals for the range with their totals', function () {
         'completed' => ['loads' => 1, 'gross_amount' => 1000.0, 'excise_amount' => 50.0, 'net_amount' => 950.0],
         'reversed' => ['loads' => 1, 'gross_amount' => 600.0, 'excise_amount' => 30.0, 'net_amount' => 570.0],
     ])->and(collect($loads['items'])->firstWhere('status', 'completed'))->toMatchArray([
-        'shop_no' => 'S100', 'customer_name' => 'Alice Wanjiru', 'player_no' => PlayerNumber::format($this->alice->player_no), 'gross_amount' => 1000,
+        'bet_shop_id' => $this->shop->id, 'shop_no' => 'S100', 'shop_name' => 'Kariobangi', 'customer_name' => 'Alice Wanjiru', 'player_no' => $this->alice->player_no, 'gross_amount' => 1000,
     ]);
     expect(shopFinance($this, 'bet-shops/loads', '&status=reversed')['pagination']['total'])->toBe(1)
         ->and(shopFinance($this, 'bet-shops/loads', '&bet_shop_id='.$this->otherShop->id)['pagination']['total'])->toBe(0);
@@ -237,6 +236,6 @@ it('exports the shop reports as CSV', function (string $report, string $firstCol
     expect($lines[0])->toStartWith($firstColumns)->and(count($lines))->toBeGreaterThan(1);
 })->with([
     'shops' => ['bet-shops', 'bet_shop_id,shop_no,name,status,float_balance,float_purchased,float_redeemed,loads,'],
-    'loads' => ['bet-shop-loads', 'id,load_id,shop_no,customer_id,customer_name,player_no,gross_amount'],
-    'withdrawals' => ['bet-shop-withdrawals', 'id,withdrawal_id,shop_no,customer_id,customer_name,player_no,amount,status'],
+    'loads' => ['bet-shop-loads', 'id,load_id,bet_shop_id,shop_no,shop_name,customer_id,customer_name,player_no,gross_amount'],
+    'withdrawals' => ['bet-shop-withdrawals', 'id,withdrawal_id,bet_shop_id,shop_no,shop_name,customer_id,customer_name,player_no,amount,status'],
 ]);

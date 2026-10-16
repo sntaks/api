@@ -46,6 +46,20 @@ class BetShopLoadController extends Controller
         );
     }
 
+    /**
+     * One load, e.g. the one behind an excise charge (`bet_shop_load_id`).
+     */
+    public function show(string $encryptedIdentifier): JsonResponse
+    {
+        $load = BetShopLoad::with(['betShop', 'customer'])->find($encryptedIdentifier);
+
+        if (! $load) {
+            return response()->json(['success' => false, 'message' => 'Load not found'], 404);
+        }
+
+        return response()->json(['success' => true, 'data' => $this->loads->present($load, forGms: true)]);
+    }
+
     public function reverse(Request $request, string $encryptedIdentifier): JsonResponse
     {
         $validated = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:255']]);

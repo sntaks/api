@@ -32,7 +32,7 @@ class FinanceListRequest extends FinanceReportRequest
             'outcome' => ['nullable', 'in:open,completed,dropped,refunded,closed_empty'],
             'players' => ['nullable', 'integer', 'min:1', 'max:20'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
-            'sort' => ['nullable', 'in:net_gaming,deposited,staked,won,withdrawn,balance'],
+            'sort' => ['nullable', 'in:net_gaming,deposited,staked,won,withdrawn,balance,shop_loaded,shop_withdrawn'],
             'idle_minutes' => ['nullable', 'integer', 'min:0', 'max:525600'],
         ];
     }

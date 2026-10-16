@@ -59,7 +59,7 @@ it('finds a player by number and shows only a masked name', function () {
         ->assertExactJson([
             'success' => true,
             'message' => 'Player found',
-            'data' => ['player_no' => PlayerNumber::format($this->player->player_no), 'name' => 'Grace K****', 'active' => true],
+            'data' => ['player_no' => $this->player->player_no, 'name' => 'Grace K****', 'active' => true],
         ]);
 });
 

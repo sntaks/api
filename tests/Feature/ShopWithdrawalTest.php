@@ -8,7 +8,6 @@ use App\Models\ShopWithdrawal;
 use App\Models\Transaction;
 use App\Models\Wallet;
 use App\Services\CustomerService;
-use App\Util\PlayerNumber;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 
@@ -104,7 +103,7 @@ it('shows the shop its own pending requests, masked and without the code', funct
     $items = $this->getJson('/api/v1/shop/withdrawals', apiHeaders($this->key->key))->assertOk()->json('data.items');
 
     expect($items)->toHaveCount(1)
-        ->and($items[0])->toMatchArray(['amount' => 500, 'status' => 'pending', 'player' => ['player_no' => PlayerNumber::format($this->player->player_no), 'name' => 'Grace W****']])
+        ->and($items[0])->toMatchArray(['amount' => 500, 'status' => 'pending', 'player' => ['player_no' => $this->player->player_no, 'name' => 'Grace W****']])
         ->and($items[0])->not->toHaveKey('pickup_code')
         ->and($items[0])->not->toHaveKey('customer_name');
 });

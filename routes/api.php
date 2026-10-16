@@ -299,6 +299,7 @@ Route::prefix('/v1')->group(function () {
             Route::get('/bet-shops/{encryptedIdentifier}/float-redemptions', [BetShopFloatController::class, 'redemptions']);
             Route::post('/bet-shops/float-redemptions/{encryptedIdentifier}/void', [BetShopFloatController::class, 'voidRedemption'])->middleware(['idempotency', 'throttle:write']);
             Route::get('/bet-shops/{encryptedIdentifier}/loads', [BetShopLoadController::class, 'index']);
+            Route::get('/bet-shops/loads/{encryptedIdentifier}', [BetShopLoadController::class, 'show']);
             Route::post('/bet-shops/loads/{encryptedIdentifier}/reverse', [BetShopLoadController::class, 'reverse'])->middleware(['idempotency', 'throttle:write']);
             Route::get('/bet-shops/{encryptedIdentifier}/withdrawals', [ShopWithdrawalController::class, 'gmsIndex']);
             // Cash withdrawals at a bet shop, asked for by the player
