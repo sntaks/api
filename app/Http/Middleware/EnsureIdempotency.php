@@ -45,6 +45,11 @@ class EnsureIdempotency
         /** @var Response $response */
         $response = $next($request);
 
+        // A server error may be transient, so it is not replayed: a retry with the same key runs again.
+        if ($response->getStatusCode() >= 500) {
+            return $response;
+        }
+
         IdempotencyKey::create([
             'idempotency_key' => $idempotencyKey,
             'user_id' => $request->user()?->id,

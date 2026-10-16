@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\GameTransaction;
 use App\Models\GameWallet;
+use App\Models\LedgerEntry;
 use App\Models\Wallet;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
@@ -374,6 +375,132 @@ class GameWalletService
         });
 
         return ['status' => 'success'];
+    }
+
+    /**
+     * Pay a remaining player their share of a game voided because another player dropped out.
+     *
+     * The game server sends one call per remaining player with the share it worked out (the pot less
+     * the house's cut, split equally). The first share closes the game; later shares of the same game
+     * are still accepted. Once less than one share is left in escrow, that rest is the house's cut and
+     * is swept to the house wallet.
+     *
+     * @return array{status: int|string, error?: string}
+     */
+    public function processDroppedGameShare(int $gameWalletId, int $customerId, float $amount): array
+    {
+        return DB::transaction(function () use ($gameWalletId, $customerId, $amount) {
+            $gameWallet = GameWallet::lockForUpdate()->find($gameWalletId);
+            if (! $gameWallet) {
+                return ['error' => 'Game Wallet not found', 'status' => 404];
+            }
+
+            $wallet = Wallet::where('customer_id', $customerId)->lockForUpdate()->first();
+            if (! $wallet) {
+                return ['error' => 'Customer wallet not found', 'status' => 404];
+            }
+
+            $customerTransactions = GameTransaction::where('game_wallet_id', $gameWallet->id)->where('customer_id', $customerId);
+
+            if (! (clone $customerTransactions)->where('payment_type', 'deposit')->exists()) {
+                return ['error' => 'Customer did not stake in this game', 'status' => 422];
+            }
+
+            if ((clone $customerTransactions)->whereIn('payment_type', [...self::GAME_PAYOUT_TYPES, ...self::GAME_REFUND_TYPES])->exists()) {
+                return ['error' => 'Customer has already been paid for this game', 'status' => 409];
+            }
+
+            if ($gameWallet->status != 1 && ! $this->hasDroppedGameShares($gameWallet)) {
+                return ['error' => 'Game Wallet is already closed', 'status' => 409];
+            }
+
+            if (round($amount, 2) > round((float) $gameWallet->balance, 2)) {
+                return ['error' => 'Share is more than the game wallet balance', 'status' => 409];
+            }
+
+            $gameBalanceBefore = (float) $gameWallet->balance;
+
+            $shareTransaction = GameTransaction::create([
+                'game_wallet_id' => $gameWallet->id,
+                'customer_id' => $customerId,
+                'amount' => $amount,
+                'payment_type' => 'payout|dropped',
+                'status' => 2,
+            ]);
+
+            $shareEntry = $this->ledgerService->recordGamePayout($shareTransaction, $wallet, $amount);
+            $this->ledgerService->recordEscrowRelease($shareTransaction, $gameWallet, $amount, self::DROPPED_SHARE_REASON);
+
+            $shareTransaction->update([
+                'wallet_balance_before' => $shareEntry->balance_before,
+                'wallet_balance_after' => $shareEntry->balance_after,
+                'game_balance_before' => $gameBalanceBefore,
+                'game_balance_after' => $gameWallet->balance,
+            ]);
+
+            $remainder = round((float) $gameWallet->balance, 2);
+            if ($remainder > 0 && $remainder < round($amount, 2)) {
+                $this->sweepDroppedGameRemainder($gameWallet, $remainder);
+            }
+
+            $gameWallet->status = 3;
+            $gameWallet->save();
+
+            return ['status' => 'success'];
+        });
+    }
+
+    /**
+     * Escrow release reason of a share paid through processDroppedGameShare.
+     */
+    private const DROPPED_SHARE_REASON = 'game_drop_share';
+
+    /**
+     * Whether shares of this game have already been paid through processDroppedGameShare, so the
+     * game was closed by an earlier share rather than by a payout or refund.
+     */
+    private function hasDroppedGameShares(GameWallet $gameWallet): bool
+    {
+        return LedgerEntry::where('entry_type', 'escrow_release')
+            ->where('referenceable_type', GameTransaction::class)
+            ->whereIn('referenceable_id', GameTransaction::where('game_wallet_id', $gameWallet->id)
+                ->where('payment_type', 'payout|dropped')
+                ->select('id'))
+            ->where('metadata->reason', self::DROPPED_SHARE_REASON)
+            ->exists();
+    }
+
+    /**
+     * Move what is left of a dropped game's pot, less than one share, to the house wallet as its cut.
+     */
+    private function sweepDroppedGameRemainder(GameWallet $gameWallet, float $remainder): void
+    {
+        $houseWallet = Wallet::lockForUpdate()->find(config('wallets.house_wallet_id', 1));
+        $gameBalanceBefore = (float) $gameWallet->balance;
+
+        $houseTransaction = GameTransaction::create([
+            'game_wallet_id' => $gameWallet->id,
+            'customer_id' => self::HOUSE_CUSTOMER_ID,
+            'amount' => $remainder,
+            'payment_type' => 'payout|dropped',
+            'status' => 2,
+        ]);
+
+        $houseEntry = $this->ledgerService->recordHouseCut(
+            $houseWallet,
+            $remainder,
+            'game_drop_payout',
+            $houseTransaction,
+            ['game_wallet_id' => $gameWallet->id]
+        );
+        $this->ledgerService->recordEscrowRelease($houseTransaction, $gameWallet, $remainder, self::DROPPED_SHARE_REASON);
+
+        $houseTransaction->update([
+            'wallet_balance_before' => $houseEntry->balance_before,
+            'wallet_balance_after' => $houseEntry->balance_after,
+            'game_balance_before' => $gameBalanceBefore,
+            'game_balance_after' => $gameWallet->balance,
+        ]);
     }
 
     public function listGameTransactions(): Collection

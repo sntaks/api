@@ -4,80 +4,49 @@ namespace App\Http\Controllers\api\v1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreGameCreditRequest;
-use App\Models\Customer;
-use App\Models\GameTransaction;
-use App\Models\GameWallet;
-use App\Models\Wallet;
-use App\Services\LedgerService;
+use App\Services\GameWalletService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
+/**
+ * Pays a remaining player their share of a game voided because another player dropped out
+ * (called by the game server once per remaining player).
+ */
 class GameCreditController extends Controller
 {
     public function __construct(
-        private LedgerService $ledgerService
+        private GameWalletService $gameWalletService
     ) {}
 
     public function __invoke(StoreGameCreditRequest $request): JsonResponse
     {
         $validated = $request->validated();
 
-        $customer = Customer::with('wallet')->find($validated['customer_id']);
-        $gameWallet = GameWallet::find($validated['game_wallet_id']);
-
-        if (! $customer->wallet) {
-            return response()->json(['error' => 'Customer has no wallet.'], 400);
-        }
-
-        $wallet = $customer->wallet;
-
-        if ($wallet->balance < $validated['amount']) {
-            return response()->json(['error' => 'Insufficient wallet balance.'], 400);
-        }
-
-        $amount = (float) $validated['amount'];
-        $houseShare = round($amount * config('finance.fees.game_credit'), 2);
-
         try {
-            DB::transaction(function () use ($validated, $wallet, $gameWallet, $amount, $houseShare) {
-                $gameTransaction = GameTransaction::create([
-                    'game_wallet_id' => $gameWallet->id,
-                    'customer_id' => $validated['customer_id'],
-                    'payment_type' => 'deposit',
-                    'amount' => $amount,
-                    'status' => 1,
-                ]);
+            $result = $this->gameWalletService->processDroppedGameShare(
+                (int) $validated['game_wallet_id'],
+                (int) $validated['customer_id'],
+                (float) $validated['amount']
+            );
 
-                [$walletEntry, $gameEntry] = $this->ledgerService->recordGameBetWithHouseCut(
-                    $gameTransaction,
-                    $wallet,
-                    $gameWallet,
-                    $amount,
-                    $houseShare
-                );
-
-                $gameTransaction->update([
-                    'wallet_balance_before' => $walletEntry->balance_before,
-                    'wallet_balance_after' => $walletEntry->balance_after,
-                    'game_balance_before' => $gameEntry->balance_before,
-                    'game_balance_after' => $gameEntry->balance_after,
-                ]);
-
-                if ($houseShare > 0) {
-                    $houseWallet = Wallet::find(config('wallets.house_wallet_id', 1));
-                    $this->ledgerService->recordHouseCut(
-                        $houseWallet,
-                        $houseShare,
-                        'game_credit',
-                        $gameTransaction,
-                        ['game_wallet_id' => $gameWallet->id]
-                    );
-                }
-            });
+            if (isset($result['error'])) {
+                return response()->json([
+                    'status' => 'error',
+                    'error' => $result['error'],
+                ], $result['status']);
+            }
 
             return response()->json(['status' => 'success'], 201);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Game Credit Share Error', [
+                'message' => $e->getMessage(),
+                'request' => $validated,
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'error' => 'An error occurred while crediting the share.',
+            ], 500);
         }
     }
 }

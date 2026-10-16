@@ -111,9 +111,7 @@ it('exports every row, not one page, and applies the same filters as the report'
 
 it('exports the ledger with its metadata as JSON', function () {
     $gameWallet = GameWallet::create(['game_id' => 'EX_G', 'game_type' => 1, 'balance' => 0]);
-    $this->postJson('/api/v1/game/credit', [
-        'customer_id' => 900, 'game_wallet_id' => $gameWallet->id, 'amount' => 100,
-    ], $this->headers)->assertStatus(201);
+    legacyGameCreditStake($this->alice, $gameWallet, 100);
 
     $csv = downloadCsv($this, 'ledger?entry_type=house_cut');
 

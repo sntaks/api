@@ -34,7 +34,7 @@ beforeEach(function () {
 });
 
 /**
- * Two players stake 100 each through /game/credit (5 house cut each) and the winner is paid out
+ * Two players stake 100 each the way /game/credit used to (5 house cut each) and the winner is paid out
  * (10 house cut): the winner gets 180, the house holds 20.
  *
  * @return array{game: GameWallet, complainant: Customer, winner: Customer, complainantWallet: Wallet, winnerWallet: Wallet}
@@ -47,8 +47,8 @@ function settledGame(object $test): array
     $winnerWallet = Wallet::factory()->create(['customer_id' => $winner->id, 'balance' => 100]);
     $game = GameWallet::create(['game_id' => 'GAME-'.fake()->unique()->numberBetween(1, 99999), 'balance' => 0, 'status' => 1]);
 
-    foreach ([$complainant, $winner] as $player) {
-        $test->postJson('/api/v1/game/credit', ['customer_id' => $player->id, 'game_wallet_id' => $game->id, 'amount' => 100], $test->headers)->assertCreated();
+    foreach ([$complainantWallet, $winnerWallet] as $playerWallet) {
+        legacyGameCreditStake($playerWallet, $game, 100);
     }
     app(GameWalletService::class)->processGameWithdrawal($game->id, $winner->id);
 

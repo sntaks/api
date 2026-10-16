@@ -3,7 +3,10 @@
 use App\Models\ApiKey;
 use App\Models\CompetitionWallet;
 use App\Models\Customer;
+use App\Models\GameTransaction;
+use App\Models\GameWallet;
 use App\Models\Wallet;
+use App\Services\LedgerService;
 use Tests\TestCase;
 
 /*
@@ -146,4 +149,28 @@ function createJackpotWalletPair(float $senderBalance = 50): array
     ]);
 
     return [$sender, $receiver, $receiverWallet];
+}
+
+/**
+ * Book a stake the way /game/credit did before it became the dropped-game share endpoint: the full
+ * amount leaves the player's wallet, the house takes its game_credit cut and the rest goes into escrow.
+ * The ledger still holds these entries, so finance tests keep exercising them.
+ */
+function legacyGameCreditStake(Wallet $wallet, GameWallet $gameWallet, float $amount): GameTransaction
+{
+    $ledger = app(LedgerService::class);
+    $houseCut = round($amount * config('finance.fees.game_credit'), 2);
+
+    $stake = GameTransaction::create([
+        'game_wallet_id' => $gameWallet->id,
+        'customer_id' => $wallet->customer_id,
+        'payment_type' => 'deposit',
+        'amount' => $amount,
+        'status' => 1,
+    ]);
+
+    $ledger->recordGameBetWithHouseCut($stake, $wallet->fresh(), $gameWallet->fresh(), $amount, $houseCut);
+    $ledger->recordHouseCut(Wallet::find(config('wallets.house_wallet_id', 1)), $houseCut, 'game_credit', $stake, ['game_wallet_id' => $gameWallet->id]);
+
+    return $stake;
 }

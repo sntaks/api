@@ -51,9 +51,7 @@ function drillGame(object $test, array $players, ?int $winner, string $gameId): 
     $gameWallet = GameWallet::create(['game_id' => $gameId, 'game_type' => 1, 'balance' => 0]);
 
     foreach ($players as $player) {
-        $test->postJson('/api/v1/game/credit', [
-            'customer_id' => $player->customer_id, 'game_wallet_id' => $gameWallet->id, 'amount' => 100,
-        ], $test->headers)->assertStatus(201);
+        legacyGameCreditStake($player, $gameWallet, 100);
     }
 
     if ($winner !== null) {
