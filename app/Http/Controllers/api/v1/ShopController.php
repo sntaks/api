@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsureShopKey;
 use App\Http\Requests\StoreShopLoadRequest;
 use App\Models\BetShopLoad;
+use App\Models\ShopWithdrawal;
 use App\Services\BetShopLoadService;
+use App\Services\ShopWithdrawalService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,7 +17,24 @@ use Illuminate\Http\Request;
  */
 class ShopController extends Controller
 {
-    public function __construct(private BetShopLoadService $loads) {}
+    public function __construct(
+        private BetShopLoadService $loads,
+        private ShopWithdrawalService $withdrawals,
+    ) {}
+
+    /**
+     * @param  array<string, mixed>  $result
+     */
+    private function withdrawalResponse(array $result): JsonResponse
+    {
+        return response()->json(array_filter([
+            'success' => $result['success'],
+            'code' => $result['code'] ?? null,
+            'message' => $result['message'],
+            'attempts_left' => $result['attempts_left'] ?? null,
+            'data' => isset($result['withdrawal']) ? $this->withdrawals->present($result['withdrawal'], 'shop') + array_filter(['float_balance' => $result['float_balance'] ?? null], fn ($value) => $value !== null) : null,
+        ], fn ($value) => $value !== null), $result['status_code']);
+    }
 
     public function me(Request $request): JsonResponse
     {
@@ -72,6 +91,45 @@ class ShopController extends Controller
             'data' => isset($result['load']) ? $this->loads->present($result['load']) + ['float_balance' => $result['float_balance']] : null,
             'float_balance' => ! isset($result['load']) && isset($result['float_balance']) ? $result['float_balance'] : null,
         ], fn ($value) => $value !== null), $result['status_code']);
+    }
+
+    /**
+     * Cash withdrawals players asked for at this shop; pending ones by default.
+     */
+    public function withdrawals(Request $request): JsonResponse
+    {
+        $filters = $request->validate([
+            'status' => ['nullable', 'in:'.implode(',', ShopWithdrawal::STATUSES)],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        return $this->pagedResponse(
+            $this->withdrawals->paginate(EnsureShopKey::shop($request), null, ['status' => $filters['status'] ?? ShopWithdrawal::STATUS_PENDING], (int) ($filters['per_page'] ?? 50)),
+            fn (ShopWithdrawal $withdrawal) => $this->withdrawals->present($withdrawal, 'shop')
+        );
+    }
+
+    /**
+     * Pay a player their cash against the pickup code they give at the counter.
+     */
+    public function payWithdrawal(Request $request, string $withdrawalId): JsonResponse
+    {
+        $validated = $request->validate(['pickup_code' => ['required', 'string', 'max:20']]);
+
+        $result = $this->withdrawals->pay(EnsureShopKey::shop($request), $withdrawalId, $validated['pickup_code'], $this->actorFor($request));
+
+        return $this->withdrawalResponse($result);
+    }
+
+    /**
+     * Turn a request down (e.g. not enough cash in the till); the money goes back to the player.
+     */
+    public function rejectWithdrawal(Request $request, string $withdrawalId): JsonResponse
+    {
+        $validated = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:255']]);
+
+        return $this->withdrawalResponse($this->withdrawals->reject(EnsureShopKey::shop($request), $withdrawalId, $validated['reason'], $this->actorFor($request)));
     }
 
     public function loads(Request $request): JsonResponse

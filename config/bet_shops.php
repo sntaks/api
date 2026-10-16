@@ -42,6 +42,27 @@ return [
     |--------------------------------------------------------------------------
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Cash withdrawals
+    |--------------------------------------------------------------------------
+    |
+    | A player asks for cash at a shop and gets a one-time pickup code. The
+    | amount leaves their wallet until the shop pays it; an unpaid request
+    | expires after expiry_hours and the money goes back. After max_code_attempts
+    | wrong codes the request is cancelled, so a shop cannot guess the code.
+    | The player needs an ID number on file.
+    |
+    */
+
+    'withdrawals' => [
+        'min_amount' => (int) env('BET_SHOPS_WITHDRAWAL_MIN', 50),
+        'max_amount' => (int) env('BET_SHOPS_WITHDRAWAL_MAX', 20000),
+        'expiry_hours' => (int) env('BET_SHOPS_WITHDRAWAL_EXPIRY_HOURS', 24),
+        'max_code_attempts' => 5,
+        'code_length' => 6,
+    ],
+
     'rate_limits' => [
         'requests' => 60,
         'player_lookups' => 30,

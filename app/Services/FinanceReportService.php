@@ -380,7 +380,7 @@ class FinanceReportService
 
             $position = $snapshot->only([
                 'customer_wallets_total', 'house_wallet_balance', 'game_escrow_total', 'competition_escrow_total',
-                'stuck_escrow_total', 'coin_liability', 'pending_holds_total', 'unmatched_deposits_total', 'excise_duty_payable', 'disputed_funds_total', 'referral_wallets_total', 'bet_shop_floats_total', 'mpesa_balances',
+                'stuck_escrow_total', 'coin_liability', 'pending_holds_total', 'unmatched_deposits_total', 'excise_duty_payable', 'disputed_funds_total', 'referral_wallets_total', 'bet_shop_floats_total', 'shop_withdrawals_held_total', 'mpesa_balances',
             ]);
             $source = 'snapshot';
             $date = $asOf;
@@ -406,6 +406,7 @@ class FinanceReportService
             'disputed_funds' => (float) $position['disputed_funds_total'],
             'referral_wallets' => (float) $position['referral_wallets_total'],
             'bet_shop_floats' => (float) $position['bet_shop_floats_total'],
+            'shop_withdrawals' => (float) $position['shop_withdrawals_held_total'],
         ];
         $totalLiabilities = array_sum($liabilities);
         $house = (float) $position['house_wallet_balance'];
@@ -424,6 +425,7 @@ class FinanceReportService
                 'disputed_funds is winnings held in dispute escrow while a complaint is pending. It is still owed to a customer, so it is a liability. Snapshots taken before complaints existed show 0.',
                 'referral_wallets is referral bonuses not yet withdrawn. Customers can withdraw them at any time, so they are a liability. Snapshots taken before referrals existed show 0.',
                 'bet_shop_floats is prepaid float bet shop owners paid in and have not yet loaded to players. It is owed to the shops, so it is a liability. Snapshots taken before bet shops existed show 0.',
+                'shop_withdrawals is cash players asked to collect at a bet shop and have not collected yet. It has left their wallets but is still owed to them, so it is a liability. Snapshots taken before shop withdrawals existed show 0.',
             ],
         ]);
     }

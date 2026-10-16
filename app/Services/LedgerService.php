@@ -17,6 +17,7 @@ use App\Models\PromotionCredit;
 use App\Models\Referral;
 use App\Models\ReferralWallet;
 use App\Models\ReferralWithdrawal;
+use App\Models\ShopWithdrawal;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Models\Withdraw;
@@ -281,6 +282,82 @@ class LedgerService
         );
 
         return [$floatEntry, $walletEntry];
+    }
+
+    /**
+     * Take a shop cash withdrawal out of the player's wallet and hold it on the withdrawal until it is paid.
+     *
+     * @return array{0: LedgerEntry, 1: LedgerEntry} [customer wallet entry, withdrawal entry]
+     */
+    public function recordShopWithdrawalHold(ShopWithdrawal $withdrawal, Wallet $wallet, float $amount): array
+    {
+        return $this->move('shop_withdrawal_hold', $withdrawal, $wallet, $withdrawal, $amount);
+    }
+
+    /**
+     * Give a held shop cash withdrawal back to the player's wallet (cancelled, rejected or expired).
+     *
+     * @return array{0: LedgerEntry, 1: LedgerEntry} [withdrawal entry, customer wallet entry]
+     */
+    public function recordShopWithdrawalRelease(ShopWithdrawal $withdrawal, Wallet $wallet, string $reason): array
+    {
+        return $this->move('shop_withdrawal_release', $withdrawal, $withdrawal, $wallet, (float) $withdrawal->balance, ['reason' => $reason]);
+    }
+
+    /**
+     * The shop paid the player the cash: the held amount moves to the shop's float, which the owner spent
+     * from the till.
+     *
+     * @return array{0: LedgerEntry, 1: LedgerEntry} [withdrawal entry, shop float entry]
+     */
+    public function recordShopCashOut(ShopWithdrawal $withdrawal, BetShopWallet $float): array
+    {
+        return $this->move('shop_cash_out', $withdrawal, $withdrawal, $float, (float) $withdrawal->balance);
+    }
+
+    /**
+     * Move an amount from one wallet to another as a matching pair of entries of the same type.
+     *
+     * @param  array<string, mixed>  $metadata
+     * @return array{0: LedgerEntry, 1: LedgerEntry} [from entry, to entry]
+     */
+    private function move(string $entryType, Model $reference, Model $from, Model $to, float $amount, array $metadata = []): array
+    {
+        $fromBefore = $from->balance;
+        $from->balance -= $amount;
+        $from->save();
+
+        $toBefore = $to->balance;
+        $to->balance += $amount;
+        $to->save();
+
+        $metadata += ['reference_id' => $reference->getKey()];
+
+        $fromEntry = $this->createEntry(
+            entryType: $entryType,
+            referenceable: $reference,
+            wallet: $from,
+            customerId: $from instanceof Wallet ? $from->customer_id : null,
+            debit: $amount,
+            credit: 0,
+            balanceBefore: $fromBefore,
+            balanceAfter: $from->balance,
+            metadata: $metadata
+        );
+
+        $toEntry = $this->createEntry(
+            entryType: $entryType,
+            referenceable: $reference,
+            wallet: $to,
+            customerId: $to instanceof Wallet ? $to->customer_id : null,
+            debit: 0,
+            credit: $amount,
+            balanceBefore: $toBefore,
+            balanceAfter: $to->balance,
+            metadata: $metadata
+        );
+
+        return [$fromEntry, $toEntry];
     }
 
     /**
@@ -1119,6 +1196,7 @@ class LedgerService
             $wallet instanceof DisputedTransaction => LedgerEntry::WALLET_TYPE_DISPUTE,
             $wallet instanceof ReferralWallet => LedgerEntry::WALLET_TYPE_REFERRAL,
             $wallet instanceof BetShopWallet => LedgerEntry::WALLET_TYPE_BET_SHOP,
+            $wallet instanceof ShopWithdrawal => LedgerEntry::WALLET_TYPE_SHOP_WITHDRAWAL,
             default => LedgerEntry::WALLET_TYPE_WALLET,
         };
     }

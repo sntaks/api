@@ -255,7 +255,7 @@ return [
     | Categories: cash_in, cash_out, stake, payout, house_revenue, refund,
     | adjustment, transfer, escrow_movement, coin, tax_withheld,
     | referral_bonus, referral_payout, promotion, capital, shop_float,
-    | shop_load.
+    | shop_load, shop_cash_out.
     |
     | capital entries (house_funding) are owner money paid into the paybill and
     | credited to the house wallet. Single-sided like deposits (the cash side
@@ -275,6 +275,11 @@ return [
     | float goes down by what a player's wallet goes up when the shop loads
     | them with cash (excise duty is then taken as for deposits).
     |
+    | shop_withdrawals hold a player's cash withdrawal at a shop until it is
+    | paid (shop_withdrawal_hold / _release move it out of and back to the
+    | wallet). shop_cash_out entries are paired: the withdrawal goes down by
+    | what the shop float goes up when the owner hands over the cash.
+    |
     */
 
     'accounts' => [
@@ -286,6 +291,7 @@ return [
         'disputed_funds' => ['label' => 'Disputed funds (complaints)', 'type' => 'liability'],
         'referral_wallets' => ['label' => 'Referral wallets (unspent bonuses)', 'type' => 'contingent'],
         'bet_shop_floats' => ['label' => 'Bet shop floats (prepaid)', 'type' => 'liability'],
+        'shop_withdrawals' => ['label' => 'Shop cash withdrawals waiting to be paid', 'type' => 'liability'],
     ],
 
     'entry_types' => [
@@ -314,6 +320,9 @@ return [
         'house_funding' => 'capital',
         'shop_float_purchase' => 'shop_float',
         'shop_load' => 'shop_load',
+        'shop_withdrawal_hold' => 'escrow_movement',
+        'shop_withdrawal_release' => 'escrow_movement',
+        'shop_cash_out' => 'shop_cash_out',
     ],
 
 ];
