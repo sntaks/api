@@ -13,6 +13,7 @@ use App\Models\GameWallet;
 use App\Models\MpesaBalance;
 use App\Models\PendingBalance;
 use App\Models\ReferralWallet;
+use App\Models\ShopWithdrawal;
 use App\Models\Wallet;
 
 class FinanceSnapshotService
@@ -37,8 +38,9 @@ class FinanceSnapshotService
      * Disputed funds are winnings held in dispute escrow while a complaint is pending.
      * Referral wallets are referral bonuses not yet withdrawn (test customers excluded).
      * Bet shop floats are prepaid float shop owners bought and have not yet loaded to players.
+     * Shop withdrawals held are cash withdrawals players asked for at a shop and have not collected yet.
      *
-     * @return array{customer_wallets_total: float, house_wallet_balance: float, game_escrow_total: float, competition_escrow_total: float, stuck_escrow_total: float, coin_liability: float, pending_holds_total: float, unmatched_deposits_total: float, excise_duty_payable: float, disputed_funds_total: float, referral_wallets_total: float, bet_shop_floats_total: float, mpesa_balances: array<string, array<string, array{amount: float, as_of: string}>>|null}
+     * @return array{customer_wallets_total: float, house_wallet_balance: float, game_escrow_total: float, competition_escrow_total: float, stuck_escrow_total: float, coin_liability: float, pending_holds_total: float, unmatched_deposits_total: float, excise_duty_payable: float, disputed_funds_total: float, referral_wallets_total: float, bet_shop_floats_total: float, shop_withdrawals_held_total: float, mpesa_balances: array<string, array<string, array{amount: float, as_of: string}>>|null}
      */
     public function currentPosition(): array
     {
@@ -65,6 +67,7 @@ class FinanceSnapshotService
             'disputed_funds_total' => $this->money(DisputedTransaction::held()->sum('balance')),
             'referral_wallets_total' => $this->money(ReferralWallet::whereNotIn('customer_id', $testCustomerIds)->sum('balance')),
             'bet_shop_floats_total' => $this->money(BetShopWallet::sum('balance')),
+            'shop_withdrawals_held_total' => $this->money(ShopWithdrawal::where('status', ShopWithdrawal::STATUS_PENDING)->sum('balance')),
             'mpesa_balances' => $this->latestMpesaBalances(),
         ];
     }

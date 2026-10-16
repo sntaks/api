@@ -13,6 +13,7 @@ use App\Models\GameTransaction;
 use App\Models\GameWallet;
 use App\Models\PendingBalance;
 use App\Models\ReferralWithdrawal;
+use App\Models\ShopWithdrawal;
 use App\Models\Wallet;
 use App\Models\Withdraw;
 use Illuminate\Support\Arr;
@@ -107,12 +108,14 @@ class CustomerService
             return ['customer' => $customer, 'wallet' => null, 'total' => 0, 'transactions' => collect()];
         }
 
-        // Cash loads at bet shops count as money in; a reversed one (status 3) is left out.
+        // Cash loads at bet shops count as money in and shop cash withdrawals as money out; a reversed load
+        // or a cancelled, rejected or expired withdrawal (status 3) is left out.
         $shopLoads = fn ($query) => $query->where('payment_type', BetShopLoad::class)->where('status', 2);
+        $shopWithdrawals = fn ($query) => $query->where('payment_type', ShopWithdrawal::class)->whereIn('status', [1, 2]);
 
         if ($paymentType === 'all') {
             $history = fn () => $wallet->transactions()
-                ->where(fn ($query) => $query->whereIn('payment_type', [Deposit::class, Withdraw::class])->orWhere($shopLoads));
+                ->where(fn ($query) => $query->whereIn('payment_type', [Deposit::class, Withdraw::class])->orWhere($shopLoads)->orWhere($shopWithdrawals));
 
             $transactions = $history()->limit(10)->latest()->get();
             $total = $history()->sum('amount');
@@ -124,6 +127,7 @@ class CustomerService
             'deposit' => Deposit::class,
             'withdraw' => Withdraw::class,
             'shop_load' => BetShopLoad::class,
+            'shop_withdrawal' => ShopWithdrawal::class,
             default => null,
         };
 
@@ -131,9 +135,11 @@ class CustomerService
             return ['customer' => $customer, 'wallet' => $wallet, 'invalid_type' => true, 'total' => 0, 'transactions' => collect()];
         }
 
-        $history = fn () => $type === BetShopLoad::class
-            ? $wallet->transactions()->where($shopLoads)
-            : $wallet->transactions()->where('payment_type', $type);
+        $history = fn () => match ($type) {
+            BetShopLoad::class => $wallet->transactions()->where($shopLoads),
+            ShopWithdrawal::class => $wallet->transactions()->where($shopWithdrawals),
+            default => $wallet->transactions()->where('payment_type', $type),
+        };
 
         $transactions = $history()->limit(10)->latest()->get();
         $total = $history()->sum('amount');
@@ -681,6 +687,10 @@ class CustomerService
 
         if ($hasPendingReferralWithdrawal) {
             $open[] = 'pending_referral_withdrawal';
+        }
+
+        if (ShopWithdrawal::where('customer_id', $customer->id)->where('status', ShopWithdrawal::STATUS_PENDING)->exists()) {
+            $open[] = 'pending_shop_withdrawal';
         }
 
         if (PendingBalance::where('customer_id', $customer->id)->where('status', 'holding')->exists()) {

@@ -50,6 +50,7 @@ use App\Http\Controllers\api\v1\ReferralController;
 use App\Http\Controllers\api\v1\ReferralWithdrawalController;
 use App\Http\Controllers\api\v1\RegisterC2BUrlsController;
 use App\Http\Controllers\api\v1\ShopController;
+use App\Http\Controllers\api\v1\ShopWithdrawalController;
 use App\Http\Controllers\api\v1\StatsController;
 use App\Http\Controllers\api\v1\StkCallbackController;
 use App\Http\Controllers\api\v1\StkDepositController;
@@ -137,6 +138,7 @@ Route::prefix('/v1')->group(function () {
         Route::get('/bet-shops', [BetShopController::class, 'index']);
         Route::post('/bet-shops', [BetShopController::class, 'store'])->middleware(['idempotency', 'throttle:write']);
         Route::get('/bet-shops/loads', [BetShopLoadController::class, 'index']);
+        Route::get('/bet-shops/withdrawals', [ShopWithdrawalController::class, 'gmsIndex']);
 
         // Shop system: shop API keys only, always acting for the key's own shop
         Route::prefix('/shop')->middleware(['shop.key', 'throttle:shop'])->group(function () {
@@ -144,6 +146,9 @@ Route::prefix('/v1')->group(function () {
             Route::get('/players/{playerNo}', [ShopController::class, 'player'])->middleware('throttle:shop-lookup');
             Route::post('/loads', [ShopController::class, 'storeLoad'])->middleware(['idempotency.required', 'idempotency']);
             Route::get('/loads', [ShopController::class, 'loads']);
+            Route::get('/withdrawals', [ShopController::class, 'withdrawals']);
+            Route::post('/withdrawals/{withdrawalId}/pay', [ShopController::class, 'payWithdrawal'])->middleware(['idempotency.required', 'idempotency']);
+            Route::post('/withdrawals/{withdrawalId}/reject', [ShopController::class, 'rejectWithdrawal'])->middleware('idempotency');
         });
 
         // Stats routes
@@ -288,6 +293,11 @@ Route::prefix('/v1')->group(function () {
             Route::get('/bet-shops/{encryptedIdentifier}/float-purchases', [BetShopFloatController::class, 'index']);
             Route::get('/bet-shops/{encryptedIdentifier}/loads', [BetShopLoadController::class, 'index']);
             Route::post('/bet-shops/loads/{encryptedIdentifier}/reverse', [BetShopLoadController::class, 'reverse'])->middleware(['idempotency', 'throttle:write']);
+            Route::get('/bet-shops/{encryptedIdentifier}/withdrawals', [ShopWithdrawalController::class, 'gmsIndex']);
+            // Cash withdrawals at a bet shop, asked for by the player
+            Route::post('/customers/{encryptedIdentifier}/shop-withdrawals', [ShopWithdrawalController::class, 'store'])->middleware(['throttle:financial', 'idempotency']);
+            Route::get('/customers/{encryptedIdentifier}/shop-withdrawals', [ShopWithdrawalController::class, 'index']);
+            Route::post('/customers/{encryptedIdentifier}/shop-withdrawals/{withdrawalId}/cancel', [ShopWithdrawalController::class, 'cancel'])->middleware(['idempotency', 'throttle:write']);
 
             // Wallet Transfer Routes
             Route::post('/wallets/transfer/{encryptedIdentifier}', WalletTransferController::class)->middleware(['idempotency', 'throttle:write']);

@@ -258,8 +258,13 @@ it('schedules the snapshot daily at the configured time', function () {
 
     $output = Artisan::output();
 
-    expect($output)->toContain('59 23 * * *');
-    expect($output)->toContain('finance:snapshot');
+    expect($output)->toMatch('/59\s+23 \* \* \*\s+php artisan finance:snapshot/');
+});
+
+it('expires uncollected shop withdrawals every five minutes', function () {
+    Artisan::call('schedule:list');
+
+    expect(Artisan::output())->toMatch('/\*\/5\s+\*\s+\* \* \*\s+php artisan shop-withdrawals:expire/');
 });
 
 it('has a factory for snapshots', function () {

@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\BetShopLoad;
 use App\Models\Deposit;
+use App\Models\ShopWithdrawal;
 use App\Models\Withdraw;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -43,6 +44,7 @@ class CustomerResource extends JsonResource
                 'deposits' => $walletTransactions->where('payment_type', Deposit::class)->sum('amount'),
                 'shop_loads' => $walletTransactions->where('payment_type', BetShopLoad::class)->where('status', 2)->sum('amount'),
                 'withdraws' => $walletTransactions->where('payment_type', Withdraw::class)->sum('amount'),
+                'shop_withdrawals' => $walletTransactions->where('payment_type', ShopWithdrawal::class)->where('status', 2)->sum('amount'),
             ]);
         }
 

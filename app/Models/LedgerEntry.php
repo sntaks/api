@@ -26,6 +26,8 @@ class LedgerEntry extends Model
 
     public const WALLET_TYPE_BET_SHOP = 'bet_shop';
 
+    public const WALLET_TYPE_SHOP_WITHDRAWAL = 'shop_withdrawal';
+
     protected $fillable = [
         'entry_id',
         'entry_type',

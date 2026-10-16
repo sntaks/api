@@ -25,6 +25,7 @@ class FinancialSnapshot extends Model
         'disputed_funds_total',
         'referral_wallets_total',
         'bet_shop_floats_total',
+        'shop_withdrawals_held_total',
         'mpesa_balances',
         'taken_at',
     ];
@@ -48,6 +49,7 @@ class FinancialSnapshot extends Model
             'disputed_funds_total' => 'decimal:2',
             'referral_wallets_total' => 'decimal:2',
             'bet_shop_floats_total' => 'decimal:2',
+            'shop_withdrawals_held_total' => 'decimal:2',
             'mpesa_balances' => 'array',
             'taken_at' => 'datetime',
         ];

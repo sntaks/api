@@ -11,6 +11,7 @@ use App\Models\GameTransaction;
 use App\Models\LedgerEntry;
 use App\Models\MpesaBalance;
 use App\Models\ReferralWithdrawal;
+use App\Models\ShopWithdrawal;
 use App\Models\Withdraw;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -40,6 +41,7 @@ class FinanceReconciliationService
             $this->ledgerDrift('dispute_escrow_drift', 'Dispute escrow balances match the ledger', 'disputed_transactions', LedgerEntry::WALLET_TYPE_DISPUTE, false),
             $this->ledgerDrift('referral_wallet_drift', 'Referral wallet balances match the ledger', 'referral_wallets', LedgerEntry::WALLET_TYPE_REFERRAL, false),
             $this->ledgerDrift('bet_shop_float_drift', 'Bet shop float balances match the ledger', 'bet_shop_wallets', LedgerEntry::WALLET_TYPE_BET_SHOP, false),
+            $this->ledgerDrift('shop_withdrawal_drift', 'Shop cash withdrawal balances match the ledger', 'shop_withdrawals', LedgerEntry::WALLET_TYPE_SHOP_WITHDRAWAL, false),
             $this->ledgerChain($range),
             $this->ledgerIdentity($range),
             $this->unclassifiedEntries(),
@@ -64,6 +66,8 @@ class FinanceReconciliationService
             $this->houseFundingLedger($range),
             $this->shopFloatLedger($range),
             $this->shopLoadsLedger($range),
+            $this->staleShopWithdrawals(),
+            $this->heldOnClosedShopWithdrawals(),
             $this->houseCutRates($range),
             $this->mpesaBalanceFreshness(),
             $this->cashCoverage(),
@@ -503,7 +507,7 @@ class FinanceReconciliationService
      */
     private function negativeBalances(): array
     {
-        $rows = collect(['wallets' => 'customer', 'game_wallets' => 'game', 'competition_wallets' => 'competition', 'referral_wallets' => 'referral', 'bet_shop_wallets' => 'bet_shop'])
+        $rows = collect(['wallets' => 'customer', 'game_wallets' => 'game', 'competition_wallets' => 'competition', 'referral_wallets' => 'referral', 'bet_shop_wallets' => 'bet_shop', 'shop_withdrawals' => 'shop_withdrawal'])
             ->flatMap(fn (string $kind, string $table) => DB::table($table)
                 ->where('balance', '<', 0)
                 ->get(['id', 'balance'])
@@ -713,6 +717,50 @@ class FinanceReconciliationService
     }
 
     /**
+     * Pending shop withdrawals long past their expiry: the expiry job is not running, so players' money
+     * is held for no one.
+     *
+     * @return array<string, mixed>
+     */
+    private function staleShopWithdrawals(): array
+    {
+        $stale = DB::table('shop_withdrawals')
+            ->where('status', ShopWithdrawal::STATUS_PENDING)
+            ->where('expires_at', '<', now()->subHour());
+
+        return $this->result(
+            'stale_shop_withdrawals',
+            'Shop cash withdrawals past their expiry are given back',
+            'warn',
+            (clone $stale)->count(),
+            (float) (clone $stale)->sum('balance'),
+            (clone $stale)->orderBy('expires_at')->limit(self::SAMPLE_SIZE)->get(['id', 'withdrawal_id', 'bet_shop_id', 'customer_id', 'balance', 'expires_at'])->map(fn ($row) => (array) $row)->all(),
+            'More than an hour past expiry and still holding the money: check that the scheduler runs shop-withdrawals:expire.'
+        );
+    }
+
+    /**
+     * A paid, cancelled, rejected or expired shop withdrawal must hold nothing.
+     *
+     * @return array<string, mixed>
+     */
+    private function heldOnClosedShopWithdrawals(): array
+    {
+        $held = DB::table('shop_withdrawals')
+            ->where('status', '!=', ShopWithdrawal::STATUS_PENDING)
+            ->whereRaw('ABS(balance) > ?', [$this->tolerance()]);
+
+        return $this->result(
+            'held_on_closed_shop_withdrawals',
+            'Closed shop cash withdrawals hold no money',
+            'fail',
+            (clone $held)->count(),
+            (float) (clone $held)->sum('balance'),
+            (clone $held)->limit(self::SAMPLE_SIZE)->get(['id', 'withdrawal_id', 'status', 'balance'])->map(fn ($row) => (array) $row)->all()
+        );
+    }
+
+    /**
      * Each shop load moved its gross amount from the shop float to the player's wallet (a matching pair of
      * shop_load entries), and gross = excise + net.
      *
@@ -868,7 +916,7 @@ class FinanceReconciliationService
         $owed = $position['customer_wallets_total'] + $position['game_escrow_total'] + $position['competition_escrow_total']
             + $position['stuck_escrow_total'] + $position['coin_liability'] + $position['pending_holds_total']
             + $position['unmatched_deposits_total'] + $position['excise_duty_payable'] + $position['disputed_funds_total']
-            + $position['referral_wallets_total'] + $position['bet_shop_floats_total'];
+            + $position['referral_wallets_total'] + $position['bet_shop_floats_total'] + $position['shop_withdrawals_held_total'];
 
         $shortfall = round($owed - $cash, 2);
 

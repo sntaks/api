@@ -779,7 +779,7 @@ Content-Type: application/json
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-409">409 Conflict</span></div>
-<p class="endpoint-note">A soft delete: the customer stops appearing in lookups, searches and lists, but the customer row and their wallet are kept, so their history (ledger, deposits, games, finance reports) still points at them. Payments later made to their account number are kept as <a href="#" data-section="deposits" style="color:var(--accent-blue)">unmatched deposits</a>, their referral code stops matching signups and they earn no further referral bonuses. Refused with <code>409</code> while the customer holds money or has activity in progress; <code>open</code> lists what is in the way: <code>wallet_balance</code> (not 0, including negative), <code>coin_balance</code>, <code>referral_balance</code>, <code>open_game</code> (a stake in a game that still holds money), <code>open_competition</code>, <code>pending_withdrawal</code> (waiting on M-Pesa), <code>pending_referral_withdrawal</code>, <code>pending_hold</code>, <code>open_dispute</code>, or <code>house_wallet</code> (the house customer can never be deleted). To stop a customer without deleting them, set <code>status</code> to 0.</p>
+<p class="endpoint-note">A soft delete: the customer stops appearing in lookups, searches and lists, but the customer row and their wallet are kept, so their history (ledger, deposits, games, finance reports) still points at them. Payments later made to their account number are kept as <a href="#" data-section="deposits" style="color:var(--accent-blue)">unmatched deposits</a>, their referral code stops matching signups and they earn no further referral bonuses. Refused with <code>409</code> while the customer holds money or has activity in progress; <code>open</code> lists what is in the way: <code>wallet_balance</code> (not 0, including negative), <code>coin_balance</code>, <code>referral_balance</code>, <code>open_game</code> (a stake in a game that still holds money), <code>open_competition</code>, <code>pending_withdrawal</code> (waiting on M-Pesa), <code>pending_referral_withdrawal</code>, <code>pending_hold</code>, <code>open_dispute</code>, <code>pending_shop_withdrawal</code> (a cash withdrawal at a bet shop not yet collected), or <code>house_wallet</code> (the house customer can never be deleted). To stop a customer without deleting them, set <code>status</code> to 0.</p>
 <div class="endpoint-section"><h4>Path Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -981,7 +981,7 @@ Accept: application/json</pre></div>
 <div class="endpoint-section"><h4>Request Body</h4>
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-<tr><td>payment_type</td><td>string</td><td><span class="required">Required</span></td><td><code>all</code>, <code>deposit</code>, <code>withdraw</code> or <code>shop_load</code> (cash loaded at a <a href="#" data-section="bet-shops" style="color:var(--accent-blue)">bet shop</a>, <code>payment_type</code> <code>App\Models\BetShopLoad</code>, amount after excise duty). <code>all</code> includes shop loads; reversed shop loads are left out.</td></tr>
+<tr><td>payment_type</td><td>string</td><td><span class="required">Required</span></td><td><code>all</code>, <code>deposit</code>, <code>withdraw</code>, <code>shop_withdrawal</code> (cash collected or waiting to be collected at a bet shop, <code>payment_type</code> <code>App\Models\ShopWithdrawal</code>) or <code>shop_load</code> (cash loaded at a <a href="#" data-section="bet-shops" style="color:var(--accent-blue)">bet shop</a>, <code>payment_type</code> <code>App\Models\BetShopLoad</code>, amount after excise duty). <code>all</code> includes shop loads and shop withdrawals; reversed loads and cancelled, rejected or expired withdrawals are left out.</td></tr>
 </table></div>
 <div class="endpoint-section"><h4>Example Request</h4>
 <pre>POST /api/v1/customers/transactions/{encryptedIdentifier} HTTP/1.1
@@ -5354,12 +5354,95 @@ Content-Type: application/json
 <p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 404, 422: see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 
+<div class="callback-note"><strong>Cash withdrawals at a shop.</strong> Only the <strong>player</strong> can ask for one, from the client while logged in: the amount leaves their wallet at once and is held on the withdrawal, and they get a 6-digit <strong>pickup code</strong> shown only to them, only once. At the counter they give the code; the shop enters it, hands over the cash from its till, and the amount goes to the shop's float. A request that is not collected within 24 hours expires and the money goes back to the wallet (the scheduler runs <code>shop-withdrawals:expire</code> every 5 minutes); so does one the player cancels, one the shop rejects (e.g. not enough cash in the till), and one that gets 5 wrong codes (so a shop cannot guess its way in). KES 50 to 20,000, whole shillings. The player needs an ID number on the account (<code>id_no</code>), and locked signup bonus cannot be withdrawn. While pending, the money is owed to the player: it shows as <code>shop_withdrawals</code> on the balance sheet and the customer cannot be deleted.</div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/shop-withdrawals</span><span class="endpoint-desc">The player asks for cash at a shop</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">5/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Send it for the logged-in player only. Takes <code>amount</code> out of their wallet and returns the <code>pickup_code</code> in this response only: show it to the player (it is stored hashed and can never be shown again; a player who loses it cancels and asks again). Refusals carry <code>code</code>: <code>shop_not_found</code> (404), <code>shop_not_active</code> (409), <code>player_inactive</code> (409), <code>id_required</code> (422), <code>insufficient_balance</code> (409), <code>signup_bonus_locked</code> (400).</p></div>
+<div class="endpoint-section"><h4>Path Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>encryptedIdentifier</td><td>string</td><td><span class="required">Required</span></td><td>The customer: an encrypted customer id or encrypted account number</td></tr></table></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>shop_no</td><td>string</td><td><span class="required">Required</span></td><td>The shop the player will collect at</td></tr><tr><td>amount</td><td>integer</td><td><span class="required">Required</span></td><td>Whole shillings, 50 to 20,000</td></tr></table></div>
+<div class="endpoint-section"><h4>Request</h4>
+<pre>POST /api/v1/customers/{encryptedIdentifier}/shop-withdrawals HTTP/1.1
+Host: api.kadi-kings.co.ke
+X-API-KEY: your-api-key-here
+Idempotency-Key: 7c1d...
+Content-Type: application/json
+
+{"shop_no": "S101", "amount": 1000}</pre></div>
+<div class="endpoint-section"><h4>Response (201)</h4>
+<pre>{"success": true, "message": "Show this pickup code at the shop to collect the cash. It is not shown again.", "data": {"withdrawal_id": "9d2f6c1e-3b7a-4c55-8e0d-2a1f4b6c7d8e", "shop_no": "S101", "shop_name": "Kariobangi Bet Shop", "amount": 1000.00, "status": "pending", "expires_at": "2026-10-17T10:00:00+03:00", "requested_at": "2026-10-16T10:00:00+03:00", "closed_at": null, "close_reason": null, "pickup_code": "482913"}}</pre></div>
+<div class="endpoint-section"><h4>Response (422)</h4>
+<pre>{"success": false, "message": "An ID number is needed on the account to withdraw cash at a shop", "code": "id_required"}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 404 (customer), 429: see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/shop-withdrawals</span><span class="endpoint-desc">The player's shop withdrawals</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Newest first, never with the pickup code.</p></div>
+<div class="endpoint-section"><h4>Path Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>encryptedIdentifier</td><td>string</td><td><span class="required">Required</span></td><td>The customer: an encrypted customer id or encrypted account number</td></tr></table></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>status</td><td>string</td><td><span class="optional">Optional</span></td><td><code>pending</code>, <code>paid</code>, <code>cancelled</code>, <code>rejected</code> or <code>expired</code></td></tr><tr><td>page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 1</td></tr><tr><td>per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 200, default 50</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "data": {"items": [{"withdrawal_id": "9d2f6c1e-3b7a-4c55-8e0d-2a1f4b6c7d8e", "shop_no": "S101", "shop_name": "Kariobangi Bet Shop", "amount": 1000.00, "status": "pending", "expires_at": "2026-10-17T10:00:00+03:00", "requested_at": "2026-10-16T10:00:00+03:00", "closed_at": null, "close_reason": null}], "pagination": {"page": 1, "per_page": 50, "total": 1, "last_page": 1}}}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 404: see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/shop-withdrawals/{withdrawalId}/cancel</span><span class="endpoint-desc">The player cancels a pending request</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">The money goes back to the wallet. Only the customer's own requests (404 otherwise), and only pending ones (409 <code>not_pending</code>).</p></div>
+<div class="endpoint-section"><h4>Path Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>encryptedIdentifier</td><td>string</td><td><span class="required">Required</span></td><td>The customer: an encrypted customer id or encrypted account number</td></tr><tr><td>withdrawalId</td><td>string</td><td><span class="required">Required</span></td><td>The withdrawal's <code>withdrawal_id</code> (a UUID, not encrypted)</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Withdrawal cancelled; the money is back in the wallet", "data": { ..., "status": "cancelled", "close_reason": "Cancelled by the player" }}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 404: see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/bet-shops/withdrawals</span><span class="endpoint-desc">Every shop's cash withdrawals</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">GMS: newest first, with the player's full name and customer id.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>status</td><td>string</td><td><span class="optional">Optional</span></td><td><code>pending</code>, <code>paid</code>, <code>cancelled</code>, <code>rejected</code> or <code>expired</code></td></tr><tr><td>page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 1</td></tr><tr><td>per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 200, default 50</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "data": {"items": [{"withdrawal_id": "9d2f6c1e-3b7a-4c55-8e0d-2a1f4b6c7d8e", "shop_no": "S101", "shop_name": "Kariobangi Bet Shop", "amount": 1000.00, "status": "pending", "expires_at": "2026-10-17T10:00:00+03:00", "requested_at": "2026-10-16T10:00:00+03:00", "closed_at": null, "player": {"player_no": "1234 5671", "name": "Grace W****"}, "failed_attempts": 0, "close_reason": null, "id": 18, "bet_shop_id": 3, "customer_id": 900, "customer_name": "Grace Wanjiku", "requested_by": "api_key:2", "closed_by": null}], "pagination": { ... }}}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/bet-shops/{encryptedIdentifier}/withdrawals</span><span class="endpoint-desc">A shop's cash withdrawals</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">The same as <code>GET /bet-shops/withdrawals</code> for one shop.</p></div>
+<div class="endpoint-section"><h4>Path Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>encryptedIdentifier</td><td>string</td><td><span class="required">Required</span></td><td>The shop: an encrypted bet shop id</td></tr></table></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>status</td><td>string</td><td><span class="optional">Optional</span></td><td><code>pending</code>, <code>paid</code>, <code>cancelled</code>, <code>rejected</code> or <code>expired</code></td></tr><tr><td>page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 1</td></tr><tr><td>per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 200, default 50</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "data": {"items": [ ... ], "pagination": { ... }}}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 404: see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
 </div>
 
 <!-- SHOP SYSTEM SECTION -->
 <div class="doc-section" data-section="shop-system">
 <button class="expand-all" onclick="toggleAll('shop-system')">Expand / Collapse All</button>
-<div class="callback-note"><strong>For the shop's desktop system.</strong> Every request uses the shop's own API key (issued by GMS under <a href="#" data-section="bet-shops" style="color:var(--accent-blue)">Bet Shops</a>) in <code>X-API-KEY</code>. A shop key works only on these routes (403 anywhere else), and always acts for its own shop: the shop is never taken from the request. A suspended or closed shop gets 403 <code>shop_not_active</code>. Limits per key: 60 requests a minute, of which 30 player lookups. <strong>Loading a player:</strong> ask for their 8-digit player number (shown to them in the app, e.g. <code>1234 5678</code>), look it up, confirm the masked name with them, take the cash, then load. Each load needs a new <code>Idempotency-Key</code>; when a load times out, retry it with the <strong>same</strong> key and it is never loaded twice. The player receives the amount less 5% excise duty (KES 1,000 cash: KES 950 in the wallet), the shop float goes down by the full amount, and the shop keeps the cash. A load is whole shillings, KES 50 to 20,000, and one player can be loaded at most KES 50,000 a day across all shops. A mistake is reversed by Kadi Kings, never by the shop.</div>
+<div class="callback-note"><strong>For the shop's desktop system.</strong> Every request uses the shop's own API key (issued by GMS under <a href="#" data-section="bet-shops" style="color:var(--accent-blue)">Bet Shops</a>) in <code>X-API-KEY</code>. A shop key works only on these routes (403 anywhere else), and always acts for its own shop: the shop is never taken from the request. A suspended or closed shop gets 403 <code>shop_not_active</code>. Limits per key: 60 requests a minute, of which 30 player lookups. <strong>Loading a player:</strong> ask for their 8-digit player number (shown to them in the app, e.g. <code>1234 5678</code>), look it up, confirm the masked name with them, take the cash, then load. Each load needs a new <code>Idempotency-Key</code>; when a load times out, retry it with the <strong>same</strong> key and it is never loaded twice. The player receives the amount less 5% excise duty (KES 1,000 cash: KES 950 in the wallet), the shop float goes down by the full amount, and the shop keeps the cash. A load is whole shillings, KES 50 to 20,000, and one player can be loaded at most KES 50,000 a day across all shops. A mistake is reversed by Kadi Kings, never by the shop. <strong>Paying out cash:</strong> a player asks for a withdrawal in the app and gets a pickup code. It appears in <code>GET /shop/withdrawals</code>; at the counter, take the code from the player, pay it with <code>POST /shop/withdrawals/{id}/pay</code>, and hand over the cash only after a <code>200</code>. The amount is added to your float.</div>
 
 <div class="endpoint">
 <div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/shop/me</span><span class="endpoint-desc">The shop, its float and today's loads</span><span class="chevron">&#9654;</span></div>
@@ -5427,6 +5510,59 @@ Content-Type: application/json
 <div class="endpoint-section"><h4>Response (200)</h4>
 <pre>{"success": true, "data": {"items": [{"id": 41, "load_id": "5b1c7f2e-...", "shop_no": "S101", "player": {"player_no": "1234 5671", "name": "Grace K****", "active": true}, "gross_amount": 1000.00, "excise_amount": 50.00, "net_amount": 950.00, "status": "completed", "loaded_at": "...", "reversed_at": null}], "pagination": {"page": 1, "per_page": 50, "total": 1, "last_page": 1}}}</pre></div>
 <p class="endpoint-note">Also returns 401 (API key), 403: see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/shop/withdrawals</span><span class="endpoint-desc">Cash withdrawals players asked for at this shop</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Pending ones by default (pass <code>status</code> for others), newest first, with the player's number and masked name. Never the pickup code: the player gives it at the counter.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>status</td><td>string</td><td><span class="optional">Optional</span></td><td>Default <code>pending</code>; or <code>paid</code>, <code>cancelled</code>, <code>rejected</code>, <code>expired</code></td></tr><tr><td>page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 1</td></tr><tr><td>per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 200, default 50</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "data": {"items": [{"withdrawal_id": "9d2f6c1e-3b7a-4c55-8e0d-2a1f4b6c7d8e", "shop_no": "S101", "shop_name": "Kariobangi Bet Shop", "amount": 1000.00, "status": "pending", "expires_at": "2026-10-17T10:00:00+03:00", "requested_at": "2026-10-16T10:00:00+03:00", "closed_at": null, "player": {"player_no": "1234 5671", "name": "Grace W****"}, "failed_attempts": 0}], "pagination": {"page": 1, "per_page": 50, "total": 1, "last_page": 1}}}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 403: see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/shop/withdrawals/{withdrawalId}/pay</span><span class="endpoint-desc">Pay a player their cash</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-idempotent">Idempotent</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Enter the pickup code the player gives you. When it is right the request is paid: hand over <code>amount</code> in cash, and the amount is added to the shop float. Requires an <code>Idempotency-Key</code> (400 <code>idempotency_key_required</code> without one): a new key for each attempt, the same key only to retry one that timed out. A wrong code returns 422 <code>wrong_code</code> with <code>attempts_left</code>; the 5th wrong code cancels the request and gives the money back to the player (409 <code>too_many_attempts</code>). Also 409 <code>not_pending</code> (already paid, cancelled, rejected or expired) and 409 <code>expired</code> (past its 24 hours: the money went back). Only this shop's requests (404 otherwise).</p></div>
+<div class="endpoint-section"><h4>Path Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>withdrawalId</td><td>string</td><td><span class="required">Required</span></td><td>The withdrawal's <code>withdrawal_id</code> (a UUID, not encrypted)</td></tr></table></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>pickup_code</td><td>string</td><td><span class="required">Required</span></td><td>The 6-digit code from the player</td></tr></table></div>
+<div class="endpoint-section"><h4>Request</h4>
+<pre>POST /api/v1/shop/withdrawals/9d2f6c1e-3b7a-4c55-8e0d-2a1f4b6c7d8e/pay HTTP/1.1
+Host: api.kadi-kings.co.ke
+X-API-KEY: shop-api-key-here
+Idempotency-Key: 4a7e-pay-0001
+Content-Type: application/json
+
+{"pickup_code": "482913"}</pre></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Paid. Hand the player KES 1,000", "data": {"withdrawal_id": "9d2f6c1e-3b7a-4c55-8e0d-2a1f4b6c7d8e", "shop_no": "S101", "shop_name": "Kariobangi Bet Shop", "amount": 1000.00, "status": "paid", "expires_at": "2026-10-17T10:00:00+03:00", "requested_at": "2026-10-16T10:00:00+03:00", "closed_at": null, "player": {"player_no": "1234 5671", "name": "Grace W****"}, "failed_attempts": 0, "float_balance": 13500.00}}</pre></div>
+<div class="endpoint-section"><h4>Response (422)</h4>
+<pre>{"success": false, "code": "wrong_code", "message": "That pickup code is wrong", "attempts_left": 4}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 403: see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/shop/withdrawals/{withdrawalId}/reject</span><span class="endpoint-desc">Turn a cash withdrawal down</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-idempotent">Idempotent</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">For example when the till does not have the cash. The money goes back to the player's wallet. Only pending requests of this shop.</p></div>
+<div class="endpoint-section"><h4>Path Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>withdrawalId</td><td>string</td><td><span class="required">Required</span></td><td>The withdrawal's <code>withdrawal_id</code> (a UUID, not encrypted)</td></tr></table></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>reason</td><td>string</td><td><span class="required">Required</span></td><td>3 to 255 characters; the player sees it</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Withdrawal rejected; the money is back in the player's wallet", "data": { ..., "status": "rejected" }}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 403, 404, 409: see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 
 </div>
@@ -6056,7 +6192,7 @@ Accept: application/json</pre></div>
     },
     "liabilities": {
       "customer_wallets": 2000.00, "game_escrow": 40.00, "competition_escrow": 0.00, "stuck_escrow": 0.00,
-      "coin_liability": 0.00, "pending_holds": 0.00, "unmatched_deposits": 75.00, "excise_duty_payable": 25.00, "disputed_funds": 0.00, "referral_wallets": 0.00, "bet_shop_floats": 0.00, "total": 2140.00
+      "coin_liability": 0.00, "pending_holds": 0.00, "unmatched_deposits": 75.00, "excise_duty_payable": 25.00, "disputed_funds": 0.00, "referral_wallets": 0.00, "bet_shop_floats": 0.00, "shop_withdrawals": 0.00, "total": 2140.00
     },
     "house_wallet": 300.00,
     "difference": 1060.00,
@@ -6073,7 +6209,7 @@ Accept: application/json</pre></div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">20/min</span></div>
 <div class="endpoint-section"><h4>Description</h4>
-<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Debits and credits per account and entry type. Deposits, withdrawals, manual adjustments, excise duty (category <code>tax_withheld</code>, owed to KRA), referral bonuses, referral payouts, house funding and bet shop float purchases (<code>shop_float_purchase</code>, category <code>shop_float</code>) are single-sided in the ledger (the cash side is M-Pesa or the referral shortcode); every other entry is paired and must net to zero. A bet shop cash load (<code>shop_load</code>) is paired: the shop float pays what the player's wallet receives. Signup bonuses (<code>promo_credit</code>, category <code>promotion</code>) are paired: the house wallet pays what the customer wallet receives. <code>check.balanced</code> says whether it does, <code>check.imbalance</code> is the amount left over, and <code>imbalance_by_category</code> shows where it comes from. Coin entries are in coins, not KES, and are left out. <code>exclude_test</code> does not apply, because the check only holds over the whole ledger.</p></div>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Debits and credits per account and entry type. Deposits, withdrawals, manual adjustments, excise duty (category <code>tax_withheld</code>, owed to KRA), referral bonuses, referral payouts, house funding and bet shop float purchases (<code>shop_float_purchase</code>, category <code>shop_float</code>) are single-sided in the ledger (the cash side is M-Pesa or the referral shortcode); every other entry is paired and must net to zero. A bet shop cash load (<code>shop_load</code>) is paired: the shop float pays what the player's wallet receives. So are shop cash withdrawals: held out of the wallet (<code>shop_withdrawal_hold</code>), given back (<code>shop_withdrawal_release</code>) or paid into the shop float (<code>shop_cash_out</code>). Signup bonuses (<code>promo_credit</code>, category <code>promotion</code>) are paired: the house wallet pays what the customer wallet receives. <code>check.balanced</code> says whether it does, <code>check.imbalance</code> is the amount left over, and <code>imbalance_by_category</code> shows where it comes from. Coin entries are in coins, not KES, and are left out. <code>exclude_test</code> does not apply, because the check only holds over the whole ledger.</p></div>
 <div class="endpoint-section"><h4>Query Parameters</h4>
 <table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
 <tr><td>from, to</td><td>date</td><td><span class="optional">Optional</span></td><td>See common parameters</td></tr></table></div>
@@ -6111,6 +6247,7 @@ Accept: application/json</pre></div>
 <tr><td>dispute_escrow_drift</td><td>fail</td><td>Same for money held in dispute escrow by complaints</td></tr>
 <tr><td>referral_wallet_drift</td><td>fail</td><td>Same for referral wallets</td></tr>
 <tr><td>bet_shop_float_drift</td><td>fail</td><td>Same for bet shop floats</td></tr>
+<tr><td>shop_withdrawal_drift</td><td>fail</td><td>Same for shop cash withdrawals waiting to be collected</td></tr>
 <tr><td>ledger_arithmetic</td><td>fail</td><td>Every ledger entry adds up: before + credit - debit = after</td></tr>
 <tr><td>ledger_balance</td><td>fail</td><td>Paired ledger entries net to zero (see trial balance)</td></tr>
 <tr><td>unclassified_entries</td><td>warn</td><td>Ledger entries that have no wallet type</td></tr>
@@ -6125,7 +6262,7 @@ Accept: application/json</pre></div>
 <tr><td>failed_withdrawals_not_reversed</td><td>fail</td><td>A payout failed but the customer was not refunded</td></tr>
 <tr><td>stuck_escrow</td><td>warn</td><td>Money left in game or competition wallets that are no longer open</td></tr>
 <tr><td>aged_escrow</td><td>warn</td><td>Open game or competition wallets holding money, untouched for over 24 hours</td></tr>
-<tr><td>negative_balances</td><td>fail</td><td>Any wallet (customer, game, competition, referral or bet shop float) with a negative balance</td></tr>
+<tr><td>negative_balances</td><td>fail</td><td>Any wallet (customer, game, competition, referral, bet shop float or shop withdrawal) with a negative balance</td></tr>
 <tr><td>held_on_closed_complaints</td><td>fail</td><td>Money still in dispute escrow for a complaint that is resolved, rejected or cancelled</td></tr>
 <tr><td>aged_disputes</td><td>warn</td><td>Complaints still pending after 3 days (<code>FINANCE_AGED_DISPUTE_DAYS</code>), with the money they hold</td></tr>
 <tr><td>stuck_referral_withdrawals</td><td>warn</td><td>Referral withdrawals still pending or processing after 24 hours. Check the payout on the referral shortcode before doing anything: a missing result does not mean it was not paid</td></tr>
@@ -6134,10 +6271,12 @@ Accept: application/json</pre></div>
 <tr><td>house_funding_ledger</td><td>fail</td><td>Each house funding has its credit to the house wallet for the full deposit and its deposit completed, and each voided one has its reversal</td></tr>
 <tr><td>shop_float_ledger</td><td>fail</td><td>Each bet shop float purchase has its credit to that shop's float for the full deposit and its deposit completed, and each voided one has its reversal</td></tr>
 <tr><td>shop_loads_ledger</td><td>fail</td><td>Each bet shop cash load moved its gross amount from the shop float to the player's wallet (a matching pair of <code>shop_load</code> entries), and gross = excise + net</td></tr>
+<tr><td>stale_shop_withdrawals</td><td>warn</td><td>Shop cash withdrawals more than an hour past their expiry still holding the money (the <code>shop-withdrawals:expire</code> job is not running)</td></tr>
+<tr><td>held_on_closed_shop_withdrawals</td><td>fail</td><td>A paid, cancelled, rejected or expired shop withdrawal still holding money</td></tr>
 <tr><td>promotion_credits_ledger</td><td>fail</td><td>Each signup bonus has its customer credit and house debit in the ledger for the gross amount, and its excise duty charge when duty was taken</td></tr>
 <tr><td>house_cut_rates</td><td>warn</td><td>House cuts that differ from the fee schedule (only cuts linked to their transaction can be checked)</td></tr>
 <tr><td>mpesa_balance_freshness</td><td>warn</td><td>M-Pesa balances fetched in the last 3 hours</td></tr>
-<tr><td>cash_coverage</td><td>fail</td><td>M-Pesa cash covers everything owed to customers (including unspent referral balances), bet shop floats and the excise duty owed to KRA</td></tr></table></div>
+<tr><td>cash_coverage</td><td>fail</td><td>M-Pesa cash covers everything owed to customers (including unspent referral balances), bet shop floats, shop withdrawals waiting to be collected and the excise duty owed to KRA</td></tr></table></div>
 <div class="endpoint-section"><h4>Response (200)</h4>
 <pre>{
   "success": true,
@@ -6410,7 +6549,7 @@ Accept: application/json</pre></div>
 <table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
 <tr><td>entry_type</td><td>string</td><td><span class="optional">Optional</span></td><td>e.g. <code>deposit</code>, <code>game_bet</code>, <code>house_cut</code>, <code>adjustment</code></td></tr>
 <tr><td>category</td><td>string</td><td><span class="optional">Optional</span></td><td>One of the categories above</td></tr>
-<tr><td>wallet_type</td><td>string</td><td><span class="optional">Optional</span></td><td><code>wallet</code>, <code>game_wallet</code>, <code>competition_wallet</code>, <code>coin_wallet</code>, <code>dispute</code> (money held by a complaint; the wallet id is the disputed transaction id), <code>referral</code>, <code>bet_shop</code> (a bet shop float)</td></tr>
+<tr><td>wallet_type</td><td>string</td><td><span class="optional">Optional</span></td><td><code>wallet</code>, <code>game_wallet</code>, <code>competition_wallet</code>, <code>coin_wallet</code>, <code>dispute</code> (money held by a complaint; the wallet id is the disputed transaction id), <code>referral</code>, <code>bet_shop</code> (a bet shop float), <code>shop_withdrawal</code> (a shop cash withdrawal waiting to be collected)</td></tr>
 <tr><td>wallet_id</td><td>integer</td><td><span class="optional">Optional</span></td><td>Use together with <code>wallet_type</code>, because ids repeat across wallet types</td></tr>
 <tr><td>customer_id</td><td>integer</td><td><span class="optional">Optional</span></td><td>Only this customer's entries</td></tr>
 <tr><td>status</td><td>string</td><td><span class="optional">Optional</span></td><td><code>settled</code> or <code>reversed</code></td></tr></table></div>

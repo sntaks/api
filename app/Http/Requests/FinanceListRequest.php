@@ -23,7 +23,7 @@ class FinanceListRequest extends FinanceReportRequest
             'type' => ['nullable', 'string', 'max:30'],
             'entry_type' => ['nullable', 'string', 'max:50'],
             'category' => ['nullable', 'string', 'max:30'],
-            'wallet_type' => ['nullable', 'in:wallet,game_wallet,competition_wallet,coin_wallet,dispute,referral,bet_shop'],
+            'wallet_type' => ['nullable', 'in:wallet,game_wallet,competition_wallet,coin_wallet,dispute,referral,bet_shop,shop_withdrawal'],
             'wallet_id' => ['nullable', 'integer', 'min:1'],
             'customer_id' => ['nullable', 'integer', 'min:1'],
             'game_type' => ['nullable', 'in:1,2'],
