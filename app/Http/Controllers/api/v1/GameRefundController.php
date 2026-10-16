@@ -26,10 +26,11 @@ class GameRefundController extends Controller
             );
 
             if (isset($result['error'])) {
-                return response()->json([
+                return response()->json(array_filter([
                     'status' => 'error',
                     'error' => $result['error'],
-                ], $result['status']);
+                    'code' => $result['code'] ?? null,
+                ]), $result['status']);
             }
 
             return response()->json(['status' => 'success']);

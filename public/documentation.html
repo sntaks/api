@@ -3457,8 +3457,8 @@ Content-Type: application/json
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
-<div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-400">400 Bad Request</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span> <span class="status-code status-500">500 Server Error</span></div>
-<p class="endpoint-note">Pays the game wallet's whole balance to <code>customer_id</code> (the winner), less a 5% house share rounded down to a whole shilling (so it never takes more than 5%), then closes the game (status 3). Only an open game can be paid.</p>
+<div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-400">400 Bad Request</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span> <span class="status-code status-500">500 Server Error</span> <span class="status-code status-409">409 Conflict</span></div>
+<p class="endpoint-note">Pays the game wallet's whole balance to <code>customer_id</code> (the winner), less a 5% house share rounded down to a whole shilling (so it never takes more than 5%), then closes the game (status 3). Only an open game can be paid. A game that is already settled (paid out, dropped or refunded) is refused with <code>409 {"code": "game_closed"}</code> and nothing moves, so a repeated or late call never pays twice.</p>
 <div class="endpoint-section"><h4>Path Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -3516,8 +3516,8 @@ Content-Type: application/json
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
-<div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-400">400 Bad Request</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-500">500 Server Error</span></div>
-<p class="endpoint-note"><code>game: 1</code> (the game had started): the dropped players' stakes, less a 10% house share (rounded up), are split equally between the <code>active</code> players (rounded down). <code>game: 0</code> (not started): each dropped player gets their stake back. The game is then closed. Ids are plain customer ids and every <code>active</code>/<code>dropped</code> id must be in <code>players</code>. The game's status is not checked, so call this once per game.</p>
+<div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-400">400 Bad Request</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-500">500 Server Error</span> <span class="status-code status-409">409 Conflict</span></div>
+<p class="endpoint-note"><code>game: 1</code> (the game had started): the dropped players' stakes, less a 10% house share (rounded up), are split equally between the <code>active</code> players (rounded down). <code>game: 0</code> (not started): each dropped player gets their stake back. The game is then closed. Ids are plain customer ids and every <code>active</code>/<code>dropped</code> id must be in <code>players</code>. Only an open game can be dropped. A game that is already settled (paid out, dropped or refunded) is refused with <code>409 {"code": "game_closed"}</code> and nothing moves, so a repeated or late call never pays twice.</p>
 <div class="endpoint-section"><h4>Path Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -3611,8 +3611,8 @@ Content-Type: application/json
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
-<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span> <span class="status-code status-500">500 Server Error</span></div>
-<p class="endpoint-note">Gives every player back the full amount they staked, including any house share taken from older <code>/game/credit</code> stakes, then closes the game. The game's status is not checked: <strong>do not call it for a game that was already paid out</strong>, or the stakes are paid back a second time.</p>
+<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span> <span class="status-code status-500">500 Server Error</span> <span class="status-code status-409">409 Conflict</span></div>
+<p class="endpoint-note">Gives every player back the full amount they staked, including any house share taken from older <code>/game/credit</code> stakes, then closes the game. Only an open game can be refunded. A game that is already settled (paid out, dropped or refunded) is refused with <code>409 {"code": "game_closed"}</code> and nothing moves, so a repeated or late call never pays twice.</p>
 <div class="endpoint-section"><h4>Request Body</h4>
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -3747,8 +3747,8 @@ Accept: application/json</pre></div>
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
-<div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-400">400 Bad Request</span> <span class="status-code status-422">422 Unprocessable</span> <span class="status-code status-500">500 Server Error</span></div>
-<p class="endpoint-note">The stake endpoint: debits the customer's wallet and credits the full <code>amount</code> to the game wallet, whatever <code>payment_type</code> says. The house takes its share when the game is settled.</p>
+<div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-400">400 Bad Request</span> <span class="status-code status-422">422 Unprocessable</span> <span class="status-code status-500">500 Server Error</span> <span class="status-code status-409">409 Conflict</span></div>
+<p class="endpoint-note">The stake endpoint: debits the customer's wallet and credits the full <code>amount</code> to the game wallet, whatever <code>payment_type</code> says. The house takes its share when the game is settled. The player's wallet and the game wallet are locked while the stake is taken, so two stakes at once cannot spend the same money. A settled game takes no more stakes: <code>409 {"code": "game_closed"}</code>.</p>
 <div class="endpoint-section"><h4>Request Body</h4>
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>

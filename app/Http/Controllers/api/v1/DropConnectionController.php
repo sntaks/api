@@ -29,7 +29,7 @@ class DropConnectionController extends Controller
             );
 
             if (isset($result['error'])) {
-                return response()->json(['status' => $result['error']], $result['status']);
+                return response()->json(array_filter(['status' => $result['error'], 'code' => $result['code'] ?? null]), $result['status']);
             }
 
             return response()->json([

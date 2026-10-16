@@ -14,7 +14,28 @@ use Illuminate\Support\Facades\DB;
 
 class GameWalletService
 {
+    /**
+     * Customer id the game system writes on the house's rows in game_transactions (house cuts and drop
+     * shares). Finance reports read house rows by it, so it stays fixed even if the house wallet id changes.
+     */
+    private const HOUSE_CUSTOMER_ID = 1;
+
     public function __construct(private LedgerService $ledgerService) {}
+
+    /**
+     * The refusal for any action on a game that is already settled (paid out, dropped or refunded).
+     *
+     * @return array{error: string, status: int, code: string}
+     */
+    private function gameClosed(): array
+    {
+        return ['error' => 'This game is already settled', 'status' => 409, 'code' => 'game_closed'];
+    }
+
+    private function houseWalletId(): int
+    {
+        return (int) config('wallets.house_wallet_id', 1);
+    }
 
     /**
      * Every game wallet, or one page of them (newest first) when a page size is given.
@@ -68,11 +89,6 @@ class GameWalletService
     private const GAME_SETTLED_TYPES = ['payout', 'payout|dropped', 'refund|full'];
 
     private const GAME_REFUND_TYPES = ['refund|full', 'refund|dropped'];
-
-    /**
-     * The house's share of a game is recorded as a transaction of customer 1.
-     */
-    private const HOUSE_CUSTOMER_ID = 1;
 
     /**
      * Every decided game, oldest first, each with its players and whether they won or lost.
@@ -246,10 +262,6 @@ class GameWalletService
             return ['error' => 'Game Wallet not found', 'status' => 404];
         }
 
-        if ($gameWallet->status !== 1) {
-            return ['error' => 'Game Wallet is not open for withdrawal', 'status' => 400];
-        }
-
         $customer = Customer::where('id', $customerId)
             ->orWhere('account_no', $customerId)
             ->first();
@@ -257,16 +269,22 @@ class GameWalletService
             return ['error' => 'Customer not found', 'status' => 404];
         }
 
-        $wallet = $customer->wallet;
-        if (! $wallet) {
+        if (! $customer->wallet) {
             return ['error' => 'Customer wallet not found', 'status' => 404];
         }
 
-        $totalBalance = $gameWallet->balance;
-        $houseShare = floor($totalBalance * config('finance.fees.game_withdrawal'));
-        $playerShare = $totalBalance - $houseShare;
+        return DB::transaction(function () use ($gameWalletId, $customer) {
+            $gameWallet = GameWallet::lockForUpdate()->find($gameWalletId);
 
-        DB::transaction(function () use ($gameWallet, $customer, $wallet, $playerShare, $houseShare, $totalBalance) {
+            if ($gameWallet->status !== 1) {
+                return $this->gameClosed();
+            }
+
+            $wallet = Wallet::lockForUpdate()->find($customer->wallet->id);
+            $totalBalance = $gameWallet->balance;
+            $houseShare = floor($totalBalance * config('finance.fees.game_withdrawal'));
+            $playerShare = $totalBalance - $houseShare;
+
             $playerTransaction = GameTransaction::create([
                 'game_wallet_id' => $gameWallet->id,
                 'customer_id' => $customer->id,
@@ -289,11 +307,11 @@ class GameWalletService
             ]);
 
             if ($houseShare > 0) {
-                $houseWallet = Wallet::find(config('wallets.house_wallet_id', 1));
+                $houseWallet = Wallet::lockForUpdate()->find($this->houseWalletId());
 
                 $houseTransaction = GameTransaction::create([
                     'game_wallet_id' => $gameWallet->id,
-                    'customer_id' => 1,
+                    'customer_id' => self::HOUSE_CUSTOMER_ID,
                     'amount' => $houseShare,
                     'payment_type' => 'payout',
                     'status' => 2,
@@ -320,32 +338,41 @@ class GameWalletService
             $gameWallet->balance = 0;
             $gameWallet->status = 3;
             $gameWallet->save();
-        });
 
-        return ['status' => 'success'];
+            return ['status' => 'success'];
+        });
     }
 
+    /**
+     * Give every stake back and close the game. Only an open game can be refunded: a game already paid out,
+     * dropped or refunded is refused (409 game_closed), so stakes are never given back twice.
+     */
     public function processFullRefund(int $gameWalletId): array
     {
-        $gameWallet = GameWallet::find($gameWalletId);
-        if (! $gameWallet) {
+        if (! GameWallet::whereKey($gameWalletId)->exists()) {
             return ['error' => 'Game Wallet not found', 'status' => 404];
         }
 
-        $depositsByCustomer = GameTransaction::where('game_wallet_id', $gameWalletId)
-            ->where('payment_type', 'deposit')
-            ->where('status', 1)
-            ->select('customer_id', DB::raw('SUM(amount) as total_amount'))
-            ->groupBy('customer_id')
-            ->get();
+        return DB::transaction(function () use ($gameWalletId) {
+            $gameWallet = GameWallet::lockForUpdate()->find($gameWalletId);
 
-        if ($depositsByCustomer->count() === 0) {
-            return ['error' => 'No deposit transactions found for this game wallet', 'status' => 404];
-        }
+            if ($gameWallet->status !== 1) {
+                return $this->gameClosed();
+            }
 
-        DB::transaction(function () use ($gameWallet, $depositsByCustomer) {
+            $depositsByCustomer = GameTransaction::where('game_wallet_id', $gameWalletId)
+                ->where('payment_type', 'deposit')
+                ->where('status', 1)
+                ->select('customer_id', DB::raw('SUM(amount) as total_amount'))
+                ->groupBy('customer_id')
+                ->get();
+
+            if ($depositsByCustomer->count() === 0) {
+                return ['error' => 'No deposit transactions found for this game wallet', 'status' => 404];
+            }
+
             foreach ($depositsByCustomer as $deposit) {
-                $playerWallet = Wallet::where('customer_id', $deposit->customer_id)->first();
+                $playerWallet = Wallet::where('customer_id', $deposit->customer_id)->lockForUpdate()->first();
                 if (! $playerWallet) {
                     continue;
                 }
@@ -376,9 +403,9 @@ class GameWalletService
             $gameWallet->balance = 0;
             $gameWallet->status = 3;
             $gameWallet->save();
-        });
 
-        return ['status' => 'success'];
+            return ['status' => 'success'];
+        });
     }
 
     /**
@@ -517,21 +544,36 @@ class GameWalletService
         return $perPage === null ? $query->get() : $query->latest('id')->paginate($perPage);
     }
 
-    public function createGameTransaction(array $data): GameTransaction|false
+    /**
+     * Stake into a game: the amount moves from the player's wallet to the game wallet. Both rows are locked
+     * and the balance is checked under the lock, so two stakes at once cannot spend the same money. A
+     * settled game takes no more stakes (409 game_closed). False when the game, player or money is missing.
+     *
+     * @return GameTransaction|false|array{error: string, status: int, code: string}
+     */
+    public function createGameTransaction(array $data): GameTransaction|false|array
     {
-        $gameWallet = GameWallet::find($data['game_wallet_id']);
-        if (! $gameWallet) {
+        if (! GameWallet::whereKey($data['game_wallet_id'])->exists()) {
             return false;
         }
 
         $customer = Customer::with('wallet')->find($data['customer_id']);
-        if (! $customer || ! $customer->wallet || $customer->wallet->balance < $data['amount']) {
+        if (! $customer || ! $customer->wallet) {
             return false;
         }
 
-        $gameTransaction = DB::transaction(function () use ($gameWallet, $data) {
-            $customer = Customer::with('wallet')->find($data['customer_id']);
-            $wallet = $customer->wallet;
+        return DB::transaction(function () use ($customer, $data) {
+            $gameWallet = GameWallet::lockForUpdate()->find($data['game_wallet_id']);
+
+            if ($gameWallet->status !== 1) {
+                return $this->gameClosed();
+            }
+
+            $wallet = Wallet::lockForUpdate()->find($customer->wallet->id);
+
+            if ($wallet->balance < $data['amount']) {
+                return false;
+            }
 
             $gameTransaction = GameTransaction::create($data);
 
@@ -551,8 +593,6 @@ class GameWalletService
 
             return $gameTransaction;
         });
-
-        return $gameTransaction;
     }
 
     public function getGameTransaction(int $id): ?GameTransaction
@@ -630,36 +670,23 @@ class GameWalletService
             ];
         }
 
-        $payouts = [];
+        // One transaction with the game row locked: only an open game can be settled, so a repeated drop call
+        // is refused (409 game_closed) instead of paying again.
+        return DB::transaction(function () use ($gameWallet, $active, $activeCount, $dropped, $gameStarted) {
+            $gameWallet = GameWallet::lockForUpdate()->find($gameWallet->id);
 
-        if ($gameStarted) {
-            if ($droppedCount > 1) {
-                $payouts = DB::transaction(function () use ($gameWallet, $active, $activeCount, $dropped) {
-                    $houseWalletId = 1;
-                    $totalBalance = 0;
-
-                    foreach ($dropped as $droppedPlayer) {
-                        $totalBalance += $gameWallet->gameTransactions()
-                            ->where('customer_id', $droppedPlayer)
-                            ->where('payment_type', 'deposit')
-                            ->sum('amount');
-                    }
-
-                    return $this->processPayouts($totalBalance, $activeCount, $gameWallet, $active, $houseWalletId, true);
-                });
-            } else {
-                $payouts = DB::transaction(function () use ($gameWallet, $active, $activeCount, $dropped) {
-                    $houseWalletId = 1;
-                    $totalBalance = $gameWallet->gameTransactions()
-                        ->where('customer_id', $dropped[0])
-                        ->where('payment_type', 'deposit')
-                        ->sum('amount');
-
-                    return $this->processPayouts($totalBalance, $activeCount, $gameWallet, $active, $houseWalletId, true);
-                });
+            if ($gameWallet->status !== 1) {
+                return $this->gameClosed();
             }
-        } else {
-            $payouts = DB::transaction(function () use ($gameWallet, $dropped) {
+
+            if ($gameStarted) {
+                $totalBalance = (float) $gameWallet->gameTransactions()
+                    ->whereIn('customer_id', $dropped)
+                    ->where('payment_type', 'deposit')
+                    ->sum('amount');
+
+                $payouts = $this->processPayouts($totalBalance, $activeCount, $gameWallet, $active, $this->houseWalletId(), true);
+            } else {
                 $payouts = [];
 
                 foreach ($dropped as $playerId) {
@@ -677,23 +704,21 @@ class GameWalletService
                         ];
                     }
                 }
+            }
 
-                return $payouts;
-            });
-        }
+            $gameWallet->status = 3;
+            $gameWallet->save();
 
-        $gameWallet->status = 3;
-        $gameWallet->save();
-
-        return [
-            'status' => 'success',
-            'payouts' => $payouts,
-        ];
+            return [
+                'status' => 'success',
+                'payouts' => $payouts,
+            ];
+        });
     }
 
     public function processRefund(GameWallet $gameWallet, int $playerId, float $amount): void
     {
-        $playerWallet = Wallet::where('customer_id', $playerId)->first();
+        $playerWallet = Wallet::where('customer_id', $playerId)->lockForUpdate()->first();
         if (! $playerWallet) {
             return;
         }
@@ -737,11 +762,11 @@ class GameWalletService
         $payouts = [];
 
         if ($gameStarted && $houseShare > 0) {
-            $houseWallet = Wallet::find($houseWalletId);
+            $houseWallet = Wallet::lockForUpdate()->find($houseWalletId);
 
             $houseTransaction = GameTransaction::create([
                 'game_wallet_id' => $gameWallet->id,
-                'customer_id' => 1,
+                'customer_id' => self::HOUSE_CUSTOMER_ID,
                 'amount' => $houseShare,
                 'payment_type' => 'payout|dropped',
                 'status' => 2,
@@ -768,7 +793,7 @@ class GameWalletService
                     continue;
                 }
 
-                $wallet = $activeCustomer->wallet;
+                $wallet = Wallet::where('customer_id', $activeCustomer->id)->lockForUpdate()->first();
                 if (! $wallet) {
                     throw new \Exception('Player wallet not found.');
                 }
