@@ -312,6 +312,7 @@
         </ul>
         <div class="nav-section">Gaming</div>
         <ul>
+            <li><a href="#" data-section="games"><span class="nav-icon">&#127922;</span> <span>Games &amp; Products</span></a></li>
             <li><a href="#" data-section="game-wallets"><span class="nav-icon">&#127918;</span> <span>Game Wallets</span></a></li>
             <li><a href="#" data-section="game-bets"><span class="nav-icon">&#127920;</span> <span>Game Bets</span></a></li>
             <li><a href="#" data-section="comp-wallets"><span class="nav-icon">&#127942;</span> <span>Competition Wallets</span></a></li>
@@ -3050,6 +3051,94 @@ Accept: application/json</pre></div>
   "message": "Transaction not found"
 }</pre></div>
 <p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+</div>
+<!-- GAMES AND PRODUCTS SECTION -->
+
+<div class="doc-section" data-section="games">
+<button class="expand-all" onclick="toggleAll('games')">Expand / Collapse All</button>
+<div class="callback-note"><strong>Games and products.</strong> A <strong>game</strong> is one app on the platform (kadi, and later the sportsbook and crash): it has a lobby tile and the <code>launch_url</code> kadi sends a player to. A <strong>product</strong> is a revenue line finance reports on, and belongs to one game: kadi has <code>kadi</code> (single games), <code>kadi_tournament</code> and <code>kadi_jackpot</code>. <code>revenue_model</code> is <code>rake</code> (the house takes a cut of player-vs-player pots) or <code>house_banked</code> (players play against the house). Every ledger entry of a game carries its product; deposits, withdrawals, excise duty, promotions, referrals, bet shop float and adjustments carry none (platform). Codes never change. New games and products are added on the server (<code>php artisan game:create</code>, <code>php artisan product:create</code>). <code>status</code> for both: <code>active</code>, <code>suspended</code> or <code>retired</code>.</div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/games</span><span class="endpoint-desc">The lobby: games and their products</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Active games by default, in lobby order (<code>sort_order</code>), each with its products. Not paginated.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>status</td><td>string</td><td><span class="optional">Optional</span></td><td><code>active</code> (default), <code>suspended</code>, <code>retired</code> or <code>all</code></td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "data": [
+    {
+      "code": "kadi", "name": "Kadi", "launch_url": "https://kadikings.co.ke/play", "status": "active", "sort_order": 1,
+      "products": [
+        {"code": "kadi", "game": "kadi", "name": "Kadi", "revenue_model": "rake", "status": "active", "max_stake": null, "max_payout": null, "winnings_tax_rate": 0},
+        {"code": "kadi_tournament", "game": "kadi", "name": "Kadi Tournament", "revenue_model": "rake", "status": "active", "max_stake": null, "max_payout": null, "winnings_tax_rate": 0},
+        {"code": "kadi_jackpot", "game": "kadi", "name": "Kadi Jackpot", "revenue_model": "rake", "status": "active", "max_stake": null, "max_payout": null, "winnings_tax_rate": 0}
+      ]
+    }
+  ]
+}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 422 (unknown status): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-put">PUT</span><span class="endpoint-path">/api/v1/games/{code}</span><span class="endpoint-desc">Update a game</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Send only the fields to change. The code cannot be changed. Suspending a game takes it out of the lobby.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>name</td><td>string</td><td><span class="optional">Optional</span></td><td>Up to 255 characters</td></tr><tr><td>launch_url</td><td>string</td><td><span class="optional">Optional</span></td><td>A URL, up to 255 characters</td></tr><tr><td>status</td><td>string</td><td><span class="optional">Optional</span></td><td><code>active</code>, <code>suspended</code> or <code>retired</code></td></tr><tr><td>sort_order</td><td>integer</td><td><span class="optional">Optional</span></td><td>0 or more; lower comes first in the lobby</td></tr></table></div>
+<div class="endpoint-section"><h4>Request</h4>
+<pre>PUT /api/v1/games/kadi HTTP/1.1
+Host: api.kadi-kings.co.ke
+X-API-KEY: your-api-key-here
+Content-Type: application/json
+
+{"launch_url": "https://kadikings.co.ke/play"}</pre></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Game updated", "data": { ...game, with products... }}</pre></div>
+<div class="endpoint-section"><h4>Response (404)</h4>
+<pre>{"success": false, "message": "Game not found"}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/products</span><span class="endpoint-desc">List products</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Every product, whatever its status, in the order they were created. Not paginated. <code>max_stake</code> and <code>max_payout</code> are <code>null</code> when there is no limit; <code>winnings_tax_rate</code> is a fraction (0.2 = 20%).</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>game</td><td>string</td><td><span class="optional">Optional</span></td><td>A game code: only that game's products</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"data": [{"code": "kadi", "game": "kadi", "name": "Kadi", "revenue_model": "rake", "status": "active", "max_stake": null, "max_payout": null, "winnings_tax_rate": 0}]}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-put">PUT</span><span class="endpoint-path">/api/v1/products/{code}</span><span class="endpoint-desc">Update a product: status, limits, winnings tax rate</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Send only the fields to change. The code, game and revenue model cannot be changed. Send <code>null</code> for a limit to remove it. Limits and the tax rate are used by the wager API of house-banked games (coming later); kadi does not read them.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>name</td><td>string</td><td><span class="optional">Optional</span></td><td>Up to 255 characters</td></tr><tr><td>status</td><td>string</td><td><span class="optional">Optional</span></td><td><code>active</code>, <code>suspended</code> or <code>retired</code></td></tr><tr><td>max_stake</td><td>number|null</td><td><span class="optional">Optional</span></td><td>More than 0, at most 2 decimals</td></tr><tr><td>max_payout</td><td>number|null</td><td><span class="optional">Optional</span></td><td>More than 0, at most 2 decimals</td></tr><tr><td>winnings_tax_rate</td><td>number</td><td><span class="optional">Optional</span></td><td>0 to 1, at most 4 decimals</td></tr></table></div>
+<div class="endpoint-section"><h4>Request</h4>
+<pre>PUT /api/v1/products/kadi_jackpot HTTP/1.1
+Host: api.kadi-kings.co.ke
+X-API-KEY: your-api-key-here
+Content-Type: application/json
+
+{"status": "suspended"}</pre></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Product updated", "data": {"code": "kadi_jackpot", "game": "kadi", "name": "Kadi Jackpot", "revenue_model": "rake", "status": "suspended", "max_stake": null, "max_payout": null, "winnings_tax_rate": 0}}</pre></div>
+<div class="endpoint-section"><h4>Response (404)</h4>
+<pre>{"success": false, "message": "Product not found"}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 
 </div>
@@ -7545,6 +7634,7 @@ var sectionTitles = {
     'deposits': { title: 'Deposits', desc: 'M-Pesa deposits, STK Push prompts and unmatched deposits' },
     'withdraws': { title: 'Withdrawals', desc: 'M-Pesa B2C payouts from customer wallets' },
     'transactions': { title: 'Transactions', desc: 'Wallet deposits and withdrawals as transaction records' },
+    'games': { title: 'Games & Products', desc: 'The lobby, and the games and products finance reports on' },
     'game-wallets': { title: 'Game Wallets', desc: 'Game escrow wallets, results and game income' },
     'game-bets': { title: 'Game Bets', desc: 'Stakes, paying the winner, dropped connections, refunds and game transactions' },
     'comp-wallets': { title: 'Competition Wallets', desc: 'Tournament and jackpot wallets, round payouts, withdrawals, results and awards' },

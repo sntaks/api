@@ -36,6 +36,7 @@ class LedgerEntry extends Model
         'wallet_type',
         'wallet_id',
         'customer_id',
+        'product_id',
         'debit',
         'credit',
         'balance_before',
@@ -80,5 +81,13 @@ class LedgerEntry extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class)->withTrashed();
+    }
+
+    /**
+     * The game product this entry belongs to; null for platform entries.
+     */
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
     }
 }

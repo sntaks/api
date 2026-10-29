@@ -29,6 +29,8 @@ use Ramsey\Uuid\Uuid;
 
 class LedgerService
 {
+    public function __construct(private ProductResolver $products = new ProductResolver) {}
+
     public function recordDeposit($deposit, Wallet $wallet, float $amount): LedgerEntry
     {
         $balanceBefore = $wallet->balance;
@@ -1391,6 +1393,7 @@ class LedgerService
             'wallet_type' => $this->walletTypeFor($wallet),
             'wallet_id' => $wallet->id,
             'customer_id' => $customerId,
+            'product_id' => $this->products->forPosting($referenceable, $wallet, $metadata ?? []),
             'debit' => $debit,
             'credit' => $credit,
             'balance_before' => $balanceBefore,

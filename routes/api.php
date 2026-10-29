@@ -33,6 +33,7 @@ use App\Http\Controllers\api\v1\FinanceDrilldownController;
 use App\Http\Controllers\api\v1\FinanceExpenseController;
 use App\Http\Controllers\api\v1\FinanceExportController;
 use App\Http\Controllers\api\v1\FinanceReportController;
+use App\Http\Controllers\api\v1\GameCatalogController;
 use App\Http\Controllers\api\v1\GameCreditController;
 use App\Http\Controllers\api\v1\GameRefundController;
 use App\Http\Controllers\api\v1\GameTransactionController;
@@ -40,6 +41,7 @@ use App\Http\Controllers\api\v1\GameWalletController;
 use App\Http\Controllers\api\v1\GameWalletWithdrawController;
 use App\Http\Controllers\api\v1\HouseFundingController;
 use App\Http\Controllers\api\v1\PlaygroundController;
+use App\Http\Controllers\api\v1\ProductController;
 use App\Http\Controllers\api\v1\PromoCodeController;
 use App\Http\Controllers\api\v1\PurchaseController;
 use App\Http\Controllers\api\v1\ReferralB2CBalanceController;
@@ -139,6 +141,12 @@ Route::prefix('/v1')->group(function () {
         Route::post('/bet-shops', [BetShopController::class, 'store'])->middleware(['idempotency', 'throttle:write']);
         Route::get('/bet-shops/loads', [BetShopLoadController::class, 'index']);
         Route::get('/bet-shops/withdrawals', [ShopWithdrawalController::class, 'gmsIndex']);
+
+        // Games and products: kadi's lobby lists the active games, GMS manages both
+        Route::get('/games', [GameCatalogController::class, 'index']);
+        Route::put('/games/{code}', [GameCatalogController::class, 'update'])->middleware('throttle:write');
+        Route::get('/products', [ProductController::class, 'index']);
+        Route::put('/products/{code}', [ProductController::class, 'update'])->middleware('throttle:write');
 
         // Shop system: shop API keys only, always acting for the key's own shop
         Route::prefix('/shop')->middleware(['shop.key', 'throttle:shop'])->group(function () {
