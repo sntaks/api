@@ -299,6 +299,7 @@
         <div class="nav-section">Getting Started</div>
         <ul>
             <li><a href="#" data-section="auth" class="active"><span class="nav-icon">&#128274;</span> <span>Authentication</span></a></li>
+            <li><a href="#" data-section="api-keys"><span class="nav-icon">&#128273;</span> <span>API Keys</span></a></li>
         </ul>
         <div class="nav-section">Core Resources</div>
         <ul>
@@ -365,7 +366,7 @@ Content-Type: application/json</pre>
 <h3>API Key Authentication</h3>
 <p>Every endpoint needs an active API key in the <code>X-API-KEY</code> header. A missing, unknown or deactivated key returns:</p><pre>HTTP/1.1 401 Unauthorized
 
-{"message": "Invalid or missing API key"}</pre><p>A <strong>shop key</strong> (issued to a bet shop's system under <a href="#" data-section="bet-shops" style="color:var(--accent-blue)">Bet Shops</a>) works only on the <code>/api/v1/shop/*</code> routes; anywhere else it gets <code>403 {"message": "A shop API key can only be used on shop routes"}</code>. Every other key works everywhere except those routes. Existing keys are unchanged.</p><p>Actions that change money record which key made them (as <code>api_key:{id}</code>), for example in <code>resolved_by</code>, <code>created_by</code> and wallet adjustments.</p>
+{"message": "Invalid or missing API key"}</pre><p>A <strong>shop key</strong> (issued to a bet shop's system under <a href="#" data-section="bet-shops" style="color:var(--accent-blue)">Bet Shops</a>) works only on the <code>/api/v1/shop/*</code> routes; anywhere else it gets <code>403 {"message": "A shop API key can only be used on shop routes"}</code>. A <strong>site key</strong> (the kadi site) and a <strong>game key</strong> (a game server) work only on the routes listed for their scope (see <a href="#" data-section="api-keys" style="color:var(--accent-blue)">API Keys</a>); anywhere else they get <code>403 {"message": "This API key cannot use this route", "code": "route_not_allowed"}</code>. A <strong>full key</strong> works everywhere except the shop routes. Existing keys are full keys and are unchanged.</p><p>Actions that change money record which key made them (as <code>api_key:{id}</code>), for example in <code>resolved_by</code>, <code>created_by</code> and wallet adjustments.</p>
 </div>
 <div class="auth-box">
 <h3>Encrypted Identifiers</h3>
@@ -456,6 +457,65 @@ Content-Type: application/json
 <p class="endpoint-note">A value that is not valid ciphertext returns <code>decrypted_id: false</code> or a <code>500</code>, depending on where it fails.</p>
 <p class="endpoint-note">Also returns 401 (API key): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
+</div>
+<!-- API KEYS SECTION -->
+
+<div class="doc-section" data-section="api-keys">
+<button class="expand-all" onclick="toggleAll('api-keys')">Expand / Collapse All</button>
+<div class="callback-note"><strong>Key scopes.</strong> Every key has a <code>scope</code>: <code>full</code> (GMS and the kadi game server: every route except the shop system's, as every key had before scopes existed), <code>site</code> (the kadi site: only the player routes kadi uses), <code>game</code> (a game server, bound to one game: only that game's routes) or <code>shop</code> (a bet shop's system, issued under <a href="#" data-section="bet-shops" style="color:var(--accent-blue)">Bet Shops</a>). Site and game keys start with <code>site_</code> and <code>game_</code>. Full and site keys are made on the server (<code>php artisan apiKey:generate {name} --scope=site</code>); game keys can also be issued below. A key is shown once, when it is issued, and never again. A revoked key gets <code>401</code> straight away.</div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/api-keys</span><span class="endpoint-desc">List API keys (never the key itself)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Every key of every scope, newest first.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>scope</td><td>string</td><td><span class="optional">Optional</span></td><td><code>full</code>, <code>shop</code>, <code>site</code> or <code>game</code></td></tr><tr><td>game</td><td>string</td><td><span class="optional">Optional</span></td><td>A game code: only that game's keys</td></tr><tr><td>active</td><td>boolean</td><td><span class="optional">Optional</span></td><td><code>1</code> active only, <code>0</code> revoked only</td></tr><tr><td>page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 1</td></tr><tr><td>per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 200, default 50</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "items": [
+      {"id": 12, "name": "crash-server", "scope": "game", "game": "crash", "bet_shop_no": null, "is_active": true, "rate_limit_multiplier": 1,
+       "revoked_at": null, "revoked_by": null, "created_at": "2026-10-29T19:00:00+03:00"}
+    ],
+    "pagination": {"page": 1, "per_page": 50, "total": 1, "last_page": 1}
+  }
+}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 422 (unknown scope): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/games/{code}/keys</span><span class="endpoint-desc">Issue a game server key</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Issues a <code>game</code> key bound to the game. <code>data.key</code> is shown only in this response: store it in the game server's configuration straight away. Not idempotent on purpose: a stored response would keep the key in the database for 24 hours. A retired game gets no new keys.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>name</td><td>string</td><td><span class="required">Required</span></td><td>3 to 255 characters, e.g. <code>crash-server-1</code></td></tr></table></div>
+<div class="endpoint-section"><h4>Response (201)</h4>
+<pre>{"success": true, "message": "Key issued. It is shown only once.", "data": {"id": 12, "name": "crash-server-1", "scope": "game", "game": "crash", "bet_shop_no": null, "is_active": true, "rate_limit_multiplier": 1, "revoked_at": null, "revoked_by": null, "created_at": "2026-10-29T19:00:00+03:00", "key": "game_..."}}</pre></div>
+<div class="endpoint-section"><h4>Response (404 / 409)</h4>
+<pre>{"success": false, "message": "Game not found"}
+{"success": false, "code": "game_retired", "message": "The game is retired"}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/api-keys/{encryptedIdentifier}/revoke</span><span class="endpoint-desc">Revoke any API key</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Stops a key of any scope working at once. Revoking an already revoked key changes nothing and returns it with who revoked it first. A key cannot revoke itself (<code>409 own_key</code>), so GMS cannot lock itself out by mistake.</p></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Key revoked", "data": {"id": 12, "name": "crash-server-1", "scope": "game", "game": "crash", "bet_shop_no": null, "is_active": false, "rate_limit_multiplier": 1, "revoked_at": "2026-10-29T20:00:00+03:00", "revoked_by": "api_key:2", "created_at": "2026-10-29T19:00:00+03:00"}}</pre></div>
+<div class="endpoint-section"><h4>Response (404 / 409)</h4>
+<pre>{"success": false, "message": "API key not found"}
+{"success": false, "code": "own_key", "message": "A key cannot revoke itself"}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 409 (Idempotency-Key reused), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
 </div>
 <!-- CUSTOMERS SECTION -->
 
@@ -705,7 +765,7 @@ Accept: application/json</pre></div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span></div>
-<p class="endpoint-note">Send only the fields to change. Uniqueness is not checked here: a value another customer already has fails with <code>500</code>.</p>
+<p class="endpoint-note">Send only the fields to change. Uniqueness is not checked here: a value another customer already has fails with <code>500</code>. A <a href="#" data-section="api-keys" style="color:var(--accent-blue)">site key</a> may change only <code>name</code>, <code>email</code> and <code>phone_no</code>: <code>status</code>, <code>account_no</code>, <code>google_id</code> and <code>referral_code</code> are refused with <code>422</code> ("The status field is prohibited.").</p>
 <div class="endpoint-section"><h4>Path Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -7627,6 +7687,7 @@ var navSections = document.querySelectorAll('.sidebar-nav .nav-section');
 var navUls = document.querySelectorAll('.sidebar-nav ul');
 var sectionTitles = {
     'auth': { title: 'Authentication', desc: 'Base URL, API key, encrypted identifiers, idempotency, rate limits and conventions' },
+    'api-keys': { title: 'API Keys', desc: 'Key scopes, game server keys and revoking keys' },
     'customers': { title: 'Customers', desc: 'Create, find, update and verify customers; games played and leaderboards' },
     'promotions': { title: 'Promotions', desc: 'Signup bonus promo codes and customer bonuses' },
     'wallets': { title: 'Wallets', desc: 'Wallet management, balance operations, and transfers' },

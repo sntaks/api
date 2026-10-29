@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\api\v1\ApiKeyController;
 use App\Http\Controllers\api\v1\B2CBalanceController;
 use App\Http\Controllers\api\v1\B2CBalanceTimeoutController;
 use App\Http\Controllers\api\v1\B2Controller;
@@ -147,6 +148,10 @@ Route::prefix('/v1')->group(function () {
         Route::put('/games/{code}', [GameCatalogController::class, 'update'])->middleware('throttle:write');
         Route::get('/products', [ProductController::class, 'index']);
         Route::put('/products/{code}', [ProductController::class, 'update'])->middleware('throttle:write');
+
+        // API keys (GMS): list every key, issue a game's keys (not idempotent on purpose: a stored response would keep the new key for 24 hours)
+        Route::get('/api-keys', [ApiKeyController::class, 'index']);
+        Route::post('/games/{code}/keys', [ApiKeyController::class, 'issueGameKey'])->middleware('throttle:write');
 
         // Shop system: shop API keys only, always acting for the key's own shop
         Route::prefix('/shop')->middleware(['shop.key', 'throttle:shop'])->group(function () {
@@ -301,6 +306,8 @@ Route::prefix('/v1')->group(function () {
             // Not idempotent on purpose: a stored response would keep the new key in the database for 24 hours
             Route::post('/bet-shops/{encryptedIdentifier}/keys', [BetShopController::class, 'issueKey'])->middleware('throttle:write');
             Route::post('/bet-shop-keys/{encryptedIdentifier}/revoke', [BetShopController::class, 'revokeKey'])->middleware(['idempotency', 'throttle:write']);
+            // Any API key, whatever its scope (GMS)
+            Route::post('/api-keys/{encryptedIdentifier}/revoke', [ApiKeyController::class, 'revoke'])->middleware(['idempotency', 'throttle:write']);
             Route::get('/bet-shops/{encryptedIdentifier}/float-purchases', [BetShopFloatController::class, 'index']);
             // Float paid back to an owner outside the API, recorded by GMS
             Route::post('/bet-shops/{encryptedIdentifier}/float-redemptions', [BetShopFloatController::class, 'redeem'])->middleware(['idempotency', 'throttle:write']);
