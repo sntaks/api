@@ -17,6 +17,14 @@ class ApiKey extends Model
     /** Only /v1/shop/* routes, always for its one bet shop. */
     public const SCOPE_SHOP = 'shop';
 
+    /** The kadi site: only the player routes listed in config/api_scopes.php `site`. */
+    public const SCOPE_SITE = 'site';
+
+    /** A game server, bound to one game: only the routes listed in config/api_scopes.php `game`. */
+    public const SCOPE_GAME = 'game';
+
+    public const SCOPES = [self::SCOPE_FULL, self::SCOPE_SHOP, self::SCOPE_SITE, self::SCOPE_GAME];
+
     protected $table = 'api_keys';
 
     protected $fillable = [
@@ -24,6 +32,7 @@ class ApiKey extends Model
         'name',
         'scope',
         'bet_shop_id',
+        'game_id',
         'rate_limit_multiplier',
         'is_active',
         'revoked_at',
@@ -95,5 +104,20 @@ class ApiKey extends Model
     public function isShopKey(): bool
     {
         return $this->scope === self::SCOPE_SHOP;
+    }
+
+    public function isSiteKey(): bool
+    {
+        return $this->scope === self::SCOPE_SITE;
+    }
+
+    public function isGameKey(): bool
+    {
+        return $this->scope === self::SCOPE_GAME;
+    }
+
+    public function game(): BelongsTo
+    {
+        return $this->belongsTo(Game::class);
     }
 }

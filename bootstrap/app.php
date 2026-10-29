@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AuthenticatePlayer;
 use App\Http\Middleware\CheckApiKey;
 use App\Http\Middleware\CheckUserRole;
 use App\Http\Middleware\CheckUserSession;
@@ -30,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'idempotency.required' => RequireIdempotencyKey::class,
             'shop.key' => EnsureShopKey::class,
             'log.requests' => LogRequests::class,
+            'player.token' => AuthenticatePlayer::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
