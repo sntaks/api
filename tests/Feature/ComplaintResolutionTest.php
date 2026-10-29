@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\DisputedTransaction;
 use App\Models\GameWallet;
 use App\Models\LedgerEntry;
+use App\Models\Product;
 use App\Models\Wallet;
 use App\Services\CompetitionPayoutService;
 use App\Services\CompetitionWalletService;
@@ -107,6 +108,18 @@ it('refunds every game player their full stake and reverses the house cuts', fun
     expect((float) $winnerWallet->fresh()->balance)->toBe(100.0);
     expect((float) $this->houseWallet->fresh()->balance)->toBe(0.0);
     expect(LedgerEntry::where('entry_type', 'house_cut')->where('status', 'settled')->count())->toBe(0);
+});
+
+it('keeps the kadi product on reversed game house cuts and leaves the dispute refunds as platform', function () {
+    ['game' => $game, 'complainant' => $complainant] = settledGame($this);
+    $complaint = openComplaint($this, ['customer_id' => $complainant->id, 'game_wallet_id' => $game->id]);
+
+    closeComplaint($this, $complaint, 'resolve', 'Winner used a bot')->assertOk();
+
+    $productOf = fn (string $type) => LedgerEntry::where('entry_type', $type)->pluck('product_id')->unique()->values()->all();
+
+    expect($productOf('house_cut_reversal'))->toBe([Product::idFor(Product::CODE_KADI)])
+        ->and($productOf('dispute_refund'))->toBe([null]);
 });
 
 it('removes reversed game house cuts from revenue and keeps the ledger balanced', function () {
