@@ -18,17 +18,17 @@ class StkLoadController extends Controller
      */
     public function __invoke(Request $request, $encryptedIdentifier)
     {
-        try {
-            $request->validate([
-                'amount' => 'required',
-                'type' => 'required',
-            ]);
+        // Outside the try: the catch-all below would turn a validation failure into a 500.
+        $request->validate([
+            'amount' => 'required|numeric|gt:0',
+            'type' => 'required|in:gift,emoji',
+        ]);
 
+        try {
             $result = $this->stkService->initiateStkLoad(
                 $encryptedIdentifier,
                 $request->amount,
                 $request->type,
-                $request->coin_value,
                 $request->phone_no,
                 $request->referral_code
             );

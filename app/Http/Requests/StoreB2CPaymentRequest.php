@@ -4,12 +4,25 @@ namespace App\Http\Requests;
 
 use App\Models\Customer;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 class StoreB2CPaymentRequest extends FormRequest
 {
+    /**
+     * Money leaves the main shortcode with no wallet debited, so only callers from an allowlisted IP
+     * (`mpesa.b2c.send_allowed_ips`) may send. An empty list refuses everyone.
+     */
     public function authorize(): bool
     {
-        return true;
+        return in_array($this->ip(), config('mpesa.b2c.send_allowed_ips', []), true);
+    }
+
+    protected function failedAuthorization(): never
+    {
+        throw new HttpResponseException(response()->json([
+            'message' => 'This caller is not allowed to send B2C payments',
+            'code' => 'ip_not_allowed',
+        ], 403));
     }
 
     /**

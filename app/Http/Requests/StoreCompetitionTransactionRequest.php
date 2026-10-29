@@ -29,7 +29,7 @@ class StoreCompetitionTransactionRequest extends FormRequest
             'competition_wallet_id' => 'required|exists:competition_wallets,id',
             'customer_id' => 'required|exists:customers,id',
             'payment_type' => 'required|string',
-            'amount' => 'required|numeric',
+            'amount' => 'required|numeric|gt:0|decimal:0,2',
             'bet_shop_no' => $this->betShopNoRules(),
         ];
     }

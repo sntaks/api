@@ -57,3 +57,23 @@ it('counts only the house share taken from competition wallets as competition in
         ->and((float) $income[0]->total_income)->toBe(20.0)
         ->and((int) $income[0]->games_played)->toBe(1);
 });
+
+it('refuses a zero or negative competition stake', function (float $amount) {
+    $apiKey = createApiKey('test-competition-amount-key');
+    $player = Customer::factory()->create();
+    $playerWallet = Wallet::factory()->create(['customer_id' => $player->id, 'balance' => 100]);
+    $competitionWallet = CompetitionWallet::forceCreate([
+        'id' => 90001, 'competition_id' => 'TOURN-10', 'cmp_uid' => '9001', 'game_type' => 1, 'customer_id' => $player->id,
+        'level' => 1, 'jp_rounds' => 3, 'balance' => 0, 'status' => 1,
+    ]);
+
+    $this->postJson('/api/v1/competition/transactions', [
+        'competition_wallet_id' => $competitionWallet->id,
+        'customer_id' => $player->id,
+        'payment_type' => 'deposit',
+        'amount' => $amount,
+    ], apiHeaders($apiKey->key))->assertStatus(422)->assertJsonValidationErrors('amount');
+
+    expect((float) $playerWallet->fresh()->balance)->toBe(100.0)
+        ->and((float) $competitionWallet->fresh()->balance)->toBe(0.0);
+})->with([0, -50]);

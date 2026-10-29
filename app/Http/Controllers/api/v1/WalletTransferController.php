@@ -18,12 +18,13 @@ class WalletTransferController extends Controller
      */
     public function __invoke(Request $request, $encryptedIdentifier)
     {
-        try {
-            $validated = $request->validate([
-                'amount' => 'required|numeric',
-                'wallet_id' => 'nullable|integer',
-            ]);
+        // Outside the try: the catch-all below would turn a validation failure into a 500.
+        $validated = $request->validate([
+            'amount' => 'required|numeric|gt:0|decimal:0,2',
+            'wallet_id' => 'nullable|integer',
+        ]);
 
+        try {
             $result = $this->walletService->transfer(
                 $encryptedIdentifier,
                 $validated['amount'],

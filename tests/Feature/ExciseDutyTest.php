@@ -107,16 +107,22 @@ it('only charges deposits made on or after the effective date', function () {
         ->and(ExciseDutyCharge::count())->toBe(1);
 });
 
-it('does not charge coin loads, gifts or emoji', function (string $billRef) {
+it('does not charge gifts or emoji', function (string $billRef) {
     confirmMpesaDeposit(100, $billRef)->assertStatus(201);
 
     expect(ExciseDutyCharge::count())->toBe(0)
         ->and(LedgerEntry::where('entry_type', 'excise_duty')->count())->toBe(0);
 })->with([
-    'coin load' => ['712345678#100#load'],
     'gift' => ['712345678#100#gift'],
     'emoji' => ['712345678#100#emoji'],
 ]);
+
+it('charges a #load paybill payment as an ordinary deposit of the amount paid', function () {
+    confirmMpesaDeposit(100, '712345678#100000#load')->assertStatus(201);
+
+    expect((float) customerWallet($this->customer)->balance)->toBe(95.0)
+        ->and(ExciseDutyCharge::count())->toBe(1);
+});
 
 it('does not charge a deposit with no matching customer', function () {
     confirmMpesaDeposit(100, 'UNKNOWN')->assertOk();

@@ -4,14 +4,12 @@ namespace App\Services;
 
 use App\Models\Customer;
 use App\Models\Deposit;
-use App\Models\Wallet;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class C2BConfirmationService
 {
     public function __construct(
-        private LedgerService $ledgerService,
         private WalletDepositService $walletDepositService,
         private HouseFundingService $houseFunding,
         private BetShopFloatService $shopFloat,
@@ -98,47 +96,12 @@ class C2BConfirmationService
         Customer $customer,
         ?string $referralCode
     ): void {
-        if ($type === 'load') {
-            $this->processLoad($coinValue, $deposit, $customer, $referralCode);
-        } elseif ($type === 'gift' || $type === 'emoji') {
+        // A `#load` bill ref is an ordinary deposit: the wallet gets the amount paid, never a value the payer typed.
+        if ($type === 'gift' || $type === 'emoji') {
             $this->processGiftOrEmoji($type, $coinValue, $deposit, $customer, $referralCode);
         } else {
             $this->processDefault($deposit, $customer);
         }
-    }
-
-    private function processLoad(
-        ?string $coinValue,
-        Deposit $deposit,
-        Customer $customer,
-        ?string $referralCode
-    ): void {
-        $wallet = Wallet::firstOrCreate(
-            ['customer_id' => $customer->id],
-            ['balance' => 0]
-        );
-
-        $amountToAdd = (float) $coinValue;
-
-        $ledgerEntry = $this->ledgerService->recordDeposit($deposit, $wallet, $amountToAdd);
-
-        $wallet->transactions()->create([
-            'payment_id' => $deposit->id,
-            'payment_ref' => $deposit->trans_id,
-            'payment_type' => Deposit::class,
-            'amount' => $amountToAdd,
-            'status' => 2,
-            'balance_before' => $ledgerEntry->balance_before,
-            'balance_after' => $ledgerEntry->balance_after,
-        ]);
-
-        $customer->purchases()->create([
-            'deposit_id' => $deposit->id,
-            'purchase_type' => 'load',
-            'amount' => $deposit->trans_amount,
-            'value' => $amountToAdd,
-            'referral_code' => $referralCode,
-        ]);
     }
 
     private function processGiftOrEmoji(

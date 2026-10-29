@@ -132,7 +132,7 @@ Route::prefix('/v1')->group(function () {
         // Get B2C Balance
         Route::get('/b2c/balance', [B2Controller::class, 'index']);
         // Send from the main B2C shortcode to any phone (no wallet, no ledger)
-        Route::post('/b2c/send', B2CPaymentController::class)->middleware(['throttle:financial', 'idempotency']);
+        Route::post('/b2c/send', B2CPaymentController::class)->middleware(['throttle:financial', 'idempotency.required', 'idempotency']);
 
         // Bet shops (GMS)
         Route::get('/bet-shops', [BetShopController::class, 'index']);

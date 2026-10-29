@@ -240,14 +240,23 @@ it('counts deposits posted to /deposits as well', function () {
     expect(ReferralBonus::where('milestone', 'first_deposit')->count())->toBe(1);
 });
 
-it('does not treat coin loads as a first deposit', function () {
+it('does not treat a gift purchase as a first deposit', function () {
     $referred = Customer::find(signUpWithReferral('KADI2026', '711111111')->json('customer_id'));
     reportReferralVerified($referred);
 
-    referralDeposit('711111111#100#load', 10, 'REF0000001')->assertStatus(201);
+    referralDeposit('711111111#100#gift', 10, 'REF0000001')->assertStatus(201);
 
     expect(ReferralBonus::where('milestone', 'first_deposit')->count())->toBe(0)
         ->and($referred->referredBy->fresh()->first_deposit_id)->toBeNull();
+});
+
+it('treats a #load paybill payment as an ordinary first deposit', function () {
+    $referred = Customer::find(signUpWithReferral('KADI2026', '711111111')->json('customer_id'));
+    reportReferralVerified($referred);
+
+    referralDeposit('711111111#100#load', 100, 'REF0000001')->assertStatus(201);
+
+    expect($referred->referredBy->fresh()->first_deposit_id)->not->toBeNull();
 });
 
 it('reports verified for a customer who was not referred without paying anything', function () {

@@ -98,6 +98,8 @@ return [
         'test_phone_number' => env('MPESA_B2C_TEST_PHONE_NUMBER'),
         'result_url' => env('MPESA_B2C_RESULT_URL'),
         'timeout_url' => env('MPESA_B2C_TIMEOUT_URL'),
+        // Caller IPs allowed to use POST /b2c/send (comma separated). Empty means nobody can.
+        'send_allowed_ips' => array_values(array_filter(array_map('trim', explode(',', (string) env('MPESA_B2C_SEND_ALLOWED_IPS', ''))))),
     ],
 
     /*
