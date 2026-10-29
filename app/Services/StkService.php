@@ -34,7 +34,6 @@ class StkService
         string $identifier,
         float $amount,
         string $type,
-        ?float $coinValue = null,
         ?string $phoneNo = null,
         ?string $referralCode = null,
     ): array {
@@ -45,10 +44,9 @@ class StkService
         }
 
         $billRefNo = match ($type) {
-            'load' => $customer->account_no.'#'.$coinValue.'#load',
             'gift' => $customer->account_no.'#'.$amount.'#gift',
             'emoji' => $customer->account_no.'#'.$amount.'#emoji',
-            default => $customer->account_no,
+            default => throw new \InvalidArgumentException("Unknown load type: {$type}"),
         };
 
         if ($referralCode) {

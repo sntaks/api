@@ -824,7 +824,7 @@ class LedgerService
             entryType: 'house_cut',
             referenceable: $reference,
             wallet: $houseWallet,
-            customerId: 1,
+            customerId: $houseWallet->customer_id,
             debit: 0,
             credit: $amount,
             balanceBefore: $balanceBefore,

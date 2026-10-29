@@ -280,6 +280,16 @@ class GameWalletService
                 return $this->gameClosed();
             }
 
+            // Only someone who staked in this game can be paid its pot.
+            $staked = GameTransaction::where('game_wallet_id', $gameWallet->id)
+                ->where('customer_id', $customer->id)
+                ->where('payment_type', 'deposit')
+                ->exists();
+
+            if (! $staked) {
+                return ['error' => 'This customer did not play in this game', 'status' => 422, 'code' => 'not_a_player'];
+            }
+
             $wallet = Wallet::lockForUpdate()->find($customer->wallet->id);
             $totalBalance = $gameWallet->balance;
             $houseShare = floor($totalBalance * config('finance.fees.game_withdrawal'));

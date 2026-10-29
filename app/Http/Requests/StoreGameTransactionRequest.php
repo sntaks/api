@@ -19,7 +19,8 @@ class StoreGameTransactionRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * Get the validation rules that apply to the request. A new stake must name its customer; an edit
+     * (PUT, which shares this request) may leave the customer out.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
@@ -27,9 +28,9 @@ class StoreGameTransactionRequest extends FormRequest
     {
         return [
             'game_wallet_id' => 'required|integer',
-            'customer_id' => 'integer',
+            'customer_id' => [$this->isMethod('POST') ? 'required' : 'sometimes', 'integer', 'exists:customers,id'],
             'payment_type' => 'required|string',
-            'amount' => 'required|numeric',
+            'amount' => 'required|numeric|gt:0|decimal:0,2',
             'status' => 'integer',
             'bet_shop_no' => $this->betShopNoRules(),
         ];

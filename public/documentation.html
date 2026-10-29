@@ -1958,8 +1958,8 @@ Content-Type: application/json
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
-<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-400">400 Bad Request</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-500">500 Server Error</span></div>
-<p class="endpoint-note">Moves <code>amount</code> from the wallet in the path to <code>wallet_id</code>, as a ledgered transfer. The sender's locked <a href="#" data-section="promotions" style="color:var(--accent-blue)">signup bonus</a> cannot be moved. Any validation failure returns <code>500 {"status": "error"}</code>.</p>
+<div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-400">400 Bad Request</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span> <span class="status-code status-500">500 Server Error</span></div>
+<p class="endpoint-note">Moves <code>amount</code> from the wallet in the path to <code>wallet_id</code>, as a ledgered transfer. The sender's locked <a href="#" data-section="promotions" style="color:var(--accent-blue)">signup bonus</a> cannot be moved. Validation failures (for example an <code>amount</code> of 0 or less, or with more than 2 decimals) return <code>422</code> with <code>{message, errors}</code>.</p>
 <div class="endpoint-section"><h4>Path Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -1968,7 +1968,7 @@ Content-Type: application/json
 <div class="endpoint-section"><h4>Request Body</h4>
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-<tr><td>amount</td><td>number</td><td><span class="required">Required</span></td><td>KES to move</td></tr>
+<tr><td>amount</td><td>number</td><td><span class="required">Required</span></td><td>KES to move, greater than 0 with at most 2 decimals (otherwise 422)</td></tr>
 <tr><td>wallet_id</td><td>integer</td><td><span class="required">Required</span></td><td>Plain id of the receiving wallet</td></tr>
 </table></div>
 <div class="endpoint-section"><h4>Example Request</h4>
@@ -3469,7 +3469,7 @@ Content-Type: application/json
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-400">400 Bad Request</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span> <span class="status-code status-500">500 Server Error</span> <span class="status-code status-409">409 Conflict</span></div>
-<p class="endpoint-note">Pays the game wallet's whole balance to <code>customer_id</code> (the winner), less a 5% house share rounded down to a whole shilling (so it never takes more than 5%), then closes the game (status 3). Only an open game can be paid. A game that is already settled (paid out, dropped or refunded) is refused with <code>409 {"code": "game_closed"}</code> and nothing moves, so a repeated or late call never pays twice.</p>
+<p class="endpoint-note">Pays the game wallet's whole balance to <code>customer_id</code> (the winner), less a 5% house share rounded down to a whole shilling (so it never takes more than 5%), then closes the game (status 3). Only an open game can be paid. A game that is already settled (paid out, dropped or refunded) is refused with <code>409 {"code": "game_closed"}</code> and nothing moves, so a repeated or late call never pays twice. The winner must have staked in this game (a <code>deposit</code> on <code>POST /game/bets</code>); anyone else is refused with <code>422 {"code": "not_a_player"}</code> and nothing moves.</p>
 <div class="endpoint-section"><h4>Path Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -3510,6 +3510,11 @@ Content-Type: application/json
       "The customer id field is required."
     ]
   }
+}</pre></div>
+<div class="endpoint-section"><h4>Response (422: the customer did not play in this game)</h4>
+<pre>{
+  "error": "This customer did not play in this game",
+  "code": "not_a_player"
 }</pre></div>
 <div class="endpoint-section"><h4>Response (500)</h4>
 <pre>{
@@ -3768,9 +3773,9 @@ Accept: application/json</pre></div>
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
 <tr><td>game_wallet_id</td><td>integer</td><td><span class="required">Required</span></td><td>Plain game wallet id</td></tr>
-<tr><td>customer_id</td><td>integer</td><td><span class="optional">Optional</span></td><td>Plain customer id (needed in practice)</td></tr>
+<tr><td>customer_id</td><td>integer</td><td><span class="required">Required</span></td><td>Plain customer id of an existing customer</td></tr>
 <tr><td>payment_type</td><td>string</td><td><span class="required">Required</span></td><td>Stored as given, e.g. <code>deposit</code></td></tr>
-<tr><td>amount</td><td>number</td><td><span class="required">Required</span></td><td>KES</td></tr>
+<tr><td>amount</td><td>number</td><td><span class="required">Required</span></td><td>KES, greater than 0 with at most 2 decimals (otherwise 422)</td></tr>
 <tr><td>status</td><td>integer</td><td><span class="optional">Optional</span></td><td>Stored as given</td></tr>
 <tr><td>bet_shop_no</td><td>string</td><td><span class="optional">Optional</span></td><td>The <a href="#" data-section="bet-shops" style="color:var(--accent-blue)">bet shop</a> the stake was made at, when the player is at a shop desktop (any case). Must be an active shop, otherwise 422 (<code>No bet shop has that number.</code> or <code>The bet shop is not active.</code>) and nothing is staked. Stored as <code>bet_shop_id</code> on this stake only, so one game can mix shops and online players; payouts and refunds are never attributed. Leave it out online.</td></tr>
 </table></div>
@@ -3832,9 +3837,9 @@ Content-Type: application/json
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
 <tr><td>game_wallet_id</td><td>integer</td><td><span class="required">Required</span></td><td>Game wallet id</td></tr>
-<tr><td>customer_id</td><td>integer</td><td><span class="optional">Optional</span></td><td>Customer id</td></tr>
+<tr><td>customer_id</td><td>integer</td><td><span class="optional">Optional</span></td><td>Customer id; must be an existing customer when sent</td></tr>
 <tr><td>payment_type</td><td>string</td><td><span class="required">Required</span></td><td>Payment type</td></tr>
-<tr><td>amount</td><td>number</td><td><span class="required">Required</span></td><td>Amount</td></tr>
+<tr><td>amount</td><td>number</td><td><span class="required">Required</span></td><td>KES, greater than 0 with at most 2 decimals (otherwise 422)</td></tr>
 <tr><td>status</td><td>integer</td><td><span class="optional">Optional</span></td><td>Status</td></tr>
 </table></div>
 <div class="endpoint-section"><h4>Example Request</h4>
@@ -4474,7 +4479,7 @@ Accept: application/json</pre></div>
 <tr><td>competition_wallet_id</td><td>integer</td><td><span class="required">Required</span></td><td>Plain competition wallet id</td></tr>
 <tr><td>customer_id</td><td>integer</td><td><span class="required">Required</span></td><td>Plain customer id: the wallet's owner</td></tr>
 <tr><td>payment_type</td><td>string</td><td><span class="required">Required</span></td><td>Stored as given, e.g. <code>deposit</code></td></tr>
-<tr><td>amount</td><td>number</td><td><span class="required">Required</span></td><td>Entry fee in KES</td></tr>
+<tr><td>amount</td><td>number</td><td><span class="required">Required</span></td><td>Entry fee in KES, greater than 0 with at most 2 decimals (otherwise 422)</td></tr>
 <tr><td>bet_shop_no</td><td>string</td><td><span class="optional">Optional</span></td><td>The <a href="#" data-section="bet-shops" style="color:var(--accent-blue)">bet shop</a> the entry was made at, when the player is at a shop desktop (any case). Must be an active shop, otherwise 422 (<code>No bet shop has that number.</code> or <code>The bet shop is not active.</code>) and nothing is entered. Stored as <code>bet_shop_id</code> on this entry only, so one game can mix shops and online players; payouts and refunds are never attributed. Leave it out online.</td></tr>
 </table></div>
 <div class="endpoint-section"><h4>Example Request</h4>
@@ -5666,13 +5671,13 @@ Content-Type: application/json
 <div class="endpoint-header" onclick="toggle(this)">
 <span class="method method-post">POST</span>
 <span class="endpoint-path">/api/v1/load/{encryptedIdentifier}</span>
-<span class="endpoint-desc">STK Push for a coin load, gift or emoji (or a plain deposit)</span>
+<span class="endpoint-desc">STK Push for a gift or emoji</span>
 <span class="chevron">&#9654;</span>
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">5/min</span></div>
-<div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-500">500 Server Error</span></div>
-<p class="endpoint-note">Prompts a phone to pay <code>amount</code>. The account reference tells KadiApi what the payment buys when Safaricom confirms it: <code>{account_no}#{coin_value}#load</code>, <code>{account_no}#{amount}#gift</code> or <code>{account_no}#{amount}#emoji</code>, with <code>#{referral_code}</code> appended when there is one; any other <code>type</code> is a plain wallet deposit. <code>201</code> only means the prompt was sent. Validation failures and M-Pesa errors return <code>500</code>.</p>
+<div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span> <span class="status-code status-500">500 Server Error</span></div>
+<p class="endpoint-note">Prompts a phone to pay <code>amount</code>. The account reference tells KadiApi what the payment buys when Safaricom confirms it: <code>{account_no}#{amount}#gift</code> or <code>{account_no}#{amount}#emoji</code>, with <code>#{referral_code}</code> appended when there is one. A gift or emoji is recorded as a purchase and never credits the wallet. To top up the wallet use <code>POST /api/v1/deposits/{encryptedIdentifier}</code>. The old <code>load</code> type is gone: a paybill payment whose account reference ends in <code>#load</code> is credited as an ordinary deposit of the amount paid. <code>201</code> only means the prompt was sent. Validation failures return <code>422</code>; M-Pesa errors return <code>500</code>.</p>
 <div class="endpoint-section"><h4>Path Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -5681,9 +5686,8 @@ Content-Type: application/json
 <div class="endpoint-section"><h4>Request Body</h4>
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-<tr><td>amount</td><td>number</td><td><span class="required">Required</span></td><td>KES to charge</td></tr>
-<tr><td>type</td><td>string</td><td><span class="required">Required</span></td><td><code>load</code>, <code>gift</code>, <code>emoji</code>, or anything else for a plain deposit</td></tr>
-<tr><td>coin_value</td><td>number</td><td><span class="optional">Optional</span></td><td>For <code>load</code>: the wallet credit the coins are worth</td></tr>
+<tr><td>amount</td><td>number</td><td><span class="required">Required</span></td><td>KES to charge, greater than 0</td></tr>
+<tr><td>type</td><td>string</td><td><span class="required">Required</span></td><td><code>gift</code> or <code>emoji</code></td></tr>
 <tr><td>phone_no</td><td>string</td><td><span class="optional">Optional</span></td><td>Phone to prompt instead of the customer's own (for example someone buying a gift)</td></tr>
 <tr><td>referral_code</td><td>string</td><td><span class="optional">Optional</span></td><td>Agent code to attach; defaults to the customer's stored <code>referral_code</code></td></tr>
 </table></div>
@@ -5708,9 +5712,16 @@ Content-Type: application/json
 <pre>{
   "message": "Customer not found"
 }</pre></div>
-<div class="endpoint-section"><h4>Response (500: invalid request or M-Pesa error)</h4>
+<div class="endpoint-section"><h4>Response (422)</h4>
 <pre>{
-  "message": "The type field is required."
+  "message": "The selected type is invalid.",
+  "errors": {
+    "type": ["The selected type is invalid."]
+  }
+}</pre></div>
+<div class="endpoint-section"><h4>Response (500: M-Pesa error)</h4>
+<pre>{
+  "message": "Could not start the M-Pesa payment, please try again"
 }</pre></div>
 <p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 409 (Idempotency-Key reused), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>

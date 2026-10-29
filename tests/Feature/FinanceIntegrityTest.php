@@ -393,3 +393,30 @@ it('does not move wallet_version when balance is untouched', function () {
 
     expect((int) $wallet->fresh()->wallet_version)->toBe(0);
 });
+
+it('records the house cut against the house wallet owner', function () {
+    $owner = Customer::factory()->create(['id' => 7]);
+    $ownerHouseWallet = Wallet::factory()->create(['customer_id' => $owner->id, 'balance' => 0]);
+    config(['wallets.house_wallet_id' => $ownerHouseWallet->id]);
+
+    $player = walletFor(500);
+    $gameWallet = GameWallet::create(['game_id' => 'FIN_HOUSE_OWNER', 'game_type' => 1, 'balance' => 0, 'status' => 1]);
+
+    $this->postJson('/api/v1/game/bets', [
+        'game_wallet_id' => $gameWallet->id,
+        'customer_id' => $player->customer_id,
+        'payment_type' => 'deposit',
+        'amount' => 100,
+        'status' => 1,
+    ], apiHeaders($this->apiKey->key))->assertCreated();
+
+    $this->postJson('/api/v1/game/withdraw/'.encryptId($gameWallet->id), [
+        'customer_id' => (string) $player->customer_id,
+    ], apiHeaders($this->apiKey->key))->assertCreated();
+
+    $cuts = LedgerEntry::where('entry_type', 'house_cut')->get();
+
+    expect($cuts)->not->toBeEmpty()
+        ->and($cuts->pluck('customer_id')->unique()->values()->all())->toBe([7])
+        ->and($cuts->pluck('wallet_id')->unique()->values()->all())->toBe([$ownerHouseWallet->id]);
+});

@@ -19,6 +19,7 @@ beforeEach(function () {
         'mpesa.b2c.short_code' => '3009678',
         'mpesa.b2c.result_url' => 'https://api.test/api/v1/b2c/result',
         'mpesa.b2c.timeout_url' => 'https://api.test/api/v1/b2c/timeout',
+        'mpesa.b2c.send_allowed_ips' => ['127.0.0.1'],
     ]);
 });
 
@@ -102,4 +103,62 @@ it('returns 503 when the shortcode credentials are not configured', function () 
 
 it('requires an API key', function () {
     $this->postJson('/api/v1/b2c/send', ['phone' => '0712345678', 'amount' => 100])->assertUnauthorized();
+});
+
+it('refuses a caller whose IP is not on the allowlist', function () {
+    Http::fake();
+    config(['mpesa.b2c.send_allowed_ips' => ['10.0.0.5']]);
+
+    sendB2C(['phone' => '0712345678', 'amount' => 500], $this->apiKey->key)
+        ->assertForbidden()
+        ->assertJsonPath('code', 'ip_not_allowed');
+
+    Http::assertNothingSent();
+});
+
+it('refuses every caller while the allowlist is empty', function () {
+    Http::fake();
+    config(['mpesa.b2c.send_allowed_ips' => []]);
+
+    sendB2C(['phone' => '0712345678', 'amount' => 500], $this->apiKey->key)->assertForbidden();
+
+    Http::assertNothingSent();
+});
+
+it('sends from an allowed IP that is not the first on the list', function () {
+    Http::fake([
+        '*/oauth/v1/generate*' => Http::response(['access_token' => 'main-token']),
+        '*/mpesa/b2c/v1/paymentrequest' => Http::response(['ResponseCode' => '0', 'ConversationID' => 'AG_IP_2']),
+    ]);
+    config(['mpesa.b2c.send_allowed_ips' => ['10.0.0.5', '10.0.0.9']]);
+
+    test()->withServerVariables(['REMOTE_ADDR' => '10.0.0.9'])
+        ->postJson('/api/v1/b2c/send', ['phone' => '0712345678', 'amount' => 500], apiHeaders($this->apiKey->key) + ['Idempotency-Key' => (string) Str::uuid()])
+        ->assertCreated();
+});
+
+it('refuses a send without an Idempotency-Key', function () {
+    Http::fake();
+
+    $this->postJson('/api/v1/b2c/send', ['phone' => '0712345678', 'amount' => 500], apiHeaders($this->apiKey->key))
+        ->assertStatus(400)
+        ->assertJsonPath('code', 'idempotency_key_required');
+    $this->postJson('/api/v1/b2c/send', ['phone' => '0712345678', 'amount' => 500], apiHeaders($this->apiKey->key))
+        ->assertStatus(400);
+
+    Http::assertNothingSent();
+});
+
+it('ignores a forged X-Forwarded-For header', function () {
+    Http::fake();
+
+    test()->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])
+        ->postJson('/api/v1/b2c/send', ['phone' => '0712345678', 'amount' => 500], apiHeaders($this->apiKey->key) + [
+            'Idempotency-Key' => (string) Str::uuid(),
+            'X-Forwarded-For' => '127.0.0.1',
+        ])
+        ->assertForbidden()
+        ->assertJsonPath('code', 'ip_not_allowed');
+
+    Http::assertNothingSent();
 });
