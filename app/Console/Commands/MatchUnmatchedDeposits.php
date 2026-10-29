@@ -9,7 +9,7 @@ class MatchUnmatchedDeposits extends Command
 {
     protected $signature = 'deposits:match-unmatched {--dry-run : List what would be assigned without changing anything}';
 
-    protected $description = 'Credit unmatched deposits whose bill ref now matches a customer account number exactly (never by phone)';
+    protected $description = 'Credit unmatched deposits whose bill ref now matches a customer by account number, player number or verified phone';
 
     public function __construct(private UnmatchedDepositService $unmatched)
     {
@@ -19,19 +19,19 @@ class MatchUnmatchedDeposits extends Command
     public function handle(): int
     {
         $dryRun = (bool) $this->option('dry-run');
-        $results = $this->unmatched->matchByAccountNumber($dryRun);
+        $results = $this->unmatched->matchByBillRef($dryRun);
 
         if ($results->isEmpty()) {
-            $this->info('No unmatched deposit matches a customer account number.');
+            $this->info('No unmatched deposit matches a customer.');
 
             return Command::SUCCESS;
         }
 
         $this->table(
-            ['Deposit', 'M-Pesa ID', 'Amount', 'Bill ref', 'Customer', 'Account no', 'Result'],
+            ['Deposit', 'M-Pesa ID', 'Amount', 'Bill ref', 'Customer', 'Account no', 'Matched by', 'Result'],
             $results->map(fn (array $row) => [
                 $row['deposit_id'], $row['trans_id'], number_format($row['amount'], 2), $row['bill_ref_no'],
-                $row['customer_id'], $row['account_no'], $row['message'],
+                $row['customer_id'], $row['account_no'], $row['matched_by'], $row['message'],
             ])->all()
         );
 

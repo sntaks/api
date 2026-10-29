@@ -145,7 +145,7 @@ it('rolls the deposit back when the excise duty cannot be recorded', function ()
 
 it('charges deposits recorded through the deposits endpoint', function () {
     $apiKey = createApiKey('test-excise-key');
-    $customer = Customer::factory()->create(['id_no' => 'EXC001']);
+    $customer = Customer::factory()->create(['account_no' => 'EXC001']);
 
     $this->postJson('/api/v1/deposits', [
         'TransID' => 'EXCAPI0001',

@@ -80,6 +80,16 @@ it('lists unmatched deposits with suggested customers', function () {
         ->toEqual(['Account Owner' => 'account_no', 'Jane Payer' => 'payer_phone']);
 });
 
+it('shows why each deposit was left unmatched', function () {
+    Customer::factory()->create(['account_no' => 'KK-6AA0000000003', 'phone_no' => '254733000222']);
+    unmatchedDeposit(100, '0799000111');
+    unmatchedDeposit(100, '0733000222', 'UNM0000014');
+
+    $items = $this->getJson('/api/v1/deposits/unmatched', $this->headers)->assertOk()->json('data.items');
+
+    expect(collect($items)->pluck('unmatched_reason', 'trans_id')->all())->toBe(['UNM0000001' => 'unknown', 'UNM0000014' => 'phone_unverified']);
+});
+
 it('gives no phone suggestion when M-Pesa masks the number', function () {
     unmatchedDeposit(100, '0799000111', 'UNM0000002', '2547 ***** 678');
 
@@ -256,6 +266,62 @@ it('runs the matcher from the API, dry run by default', function () {
         ->assertJsonPath('data.assigned', 1)
         ->assertJsonPath('data.assigned_amount', 100);
     expect($deposit->fresh()->resolution->resolved_by)->toBe('api_key:'.$this->apiKey->id);
+});
+
+/**
+ * An unmatched deposit recorded before bill refs could be player numbers or phones.
+ */
+function olderUnmatchedDeposit(string $billRef, string $msisdn, string $transId, float $amount = 100): Deposit
+{
+    return Deposit::create([
+        'trans_id' => $transId, 'trans_type' => 'Pay Bill', 'trans_time' => now(), 'trans_amount' => $amount,
+        'short_code' => '4007279', 'bill_ref_no' => $billRef, 'msisdn' => $msisdn, 'name' => 'Payer', 'status' => Deposit::STATUS_UNMATCHED,
+    ]);
+}
+
+it('assigns an older unmatched deposit by player number', function () {
+    $deposit = olderUnmatchedDeposit($this->customer->player_no, str_repeat('a', 64), 'UNM0000011');
+
+    $this->artisan('deposits:match-unmatched')->expectsOutputToContain('Assigned 1 deposit(s)')->assertSuccessful();
+
+    expect((int) $deposit->fresh()->status)->toBe(Deposit::STATUS_COMPLETED)
+        ->and($deposit->fresh()->resolution->customer_id)->toBe($this->customer->id)
+        ->and($deposit->fresh()->resolution->note)->toBe("Matched by player_no {$this->customer->player_no}");
+});
+
+it('suggests a player number match', function () {
+    olderUnmatchedDeposit($this->customer->player_no, '2547 ***** 678', 'UNM0000012');
+
+    $items = $this->getJson('/api/v1/deposits/unmatched', $this->headers)->assertOk()->json('data.items');
+
+    expect(collect($items[0]['suggestions'])->pluck('match', 'name')->all())->toEqual(['Jane Payer' => 'player_no']);
+});
+
+it('assigns an older deposit paid from the customer\'s own verified phone', function () {
+    $vera = Customer::factory()->create(['name' => 'Vera', 'account_no' => 'KK-6AA0000000002', 'phone_no' => '254733000111']);
+    $vera->forceFill(['phone_no_verified_at' => now()])->save();
+    $deposit = olderUnmatchedDeposit('0733000111', hash('sha256', '254733000111'), 'UNM0000013');
+
+    $this->postJson('/api/v1/deposits/unmatched/match', ['dry_run' => false], $this->headers)
+        ->assertOk()
+        ->assertJsonPath('data.assigned', 1)
+        ->assertJsonPath('data.items.0.matched_by', 'phone');
+
+    expect($deposit->fresh()->resolution->customer_id)->toBe($vera->id)
+        ->and($deposit->fresh()->resolution->note)->toBe('Matched by phone 0733000111')
+        ->and($deposit->fresh()->matched_by)->toBe('phone');
+});
+
+it('leaves an older phone match paid from another number for a person to assign', function () {
+    $vera = Customer::factory()->create(['name' => 'Vera', 'account_no' => 'KK-6AA0000000002', 'phone_no' => '254733000111']);
+    $vera->forceFill(['phone_no_verified_at' => now()])->save();
+    $deposit = olderUnmatchedDeposit('0733000111', hash('sha256', '254799000000'), 'UNM0000015');
+
+    $this->postJson('/api/v1/deposits/unmatched/match', ['dry_run' => false], $this->headers)
+        ->assertOk()
+        ->assertJsonPath('data.matched', 0);
+
+    expect((int) $deposit->fresh()->status)->toBe(Deposit::STATUS_UNMATCHED);
 });
 
 // finance

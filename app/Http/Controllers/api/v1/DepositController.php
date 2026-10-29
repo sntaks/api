@@ -5,14 +5,16 @@ namespace App\Http\Controllers\api\v1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDepositRequest;
 use App\Http\Resources\DepositResource;
-use App\Models\Customer;
 use App\Models\Deposit;
 use App\Models\Wallet;
+use App\Services\DepositAccountResolver;
 use App\Services\ExciseDutyService;
 use App\Services\HouseFundingService;
 use App\Services\LedgerService;
 use App\Services\ReferralService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
 class DepositController extends Controller
@@ -22,14 +24,19 @@ class DepositController extends Controller
         private ExciseDutyService $exciseDutyService,
         private ReferralService $referralService,
         private HouseFundingService $houseFunding,
+        private DepositAccountResolver $resolver,
     ) {}
 
     /**
-     * Display a listing of the resource.
+     * All deposits; `matched_by` (account_no, player_no, phone, phone_other_payer) keeps only those matched that way.
      */
-    public function index()
+    public function index(Request $request): AnonymousResourceCollection
     {
-        return DepositResource::collection(Deposit::with('exciseDutyCharge')->get());
+        $deposits = Deposit::with('exciseDutyCharge')
+            ->when($request->filled('matched_by'), fn ($query) => $query->where('matched_by', $request->string('matched_by')->toString()))
+            ->get();
+
+        return DepositResource::collection($deposits);
     }
 
     /**
@@ -60,16 +67,14 @@ class DepositController extends Controller
         // Record the payment
         $deposit = Deposit::create($depositData);
 
-        // Extract customer info from BillRefNumber
-        $accountNo = $deposit->bill_ref_no;
         $amount = $deposit->trans_amount;
 
-        // Check if the customer exists
-        $customer = Customer::where('id_no', $accountNo)->orWhere('account_no', $accountNo)->first();
+        // Same rule as C2B: account number, player number or verified phone. National ID numbers are not matched.
+        $match = $this->resolver->resolve($deposit->bill_ref_no, $deposit->msisdn);
+        $customer = $match->customer;
 
         if (! $customer) {
-            // Set deposit status to Suspense
-            $deposit->update(['status' => 0]);
+            $deposit->update(['status' => Deposit::STATUS_UNMATCHED, 'unmatched_reason' => $match->unmatchedReason]);
 
             return response()->json([
                 'message' => 'Customer not found. Deposit moved to suspense.',
@@ -88,7 +93,7 @@ class DepositController extends Controller
         }
 
         // Credit, excise duty and transaction row are written together or not at all.
-        [$wallet, $transaction, $ledgerEntry] = DB::transaction(function () use ($customer, $deposit, $amount) {
+        [$wallet, $transaction, $ledgerEntry] = DB::transaction(function () use ($customer, $deposit, $amount, $match) {
             $wallet = Wallet::firstOrCreate(
                 ['customer_id' => $customer->id],
                 ['balance' => 0]
@@ -110,8 +115,7 @@ class DepositController extends Controller
                 'balance_after' => $wallet->balance,
             ]);
 
-            // Update deposit status to Completed
-            $deposit->update(['status' => '2']);
+            $deposit->update(['status' => Deposit::STATUS_COMPLETED, 'matched_by' => $match->matchedBy]);
 
             $this->referralService->recordDeposit($deposit, $customer->id);
 

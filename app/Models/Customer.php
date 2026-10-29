@@ -86,6 +86,11 @@ class Customer extends Model
             if ($customer->isDirty('phone_no') || ! $customer->exists) {
                 $customer->phone_hash = self::phoneHash($customer->phone_no);
             }
+
+            // A different number is not verified yet; the same number reformatted keeps its verification.
+            if ($customer->exists && $customer->isDirty('phone_hash')) {
+                $customer->phone_no_verified_at = null;
+            }
         });
     }
 

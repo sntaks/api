@@ -13,6 +13,7 @@ class C2BConfirmationService
         private WalletDepositService $walletDepositService,
         private HouseFundingService $houseFunding,
         private BetShopFloatService $shopFloat,
+        private DepositAccountResolver $resolver,
     ) {}
 
     public function processCallback(array $depositData): array
@@ -34,15 +35,14 @@ class C2BConfirmationService
         return DB::transaction(function () use ($depositData) {
             $deposit = Deposit::create($depositData);
 
-            $billRefParts = explode('#', $deposit->bill_ref_no);
-            $rawAccountNo = $billRefParts[0];
+            $billRefParts = explode('#', (string) $deposit->bill_ref_no);
             $coinValue = $billRefParts[1] ?? null;
             $type = $billRefParts[2] ?? null;
             $referralCode = $billRefParts[3] ?? null;
 
-            $normalizedAccountNo = $this->walletDepositService->normalizeAccountNo($rawAccountNo);
-
-            $customer = Customer::where('account_no', $normalizedAccountNo)->first();
+            // The bill ref may be an account number, a player number or a verified phone (DepositAccountResolver).
+            $match = $this->resolver->resolve($deposit->bill_ref_no, $deposit->msisdn);
+            $customer = $match->customer;
 
             // A shop owner buying float (bill ref SHOP-<shop_no>): credited only when automatic crediting is on.
             if (! $customer && $this->shopFloat->creditFromCallback($deposit)) {
@@ -55,8 +55,8 @@ class C2BConfirmationService
 
             // The money has arrived either way: it is kept as unmatched and resolved through /deposits/unmatched.
             if (! $customer) {
-                $deposit->update(['status' => Deposit::STATUS_UNMATCHED]);
-                Log::channel('mpesa')->error('MPESA Confirmation Received [Invalid Customer]:', $depositData);
+                $deposit->update(['status' => Deposit::STATUS_UNMATCHED, 'unmatched_reason' => $match->unmatchedReason]);
+                Log::channel('mpesa')->error('MPESA Confirmation Received [Invalid Customer]:', $depositData + ['unmatched_reason' => $match->unmatchedReason]);
 
                 return [
                     'ResultCode' => '0',
@@ -79,7 +79,7 @@ class C2BConfirmationService
 
             $this->processByType($type, $coinValue, $deposit, $customer, $referralCode);
 
-            $deposit->update(['status' => 2]);
+            $deposit->update(['status' => Deposit::STATUS_COMPLETED, 'matched_by' => $match->matchedBy]);
 
             return [
                 'ResultCode' => '0',

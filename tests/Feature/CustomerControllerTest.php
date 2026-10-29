@@ -263,3 +263,40 @@ it('returns customer purchases', function () {
 
     $response->assertOk();
 });
+
+it('clears phone verification when the phone changes', function () {
+    $customer = Customer::factory()->create(['phone_no' => '254712345678']);
+    $customer->forceFill(['phone_no_verified_at' => now()])->save();
+
+    $this->putJson('/api/v1/customers/'.encryptId($customer->id), [
+        'phone_no' => '254722000111',
+    ], apiHeaders($this->apiKey->key))->assertOk();
+
+    expect($customer->fresh()->phone_no_verified_at)->toBeNull();
+});
+
+it('keeps phone verification when the same phone is reformatted', function () {
+    $customer = Customer::factory()->create(['phone_no' => '254712345678']);
+    $customer->forceFill(['phone_no_verified_at' => now()])->save();
+
+    $this->putJson('/api/v1/customers/'.encryptId($customer->id), [
+        'phone_no' => '0712345678',
+    ], apiHeaders($this->apiKey->key))->assertOk();
+
+    expect($customer->fresh()->phone_no_verified_at)->not->toBeNull();
+});
+
+it('refuses an account number that is a player number', function () {
+    $other = Customer::factory()->create();
+    $customer = Customer::factory()->create();
+
+    $this->putJson('/api/v1/customers/'.encryptId($customer->id), [
+        'account_no' => $other->player_no,
+    ], apiHeaders($this->apiKey->key))->assertStatus(422)->assertJsonValidationErrors('account_no');
+
+    $this->postJson('/api/v1/customers', [
+        'account_no' => $other->player_no,
+        'name' => 'New Player',
+        'email' => 'new.player@example.com',
+    ], apiHeaders($this->apiKey->key))->assertStatus(422)->assertJsonValidationErrors('account_no');
+});
