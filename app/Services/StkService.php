@@ -3,15 +3,25 @@
 namespace App\Services;
 
 use App\Models\Customer;
+use App\Util\PlayerNumber;
 use Illuminate\Support\Facades\Log;
 
 class StkService
 {
     public function __construct(private MpesaService $mpesaService) {}
 
+    /**
+     * Prompt the customer's phone for a wallet top-up. $identifier is an id, account number or player number.
+     * The M-Pesa account reference is the player number: 8 characters, check-digit protected and never
+     * edited, so the confirmation always matches back (DepositAccountResolver).
+     */
     public function initiateStkDeposit(string $identifier, float $amount): array
     {
-        $customer = Customer::where('id', $identifier)->orWhere('account_no', $identifier)->first();
+        $playerNo = PlayerNumber::normalize($identifier);
+
+        $customer = $playerNo !== null
+            ? Customer::where('player_no', $playerNo)->first()
+            : Customer::where('id', $identifier)->orWhere('account_no', $identifier)->first();
 
         if (! $customer) {
             throw new \InvalidArgumentException('Customer not found');
@@ -19,7 +29,7 @@ class StkService
 
         $params = [
             'Amount' => intval($amount),
-            'AccountReference' => $customer->id_no,
+            'AccountReference' => $customer->player_no,
             'PartyA' => $customer->phone_no,
             'PhoneNumber' => $customer->phone_no,
         ];

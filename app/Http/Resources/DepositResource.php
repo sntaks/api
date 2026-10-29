@@ -25,6 +25,8 @@ class DepositResource extends JsonResource
             'msisdn' => $this->msisdn,
             'name' => $this->name,
             'status' => $this->status,
+            'matched_by' => $this->matched_by,
+            'unmatched_reason' => $this->unmatched_reason,
             'excise_amount' => $this->exciseDutyCharge?->excise_amount,
             'net_amount' => $this->exciseDutyCharge?->net_amount,
             'created_at' => $this->created_at,

@@ -8,6 +8,7 @@ use App\Models\GameTransaction;
 use App\Models\GameWallet;
 use App\Models\Wallet;
 use App\Services\LedgerService;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /*
@@ -196,4 +197,22 @@ function legacyGameCreditStake(Wallet $wallet, GameWallet $gameWallet, float $am
     $ledger->recordHouseCut(Wallet::find(config('wallets.house_wallet_id', 1)), $houseCut, 'game_credit', $stake, ['game_wallet_id' => $gameWallet->id]);
 
     return $stake;
+}
+
+/**
+ * A paybill (C2B) confirmation from Safaricom for $billRef, paid from $msisdn (the sha256 of the 254
+ * number in production, or a plain or masked number).
+ */
+function payPaybill(string $billRef, string $msisdn, string $transId, float $amount = 100): TestResponse
+{
+    return test()->postJson('/api/v1/c2b/confirm', [
+        'TransID' => $transId,
+        'TransactionType' => 'Pay Bill',
+        'TransTime' => now()->format('YmdHis'),
+        'TransAmount' => $amount,
+        'BusinessShortCode' => '12345',
+        'BillRefNumber' => $billRef,
+        'MSISDN' => $msisdn,
+        'FirstName' => 'Payer',
+    ]);
 }

@@ -585,7 +585,7 @@ Accept: application/json</pre></div>
 <div class="endpoint-section"><h4>Request Body</h4>
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-<tr><td>account_no</td><td>string</td><td><span class="required">Required</span></td><td>Unique account number</td></tr>
+<tr><td>account_no</td><td>string</td><td><span class="required">Required</span></td><td>Unique account number; cannot be a player number (8 digits with a valid check digit)</td></tr>
 <tr><td>name</td><td>string</td><td><span class="required">Required</span></td><td>Full name, up to 255 characters</td></tr>
 <tr><td>email</td><td>string</td><td><span class="required">Required</span></td><td>Valid email, unique</td></tr>
 <tr><td>phone_no</td><td>string</td><td><span class="optional">Optional</span></td><td>Phone number, unique</td></tr>
@@ -715,8 +715,8 @@ Accept: application/json</pre></div>
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
 <tr><td>name</td><td>string</td><td><span class="optional">Optional</span></td><td>Full name</td></tr>
 <tr><td>email</td><td>string</td><td><span class="optional">Optional</span></td><td>Valid email</td></tr>
-<tr><td>phone_no</td><td>string</td><td><span class="optional">Optional</span></td><td>Phone number</td></tr>
-<tr><td>account_no</td><td>string</td><td><span class="optional">Optional</span></td><td>Account number</td></tr>
+<tr><td>phone_no</td><td>string</td><td><span class="optional">Optional</span></td><td>Phone number. A different number clears the phone verification (<code>phone_no_verified_at</code>), so report <code>POST /customers/{encryptedIdentifier}/verified</code> again once the new number is verified. The same number in another format (<code>07…</code> / <code>2547…</code>) keeps it.</td></tr>
+<tr><td>account_no</td><td>string</td><td><span class="optional">Optional</span></td><td>Account number; cannot be a player number</td></tr>
 <tr><td>google_id</td><td>string</td><td><span class="optional">Optional</span></td><td>Google sign-in id</td></tr>
 <tr><td>referral_code</td><td>string</td><td><span class="optional">Optional</span></td><td>Agent or referral code</td></tr>
 <tr><td>status</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 active, 0 inactive</td></tr>
@@ -2136,7 +2136,7 @@ Accept: application/json</pre></div>
 
 <div class="doc-section" data-section="deposits">
 
-<div class="callback-note">Deposits are M-Pesa payments into the paybill. Safaricom confirms each one to KadiApi, which credits the customer whose <strong>account number</strong> matches the bill ref (typing slips in <code>KK-</code> numbers are corrected). For a plain wallet deposit, 5% excise duty is taken when excise duty is on, so the wallet keeps 95% (<code>excise_amount</code>, <code>net_amount</code>); see <a href="#" data-section="finance-excise" style="color:var(--accent-blue)">Excise Duty</a>. A payment whose bill ref matches no account is kept as an <strong>unmatched deposit</strong> (status 0) for finance to assign to a customer, refund, or record as <strong>house funding</strong> (owner money for the house wallet). A payment to the house account number is also kept unmatched for that. Deposit <code>status</code>: 0 unmatched, 1 pending, 2 completed, 4 refunded. <code>msisdn</code> is the payer's phone number as M-Pesa sends it (usually a SHA-256 hash).</div>
+<div class="callback-note">Deposits are M-Pesa payments into the paybill. Safaricom confirms each one to KadiApi, which credits the customer the bill ref (the part before any <code>#</code>) names, first match wins: their <strong>account number</strong> (typing slips in <code>KK-</code> numbers are corrected), their 8-digit <strong>player number</strong> (spaces and dashes allowed; not when it is another customer's ID number), or, when the bill ref is only a phone number, their <strong>phone number</strong> in any Kenyan format (<code>0712…</code>, <code>712…</code>, <code>+254712…</code>, <code>254712…</code>). A phone is only used when exactly one customer has it and it is verified; it is credited whoever pays. Each deposit records how it matched in <code>matched_by</code>: <code>account_no</code>, <code>player_no</code>, <code>phone</code> (paid from that phone) or <code>phone_other_payer</code> (someone else's number paid). National ID numbers are not matched: an 8-digit ID that is also a player number is left unmatched. A bill ref with letters (<code>SHOP-0712345678</code>, <code>Mary 0712345678</code>) is never read as a phone. For a plain wallet deposit, 5% excise duty is taken when excise duty is on, so the wallet keeps 95% (<code>excise_amount</code>, <code>net_amount</code>); see <a href="#" data-section="finance-excise" style="color:var(--accent-blue)">Excise Duty</a>. A payment whose bill ref matches no customer is kept as an <strong>unmatched deposit</strong> (status 0, with <code>unmatched_reason</code> <code>unknown</code>, <code>phone_ambiguous</code> (more than one customer has that phone) or <code>phone_unverified</code>) for finance to assign to a customer, refund, or record as <strong>house funding</strong> (owner money for the house wallet). A payment naming the house account (by account number, player number or phone) is also kept unmatched for that, with no <code>matched_by</code>. Deposit <code>status</code>: 0 unmatched, 1 pending, 2 completed, 4 refunded. <code>msisdn</code> is the payer's phone number as M-Pesa sends it (usually a SHA-256 hash).</div>
 
 <button class="expand-all" onclick="toggleAll('deposits')">Expand / Collapse All</button>
 
@@ -2150,7 +2150,7 @@ Accept: application/json</pre></div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span></div>
-<p class="endpoint-note">Every deposit with its excise duty. <code>customer</code> is the credited customer's name when there is one. Not paginated; for ranges, filters and paging use <a href="#" data-section="finance-reports" style="color:var(--accent-blue)">GET /finance/deposits</a>.</p>
+<p class="endpoint-note">Every deposit with its excise duty. <code>customer</code> is the credited customer's name when there is one. <code>matched_by</code> says how the bill ref matched (<code>null</code> for unmatched deposits and ones recorded before matching was tracked) and <code>unmatched_reason</code> why it did not. Pass <code>matched_by</code> (<code>account_no</code>, <code>player_no</code>, <code>phone</code> or <code>phone_other_payer</code>) to list only those, e.g. <code>?matched_by=phone_other_payer</code> to review deposits paid by someone else's number. Not paginated; for ranges, filters and paging use <a href="#" data-section="finance-reports" style="color:var(--accent-blue)">GET /finance/deposits</a>.</p>
 <div class="endpoint-section"><h4>Example Request</h4>
 <pre>GET /api/v1/deposits HTTP/1.1
 Host: api.kadi-kings.co.ke
@@ -2170,6 +2170,8 @@ Accept: application/json</pre></div>
       "msisdn": "0daf17cd2c16b58b16f88647305c865debd589bb249142636847c79bbee14922",
       "name": "JANE W WANJIRU",
       "status": 2,
+      "matched_by": "account_no",
+      "unmatched_reason": null,
       "excise_amount": "5.00",
       "net_amount": "95.00",
       "created_at": "2026-09-24T09:52:10.000000Z",
@@ -2214,6 +2216,8 @@ Accept: application/json</pre></div>
     "msisdn": "0daf17cd2c16b58b16f88647305c865debd589bb249142636847c79bbee14922",
     "name": "JANE W WANJIRU",
     "status": 2,
+    "matched_by": null,
+    "unmatched_reason": "unknown",
     "excise_amount": "5.00",
     "net_amount": "95.00",
     "created_at": "2026-09-24T09:52:10.000000Z",
@@ -2248,7 +2252,7 @@ Accept: application/json</pre></div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-200">200 OK</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span></div>
-<p class="endpoint-note">For entering a C2B payment that did not arrive through the Safaricom callback. Fields use Safaricom's names. The bill ref is matched to a customer's account number or ID number exactly. A known <code>TransID</code> is ignored. Excise duty and the referral deposit bonus apply as for a normal deposit.</p>
+<p class="endpoint-note">For entering a C2B payment that did not arrive through the Safaricom callback. Fields use Safaricom's names. The bill ref is matched exactly as for C2B: account number, player number or verified phone (see above); national ID numbers are not matched. A known <code>TransID</code> is ignored. Excise duty and the referral deposit bonus apply as for a normal deposit.</p>
 <div class="endpoint-section"><h4>Request Body</h4>
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -2257,7 +2261,7 @@ Accept: application/json</pre></div>
 <tr><td>TransTime</td><td>string</td><td><span class="required">Required</span></td><td>Payment time, any date format</td></tr>
 <tr><td>TransAmount</td><td>number</td><td><span class="required">Required</span></td><td>KES paid</td></tr>
 <tr><td>BusinessShortCode</td><td>string</td><td><span class="required">Required</span></td><td>Paybill number</td></tr>
-<tr><td>BillRefNumber</td><td>string</td><td><span class="required">Required</span></td><td>Account number the payer entered</td></tr>
+<tr><td>BillRefNumber</td><td>string</td><td><span class="required">Required</span></td><td>What the payer entered: account number, player number or phone</td></tr>
 <tr><td>MSISDN</td><td>string</td><td><span class="required">Required</span></td><td>Payer phone (or hash)</td></tr>
 <tr><td>FirstName</td><td>string</td><td><span class="required">Required</span></td><td>Payer first name</td></tr>
 <tr><td>MiddleName</td><td>string</td><td><span class="optional">Optional</span></td><td>Payer middle name</td></tr>
@@ -2310,7 +2314,8 @@ Content-Type: application/json
   "deposit": {
     "id": 131,
     "trans_id": "UH4NW1Q7XV",
-    "status": 0
+    "status": 0,
+    "unmatched_reason": "unknown"
   }
 }</pre></div>
 <div class="endpoint-section"><h4>Response (422: validation failed)</h4>
@@ -2335,7 +2340,7 @@ Content-Type: application/json
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">5/min</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-201">201 Created</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-500">500 Server Error</span></div>
-<p class="endpoint-note">Asks M-Pesa to prompt the customer's phone for <code>amount</code> (whole shillings; decimals are dropped). <code>201</code> only means the prompt was requested: the wallet is credited when Safaricom confirms the payment, like any paybill deposit. The account reference sent is the customer's <code>id_no</code>. Validation failures and M-Pesa errors return <code>500</code>.</p>
+<p class="endpoint-note">Asks M-Pesa to prompt the customer's phone for <code>amount</code> (whole shillings; decimals are dropped). <code>201</code> only means the prompt was requested: the wallet is credited when Safaricom confirms the payment, like any paybill deposit. The M-Pesa account reference sent is the customer's <code>player_no</code> (8 digits), so the confirmation is matched back by player number (<code>matched_by: player_no</code>) whatever the player later saves as their ID number. The identifier may be the encrypted customer id, account number or player number. Validation failures and M-Pesa errors return <code>500</code>.</p>
 <div class="endpoint-section"><h4>Path Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -2382,7 +2387,7 @@ Content-Type: application/json
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-422">422 Unprocessable</span></div>
-<p class="endpoint-note">Deposits whose bill ref matched no account, oldest first, each with suggested customers (strongest match first): <code>account_no</code> (the bill ref is an account number), <code>payer_phone</code> (the paying number is a customer's phone) and <code>bill_ref_phone</code> (the bill ref, read as a phone number, is a customer's phone). <code>ambiguous</code> is true when that phone belongs to more than one customer. Suggestions are hints; a person decides. <code>msisdn</code> is masked when it is a phone number. Pass <code>status=assigned</code>, <code>refunded</code>, <code>house_funded</code> or <code>shop_float</code> to list resolved ones (newest first, no suggestions). An unmatched deposit whose bill ref names a <a href="#" data-section="bet-shops" style="color:var(--accent-blue)">bet shop</a> (<code>SHOP-&lt;shop_no&gt;</code>) has that shop in <code>bet_shop</code> (<code>id</code>, <code>shop_no</code>, <code>name</code>, <code>status</code>; otherwise <code>null</code>): it is the owner buying float, to credit with <code>POST /deposits/{id}/shop-float</code>. <code>summary</code> always counts every deposit still unmatched, whatever the filters. <code>bill_ref_no</code> is not masked here. <code>resolution</code> has <code>action</code>, <code>customer_id</code>, <code>customer_name</code>, <code>account_no_used</code>, <code>ledger_entry_id</code>, <code>mpesa_reference</code>, <code>note</code>, <code>resolved_by</code> and <code>resolved_at</code>; for action <code>shop_float</code> it also has <code>float_purchase_id</code> (the one to void if it went to the wrong shop), <code>bet_shop_id</code>, <code>shop_no</code> and <code>shop_name</code>.</p>
+<p class="endpoint-note">Deposits whose bill ref matched no account, oldest first, each with suggested customers (strongest match first): <code>account_no</code> (the bill ref is an account number), <code>player_no</code> (the bill ref is a player number), <code>payer_phone</code> (the paying number is a customer's phone) and <code>bill_ref_phone</code> (the bill ref, read as a phone number, is a customer's phone). <code>ambiguous</code> is true when that phone belongs to more than one customer. Phone suggestions ignore verification (an unverified or shared phone is why the deposit was left unmatched; see <code>unmatched_reason</code>). Suggestions are hints; a person decides. <code>msisdn</code> is masked when it is a phone number. Pass <code>status=assigned</code>, <code>refunded</code>, <code>house_funded</code> or <code>shop_float</code> to list resolved ones (newest first, no suggestions). An unmatched deposit whose bill ref names a <a href="#" data-section="bet-shops" style="color:var(--accent-blue)">bet shop</a> (<code>SHOP-&lt;shop_no&gt;</code>) has that shop in <code>bet_shop</code> (<code>id</code>, <code>shop_no</code>, <code>name</code>, <code>status</code>; otherwise <code>null</code>): it is the owner buying float, to credit with <code>POST /deposits/{id}/shop-float</code>. <code>summary</code> always counts every deposit still unmatched, whatever the filters. <code>bill_ref_no</code> is not masked here. <code>unmatched_reason</code> is <code>unknown</code>, <code>phone_ambiguous</code> or <code>phone_unverified</code> (<code>null</code> for deposits recorded before it was tracked). <code>resolution</code> has <code>action</code>, <code>customer_id</code>, <code>customer_name</code>, <code>account_no_used</code>, <code>ledger_entry_id</code>, <code>mpesa_reference</code>, <code>note</code>, <code>resolved_by</code> and <code>resolved_at</code>; for action <code>shop_float</code> it also has <code>float_purchase_id</code> (the one to void if it went to the wrong shop), <code>bet_shop_id</code>, <code>shop_no</code> and <code>shop_name</code>.</p>
 <div class="endpoint-section"><h4>Query Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -2415,6 +2420,7 @@ Accept: application/json</pre></div>
         "msisdn": "2547****5678",
         "name": "JANE W WANJIRU",
         "status": 0,
+        "unmatched_reason": "phone_unverified",
         "created_at": "2026-09-24T14:10:02+03:00",
         "suggestions": [
           {
@@ -2458,13 +2464,13 @@ Accept: application/json</pre></div>
 <div class="endpoint-header" onclick="toggle(this)">
 <span class="method method-post">POST</span>
 <span class="endpoint-path">/api/v1/deposits/unmatched/match</span>
-<span class="endpoint-desc">Assign unmatched deposits whose bill ref now matches an account</span>
+<span class="endpoint-desc">Assign unmatched deposits whose bill ref now matches a customer</span>
 <span class="chevron">&#9654;</span>
 </div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span></div>
-<p class="endpoint-note">For payers who paid before registering or whose account number was corrected. Matches on account number only, never on phone numbers, and never the house account (record that as house funding). With <code>dry_run</code> (the default) nothing changes and <code>items</code> lists what would be assigned. Each assignment is credited like a deposit (excise duty, referral bonus) and records the calling API key in <code>resolved_by</code>. The same matcher runs as <code>php artisan deposits:match-unmatched</code>.</p>
+<p class="endpoint-note">For payers who paid before registering, before their phone was verified, or whose account number was corrected. Uses the same rule as a live paybill deposit: account number, player number, or a phone held by exactly one customer and verified (see Deposits above). Never a national ID number, never the house account (record that as house funding), and never a phone match paid from someone else's number (<code>phone_other_payer</code>): that one stays unmatched with its suggestion for a person to assign. Assigned deposits get <code>matched_by</code>. Each item has <code>matched_by</code>, and the resolution note reads <code>Matched by &lt;matched_by&gt; &lt;bill ref&gt;</code>. With <code>dry_run</code> (the default) nothing changes and <code>items</code> lists what would be assigned. Each assignment is credited like a deposit (excise duty, referral bonus) and records the calling API key in <code>resolved_by</code>. The same matcher runs as <code>php artisan deposits:match-unmatched</code>.</p>
 <div class="endpoint-section"><h4>Request Body</h4>
 <table class="params-table">
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -2498,6 +2504,7 @@ Content-Type: application/json
         "customer_id": 42,
         "account_no": "KK-8FAV7WJY",
         "player_no": "12345671",
+        "matched_by": "account_no",
         "assigned": true,
         "message": "Deposit credited to the customer"
       }

@@ -34,6 +34,8 @@ class Deposit extends Model
         'msisdn',
         'name',
         'status',
+        'matched_by',
+        'unmatched_reason',
     ];
 
     // Define polymorphic relationship

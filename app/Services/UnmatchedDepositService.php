@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\Deposit;
 use App\Models\DepositResolution;
+use App\Util\PlayerNumber;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -30,22 +31,24 @@ class UnmatchedDepositService
     private const REFERENCE_USED_MESSAGE = 'That M-Pesa reference is already on another refund';
 
     /** Suggestion kinds, strongest first. */
-    public const MATCH_KINDS = ['account_no', 'payer_phone', 'bill_ref_phone'];
+    public const MATCH_KINDS = ['account_no', 'player_no', 'payer_phone', 'bill_ref_phone'];
 
     public function __construct(
         private WalletDepositService $walletDeposits,
         private HouseFundingService $houseFunding,
+        private DepositAccountResolver $resolver,
     ) {}
 
     /**
      * Customers an unmatched deposit probably belongs to, strongest match first:
      *
      * account_no      the bill ref (normalised as C2B does) is the customer's account number
+     * player_no       the bill ref is the customer's player number (valid check digit)
      * payer_phone     the number M-Pesa says paid (msisdn, sent as a SHA-256 hash) is the customer's phone
      * bill_ref_phone  the bill ref, read as a phone number, is the customer's phone
      *
      * `matches` lists every kind a customer matched; `ambiguous` is true when the matched phone number
-     * belongs to more than one customer. Phone numbers are not verified in the API, so these are hints:
+     * belongs to more than one customer. Phone suggestions ignore verification, so these are hints:
      * a person always decides.
      *
      * @return list<array{customer_id: int, name: string, account_no: ?string, phone_no: ?string, match: string, matches: list<string>, ambiguous: bool}>
@@ -70,7 +73,13 @@ class UnmatchedDepositService
             $add(Customer::where('account_no', $accountNo)->limit(1)->get(), 'account_no');
         }
 
-        $payerHash = $this->payerPhoneHash($deposit->msisdn);
+        $playerNo = PlayerNumber::normalize(explode('#', (string) $deposit->bill_ref_no)[0]);
+
+        if ($playerNo !== null) {
+            $add(Customer::where('player_no', $playerNo)->limit(1)->get(), 'player_no');
+        }
+
+        $payerHash = $this->resolver->payerPhoneHash($deposit->msisdn);
 
         if ($payerHash !== null) {
             $add(Customer::where('phone_hash', $payerHash)->limit(5)->get(), 'payer_phone');
@@ -196,14 +205,16 @@ class UnmatchedDepositService
     }
 
     /**
-     * Assign every unmatched deposit whose bill ref now matches a customer's account number exactly (the C2B
-     * rule), for payers who paid before registering or whose account number was corrected. Never matches on
-     * phone numbers, and never the house account (that money is recorded as house funding). With $dryRun
-     * nothing is changed. $actor is recorded as resolved_by.
+     * Assign every unmatched deposit whose bill ref now matches a customer by the live C2B rule
+     * (DepositAccountResolver: account number, player number, or a unique verified phone), for payers who
+     * paid before registering, before verifying their phone, or whose account number was corrected. Never
+     * the house account (that money is recorded as house funding), and never a phone match paid from
+     * another number (`phone_other_payer`: left as a suggestion). Assigned deposits get `matched_by`.
+     * With $dryRun nothing is changed. $actor is recorded as resolved_by.
      *
-     * @return Collection<int, array{deposit_id: int, trans_id: ?string, amount: float, bill_ref_no: ?string, customer_id: int, account_no: string, assigned: bool, message: string}>
+     * @return Collection<int, array{deposit_id: int, trans_id: ?string, amount: float, bill_ref_no: ?string, customer_id: int, account_no: ?string, player_no: ?string, matched_by: string, assigned: bool, message: string}>
      */
-    public function matchByAccountNumber(bool $dryRun, ?string $actor = self::COMMAND_ACTOR): Collection
+    public function matchByBillRef(bool $dryRun, ?string $actor = self::COMMAND_ACTOR): Collection
     {
         $results = collect();
         $houseCustomerId = $this->houseFunding->houseCustomerId();
@@ -212,16 +223,22 @@ class UnmatchedDepositService
             ->orderBy('id')
             ->chunkById(200, function ($deposits) use ($dryRun, $actor, $results, $houseCustomerId) {
                 foreach ($deposits as $deposit) {
-                    $accountNo = $this->walletDeposits->accountNoFromBillRef($deposit->bill_ref_no);
-                    $customer = $accountNo === '' ? null : Customer::where('account_no', $accountNo)->first();
+                    $match = $this->resolver->resolve($deposit->bill_ref_no, $deposit->msisdn);
+                    $customer = $match->customer;
 
-                    if (! $customer || (int) $customer->id === $houseCustomerId) {
+                    // An old payment from someone else's number may predate who holds that phone now: a person decides.
+                    if (! $customer || (int) $customer->id === $houseCustomerId || $match->matchedBy === DepositAccountMatch::MATCHED_BY_PHONE_OTHER_PAYER) {
                         continue;
                     }
 
+                    $reference = trim(explode('#', (string) $deposit->bill_ref_no)[0]);
                     $outcome = $dryRun
                         ? ['success' => true, 'message' => 'Would assign']
-                        : $this->assign($deposit->id, $customer->id, "Matched by account number {$accountNo}", $actor);
+                        : $this->assign($deposit->id, $customer->id, "Matched by {$match->matchedBy} {$reference}", $actor);
+
+                    if (! $dryRun && $outcome['success']) {
+                        $deposit->forceFill(['matched_by' => $match->matchedBy])->save();
+                    }
 
                     $results->push([
                         'deposit_id' => $deposit->id,
@@ -229,7 +246,8 @@ class UnmatchedDepositService
                         'amount' => (float) $deposit->trans_amount,
                         'bill_ref_no' => $deposit->bill_ref_no,
                         'customer_id' => $customer->id,
-                        'account_no' => $accountNo,
+                        'account_no' => $customer->account_no,
+                        'matched_by' => $match->matchedBy,
                         'player_no' => $customer->player_no,
                         'assigned' => ! $dryRun && $outcome['success'],
                         'message' => $outcome['message'],
@@ -238,21 +256,6 @@ class UnmatchedDepositService
             });
 
         return $results;
-    }
-
-    /**
-     * The payer's number as a phone hash. M-Pesa sends `msisdn` as SHA-256 of the 254 number; an older or
-     * plain number is hashed the same way. Masked numbers (with `*`) give null.
-     */
-    private function payerPhoneHash(?string $msisdn): ?string
-    {
-        $msisdn = trim((string) $msisdn);
-
-        if (preg_match('/^[0-9a-f]{64}$/i', $msisdn)) {
-            return strtolower($msisdn);
-        }
-
-        return str_contains($msisdn, '*') ? null : Customer::phoneHash($msisdn);
     }
 
     /**

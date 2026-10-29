@@ -99,11 +99,23 @@ it('leaves a phone-number bill ref unmatched at C2B and suggests the customer tw
     ]]);
 });
 
+it('credits the same payment at C2B once her phone is verified', function () {
+    $this->doris->forceFill(['phone_no_verified_at' => now()])->save();
+
+    c2bPayment('0705171214', DORIS_MSISDN_HASH, 'UIO2E8BUH5')->assertCreated();
+
+    $deposit = Deposit::where('trans_id', 'UIO2E8BUH5')->sole();
+
+    expect((int) $deposit->status)->toBe(Deposit::STATUS_COMPLETED)
+        ->and($deposit->matched_by)->toBe('phone')
+        ->and((float) $this->dorisWallet->fresh()->balance)->toBe(150.0);
+});
+
 it('never assigns a phone match automatically', function () {
     c2bPayment('0705171214', DORIS_MSISDN_HASH, 'UIO2E8BUH5');
 
     $this->artisan('deposits:match-unmatched', ['--dry-run' => true])
-        ->expectsOutputToContain('No unmatched deposit matches a customer account number.')
+        ->expectsOutputToContain('No unmatched deposit matches a customer.')
         ->assertSuccessful();
 
     $this->postJson('/api/v1/deposits/unmatched/match', ['dry_run' => false], $this->headers)

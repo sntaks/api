@@ -17,7 +17,7 @@ it('lists deposits', function () {
 });
 
 it('creates a deposit via C2B confirmation', function () {
-    $customer = Customer::factory()->create(['id_no' => 'DEP001']);
+    $customer = Customer::factory()->create(['account_no' => 'DEP001']);
 
     $payload = [
         'TransID' => 'MPESA_DEP_TEST_001',

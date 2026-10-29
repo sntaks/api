@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 it('rejects duplicate deposit with same trans_id', function () {
-    $customer = Customer::factory()->create(['id_no' => 'CUST001']);
+    $customer = Customer::factory()->create(['account_no' => 'CUST001']);
     Wallet::factory()->create(['customer_id' => $customer->id, 'balance' => 0]);
 
     $depositData = [
@@ -38,7 +38,7 @@ it('rejects duplicate deposit with same trans_id', function () {
 });
 
 it('processes unique deposits with different trans_ids', function () {
-    $customer = Customer::factory()->create(['id_no' => 'CUST002']);
+    $customer = Customer::factory()->create(['account_no' => 'CUST002']);
     Wallet::factory()->create(['customer_id' => $customer->id, 'balance' => 0]);
 
     $apiKey = ApiKey::create(['key' => 'test-api-key-deposit2', 'name' => 'Test', 'is_active' => true]);

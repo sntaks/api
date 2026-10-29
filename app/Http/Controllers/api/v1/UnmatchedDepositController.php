@@ -62,6 +62,7 @@ class UnmatchedDepositController extends Controller
                     'msisdn' => $masker->phone($deposit->msisdn),
                     'name' => $deposit->name,
                     'status' => (int) $deposit->status,
+                    'unmatched_reason' => $deposit->unmatched_reason,
                     'created_at' => $deposit->created_at?->toIso8601String(),
                     'suggestions' => $status === 'unmatched' ? $this->unmatched->suggestionsFor($deposit) : [],
                     'bet_shop' => $status === 'unmatched' ? $this->shopFor($deposit) : null,
@@ -78,8 +79,8 @@ class UnmatchedDepositController extends Controller
     }
 
     /**
-     * Run the account-number matcher (the same as `php artisan deposits:match-unmatched`): assign every
-     * unmatched deposit whose bill ref now matches a customer's account number exactly. Never by phone.
+     * Run the matcher (the same as `php artisan deposits:match-unmatched`): assign every unmatched deposit
+     * whose bill ref now matches a customer by the C2B rule (account number, player number or verified phone).
      * `dry_run` (default true) only lists what would be assigned.
      */
     public function match(Request $request): JsonResponse
@@ -87,7 +88,7 @@ class UnmatchedDepositController extends Controller
         $validated = $request->validate(['dry_run' => ['nullable', 'boolean']]);
         $dryRun = (bool) ($validated['dry_run'] ?? true);
 
-        $results = $this->unmatched->matchByAccountNumber($dryRun, $this->actorFor($request));
+        $results = $this->unmatched->matchByBillRef($dryRun, $this->actorFor($request));
         $assigned = $results->where('assigned', true);
 
         return response()->json([
