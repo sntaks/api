@@ -1,16 +1,20 @@
 <?php
 
+use App\Models\ApiKey;
 use App\Models\Customer;
 use App\Models\ExciseDutyCharge;
+use App\Models\Game;
 use App\Models\GameTransaction;
 use App\Models\GameWallet;
 use App\Models\LedgerEntry;
+use App\Models\Product;
 use App\Models\PromoCode;
 use App\Models\PromotionCredit;
 use App\Models\Wallet;
 use App\Services\ExciseDutyService;
 use App\Services\GameWalletService;
 use App\Services\LedgerService;
+use App\Services\PlayerTokenService;
 use App\Services\SignupBonusService;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -322,6 +326,37 @@ it('keeps the bonus locked until it has been staked, not counting refunded stake
 
     stake($this->customer, 20);
     expect(lockedBonus($this->customer))->toBe(0.0);
+});
+
+it('counts a cash wager toward the signup bonus and ignores a free bet', function () {
+    reportVerified($this->customer);
+    $this->customer->forceFill(['status' => 1])->save();
+
+    $game = Game::factory()->create(['code' => 'crash']);
+    $gameKey = ApiKey::create(['key' => 'game_bonus_key', 'name' => 'crash', 'scope' => ApiKey::SCOPE_GAME, 'game_id' => $game->id, 'is_active' => true]);
+    Product::factory()->create(['game_id' => $game->id, 'code' => 'crash_classic']);
+    $headers = apiHeaders($gameKey->key) + ['Authorization' => 'Bearer '.app(PlayerTokenService::class)->issue($this->customer, $game)->plainTextToken];
+
+    $place = fn (string $reference, array $money) => $this->postJson('/api/v1/wagers', array_merge(['product' => 'crash_classic', 'reference' => $reference], $money), $headers)->assertSuccessful();
+    $settle = fn (string $reference, string $outcome) => $this->postJson("/api/v1/wagers/{$reference}/settle", ['product' => 'crash_classic', 'version' => 1, 'outcome' => $outcome, 'payout' => 0, 'bonus' => 0], apiHeaders($gameKey->key))->assertSuccessful();
+
+    expect(lockedBonus($this->customer))->toBe(20.0);
+
+    $place('cash-1', ['funding' => 'cash', 'stake' => 8]);
+    expect(lockedBonus($this->customer))->toBe(12.0);
+
+    $place('free-1', ['funding' => 'free_bet', 'free_bet_amount' => 50]);
+    expect(lockedBonus($this->customer))->toBe(12.0);
+
+    $place('cash-2', ['funding' => 'cash', 'stake' => 5]);
+    expect(lockedBonus($this->customer))->toBe(7.0);
+
+    $settle('cash-2', 'void');
+    expect(lockedBonus($this->customer))->toBe(12.0);
+
+    $settle('cash-1', 'lost');
+    $settle('free-1', 'lost');
+    expect(lockedBonus($this->customer))->toBe(12.0);
 });
 
 it('refuses a withdrawal that would take locked bonus', function () {
