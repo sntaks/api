@@ -68,7 +68,9 @@ it('refuses a token with the wildcard ability', function () {
 
 it('refuses a token of a suspended or deleted customer', function (Closure $disable) {
     $token = $this->tokens->issue($this->player, $this->crash)->plainTextToken;
-    $disable($this->player);
+    // Without model events, as a raw update would do: the Customer hook would otherwise revoke the token
+    // first (PlayerSessionTest covers that), and this checks the middleware's own guard.
+    Customer::withoutEvents(fn () => $disable($this->player));
 
     probe($this, $token)->assertForbidden()->assertJsonPath('code', 'player_inactive');
 })->with([

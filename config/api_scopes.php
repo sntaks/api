@@ -54,13 +54,19 @@ return [
         'GET api/v1/complaints',
         'POST api/v1/complaints',
 
-        // Lobby
+        // Lobby and game launch
         'GET api/v1/games',
+        'POST api/v1/customers/{encryptedIdentifier}/launch-tokens',
+        'POST api/v1/customers/{encryptedIdentifier}/player-tokens/revoke',
     ],
 
     /*
-     * Game servers. Empty until launch tokens (P3) and the wager API (P5) add their routes.
+     * Game servers: start a player session from a launch token. The wager API (P5) adds its routes here.
      */
-    'game' => [],
+    'game' => [
+        'POST api/v1/launch-tokens/redeem',
+        'GET api/v1/me',
+        'GET api/v1/me/balance',
+    ],
 
 ];

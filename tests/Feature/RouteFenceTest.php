@@ -5,7 +5,6 @@ use App\Models\BetShop;
 use App\Models\Customer;
 use App\Models\Game;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route as Router;
@@ -37,20 +36,11 @@ function keyedRoutes(): array
 }
 
 /**
- * Refused by the route fence, or (only for routes behind auth:sanctum, which Laravel's middleware priority
- * runs before the API key check) refused with 401 before the fence is reached.
+ * Refused by the route fence.
  */
 function isFenced(object $test, array $route, ApiKey $key): bool
 {
-    $response = callRoute($test, $route[0], $route[1], $key);
-
-    if ($response->json('code') === 'route_not_allowed') {
-        return true;
-    }
-
-    $middleware = Router::getRoutes()->match(Request::create('/'.preg_replace('/\{[^}]+\}/', 'x', $route[1]), $route[0]))->gatherMiddleware();
-
-    return in_array('auth:sanctum', $middleware, true) && $response->status() === 401;
+    return callRoute($test, $route[0], $route[1], $key)->json('code') === 'route_not_allowed';
 }
 
 function callRoute(object $test, string $method, string $uri, ApiKey $key)

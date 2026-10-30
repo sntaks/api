@@ -41,6 +41,8 @@ use App\Http\Controllers\api\v1\GameTransactionController;
 use App\Http\Controllers\api\v1\GameWalletController;
 use App\Http\Controllers\api\v1\GameWalletWithdrawController;
 use App\Http\Controllers\api\v1\HouseFundingController;
+use App\Http\Controllers\api\v1\LaunchTokenController;
+use App\Http\Controllers\api\v1\PlayerSessionController;
 use App\Http\Controllers\api\v1\PlaygroundController;
 use App\Http\Controllers\api\v1\ProductController;
 use App\Http\Controllers\api\v1\PromoCodeController;
@@ -66,7 +68,6 @@ use App\Http\Controllers\api\v1\WalletTransactionController;
 use App\Http\Controllers\api\v1\WalletTransferController;
 use App\Http\Controllers\api\v1\WithdrawalController;
 use App\Http\Controllers\api\v1\WithdrawController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('/v1')->group(function () {
@@ -152,6 +153,15 @@ Route::prefix('/v1')->group(function () {
         // API keys (GMS): list every key, issue a game's keys (not idempotent on purpose: a stored response would keep the new key for 24 hours)
         Route::get('/api-keys', [ApiKeyController::class, 'index']);
         Route::post('/games/{code}/keys', [ApiKeyController::class, 'issueGameKey'])->middleware('throttle:write');
+
+        // A game swaps the launch token kadi gave its player for a player token (game keys only; never idempotent: a stored response would replay a live token)
+        Route::post('/launch-tokens/redeem', [LaunchTokenController::class, 'redeem'])->middleware('throttle:write');
+
+        // A game server reading its player (game key + player token)
+        Route::middleware('player.token')->group(function () {
+            Route::get('/me', [PlayerSessionController::class, 'me']);
+            Route::get('/me/balance', [PlayerSessionController::class, 'balance']);
+        });
 
         // Shop system: shop API keys only, always acting for the key's own shop
         Route::prefix('/shop')->middleware(['shop.key', 'throttle:shop'])->group(function () {
@@ -322,6 +332,11 @@ Route::prefix('/v1')->group(function () {
             Route::get('/customers/{encryptedIdentifier}/shop-withdrawals', [ShopWithdrawalController::class, 'index']);
             Route::post('/customers/{encryptedIdentifier}/shop-withdrawals/{withdrawalId}/cancel', [ShopWithdrawalController::class, 'cancel'])->middleware(['idempotency', 'throttle:write']);
 
+            // Launch a game for a logged-in kadi player (site key; never idempotent: a stored response would replay a live token)
+            Route::post('/customers/{encryptedIdentifier}/launch-tokens', [LaunchTokenController::class, 'store'])->middleware('throttle:write');
+            // End a player's game sessions, e.g. on kadi logout (site key)
+            Route::post('/customers/{encryptedIdentifier}/player-tokens/revoke', [PlayerSessionController::class, 'revoke'])->middleware('throttle:write');
+
             // Wallet Transfer Routes
             Route::post('/wallets/transfer/{encryptedIdentifier}', WalletTransferController::class)->middleware(['idempotency', 'throttle:write']);
 
@@ -404,11 +419,6 @@ Route::prefix('/v1')->group(function () {
         /*Route::middleware('decryptIdentifier')->get('/test/{encryptedIdentifier}', function ($decryptedIdentifier) {
             return response()->json(['decrypted' => $decryptedIdentifier]);
         });*/
-
-        // Users
-        Route::get('/user', function (Request $request) {
-            return $request->user();
-        })->middleware('auth:sanctum');
     });
 
     // Callback URLS

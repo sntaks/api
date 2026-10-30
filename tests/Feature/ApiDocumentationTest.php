@@ -22,9 +22,9 @@ const UNDOCUMENTED_ROUTES = [
     // Purchases
     'GET /api/v1/purchases', 'GET /api/v1/purchases/{encryptedIdentifier}', 'DELETE /api/v1/purchases/{encryptedIdentifier}', 'POST /api/v1/purchases/referrals',
     'GET /api/v1/customers/purchases/{encryptedIdentifier}', 'GET /api/v1/stats/purchases', 'POST /api/v1/stats/purchases/referrals',
-    // Playground and the Sanctum stub
+    // Playground
     'GET /api/v1/playground', 'POST /api/v1/playground', 'GET /api/v1/playground/{encryptedIdentifier}', 'PUT /api/v1/playground/{encryptedIdentifier}',
-    'DELETE /api/v1/playground/{encryptedIdentifier}', 'GET /api/v1/user',
+    'DELETE /api/v1/playground/{encryptedIdentifier}',
 ];
 
 /**

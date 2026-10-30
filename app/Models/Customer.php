@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PlayerTokenService;
 use App\Util\Badge;
 use App\Util\PlayerNumber;
 use Database\Factories\CustomerFactory;
@@ -93,6 +94,35 @@ class Customer extends Model
                 $customer->phone_no_verified_at = null;
             }
         });
+
+        // A player who stops being active, or is deleted, leaves every game at once. Reactivating them does
+        // not bring old sessions back: they relaunch from kadi.
+        static::updated(function (Customer $customer) {
+            if ($customer->wasChanged('status') && (int) $customer->status !== 1) {
+                app(PlayerTokenService::class)->revokeAll($customer);
+            }
+        });
+
+        static::deleted(fn (Customer $customer) => app(PlayerTokenService::class)->revokeAll($customer));
+    }
+
+    /**
+     * The name a game may show in public: first name and last initial ("Jane W."), or "Player 5678" (the
+     * last four digits of the player number) when there is no name, or when the name holds an email or a
+     * number, which must never reach a public feed.
+     */
+    public function displayName(): string
+    {
+        $name = trim((string) $this->name);
+        $parts = preg_split('/\s+/', $name, -1, PREG_SPLIT_NO_EMPTY);
+
+        if (! $parts || str_contains($name, '@') || preg_match('/\d/', $name)) {
+            return 'Player '.substr((string) $this->player_no, -4);
+        }
+
+        $first = mb_convert_case(mb_strtolower($parts[0]), MB_CASE_TITLE);
+
+        return count($parts) > 1 ? $first.' '.mb_strtoupper(mb_substr(end($parts), 0, 1)).'.' : $first;
     }
 
     /**
