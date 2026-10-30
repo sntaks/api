@@ -25,18 +25,7 @@ class CompetitionPayoutService
         if ($senderId === $receiverId) {
             throw new \InvalidArgumentException('Sender and Receiver Competition Wallets must be different');
         }
-        if ($sender->status !== 1) {
-            throw new \InvalidArgumentException('Sender Competition Wallet is not open');
-        }
-        if ($receiver->status !== 1) {
-            throw new \InvalidArgumentException('Receiver Competition Wallet is not open');
-        }
-        if ($sender->isUnderDispute() || $receiver->isUnderDispute()) {
-            throw new \InvalidArgumentException('Competition Wallet is frozen by a pending complaint');
-        }
-        if ($sender->balance <= 0) {
-            throw new \InvalidArgumentException('Insufficient balance in Sender Competition Wallet');
-        }
+        $this->assertTransferable($sender, $receiver);
         if ($sender->game_type != $receiver->game_type) {
             throw new \InvalidArgumentException('Competition Wallets must have same game type');
         }
@@ -102,6 +91,16 @@ class CompetitionPayoutService
     private function transferRoundResult(CompetitionWallet $sender, CompetitionWallet $receiver): array
     {
         DB::transaction(function () use ($sender, $receiver) {
+            // Both competition wallets are locked in id order and processPayout's checks are repeated on the locked
+            // rows, so two round results at once cannot move the same balance twice
+            $locked = [];
+            foreach (collect([$sender->id, $receiver->id])->sort() as $id) {
+                $locked[$id] = CompetitionWallet::lockForUpdate()->find($id)
+                    ?? throw new \InvalidArgumentException('Invalid Competition Wallet(s)');
+            }
+            [$sender, $receiver] = [$locked[$sender->id], $locked[$receiver->id]];
+            $this->assertTransferable($sender, $receiver);
+
             $totalBalance = $sender->balance;
 
             $senderCustomer = $sender->customer;
@@ -149,5 +148,26 @@ class CompetitionPayoutService
         });
 
         return ['status' => 'success'];
+    }
+
+    /**
+     * Both wallets open and not frozen by a complaint, and the sender holding money to move.
+     *
+     * @throws \InvalidArgumentException
+     */
+    private function assertTransferable(CompetitionWallet $sender, CompetitionWallet $receiver): void
+    {
+        if ($sender->status !== 1) {
+            throw new \InvalidArgumentException('Sender Competition Wallet is not open');
+        }
+        if ($receiver->status !== 1) {
+            throw new \InvalidArgumentException('Receiver Competition Wallet is not open');
+        }
+        if ($sender->isUnderDispute() || $receiver->isUnderDispute()) {
+            throw new \InvalidArgumentException('Competition Wallet is frozen by a pending complaint');
+        }
+        if ($sender->balance <= 0) {
+            throw new \InvalidArgumentException('Insufficient balance in Sender Competition Wallet');
+        }
     }
 }
