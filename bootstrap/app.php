@@ -9,10 +9,17 @@ use App\Http\Middleware\EnsureIdempotency;
 use App\Http\Middleware\EnsureShopKey;
 use App\Http\Middleware\LogRequests;
 use App\Http\Middleware\RequireIdempotencyKey;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -35,7 +42,39 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Wager and round routes always answer {success, message, code, retryable}, also for a rate limit or a
+        // crash, so a game's outbox can tell what to retry. The exception is still reported and logged as usual.
+        $exceptions->render(function (Throwable $e, Request $request) {
+            if (! ($request->is('api/v1/wagers') || $request->is('api/v1/wagers/*') || $request->is('api/v1/rounds/*'))) {
+                return null;
+            }
+
+            if ($e instanceof ThrottleRequestsException) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Too many requests',
+                    'code' => 'rate_limited',
+                    'retryable' => true,
+                ], 429, $e->getHeaders());
+            }
+
+            $shapedElsewhere = $e instanceof ValidationException
+                || $e instanceof AuthenticationException
+                || $e instanceof AuthorizationException
+                || $e instanceof ModelNotFoundException
+                || ($e instanceof HttpExceptionInterface && $e->getStatusCode() < 500);
+
+            if ($shapedElsewhere) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error',
+                'code' => 'server_error',
+                'retryable' => true,
+            ], 500);
+        });
     })
     ->withSchedule(function (Schedule $schedule) {
         // Schedule SMSCode expiration every minute

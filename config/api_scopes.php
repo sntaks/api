@@ -73,6 +73,9 @@ return [
         'POST api/v1/launch-tokens/redeem',
         'GET api/v1/me',
         'GET api/v1/me/balance',
+        'POST api/v1/wagers',
+        'POST api/v1/wagers/{reference}/settle',
+        'POST api/v1/wagers/{reference}/reverse',
     ],
 
 ];

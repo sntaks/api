@@ -8,16 +8,19 @@ use App\Models\GameTransaction;
 use App\Models\GameWallet;
 use App\Models\LedgerEntry;
 use App\Models\Product;
+use App\Models\Wager;
+use App\Models\WagerSettlement;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Which product a ledger entry belongs to. First match wins:
  *  1. a reversal takes the product of the entry it reverses (metadata original_entry_id);
- *  2. a kadi game wallet or game transaction, or metadata game_wallet_id → kadi;
- *  3. a competition wallet or competition transaction, or metadata competition_wallet_id → the
+ *  2. a wager, or a wager settlement through its wager, takes that wager's product;
+ *  3. a kadi game wallet or game transaction, or metadata game_wallet_id → kadi;
+ *  4. a competition wallet or competition transaction, or metadata competition_wallet_id → the
  *     competition's game_type (1 tournament, 2 jackpot; anything else is logged and read as tournament);
- *  4. otherwise null: a platform entry (deposit, withdrawal, excise, promo, referral, shop, adjustment).
+ *  5. otherwise null: a platform entry (deposit, withdrawal, excise, promo, referral, shop, adjustment).
  */
 class ProductResolver
 {
@@ -28,6 +31,17 @@ class ProductResolver
     {
         if (isset($metadata['original_entry_id'])) {
             return LedgerEntry::where('entry_id', $metadata['original_entry_id'])->value('product_id');
+        }
+
+        $wagerProductId = match (true) {
+            $reference instanceof Wager => $reference->product_id,
+            $reference instanceof WagerSettlement => Wager::whereKey($reference->wager_id)->value('product_id'),
+            $wallet instanceof Wager => $wallet->product_id,
+            default => null,
+        };
+
+        if ($wagerProductId !== null) {
+            return (int) $wagerProductId;
         }
 
         if ($wallet instanceof GameWallet || $reference instanceof GameWallet || $reference instanceof GameTransaction || isset($metadata['game_wallet_id'])) {

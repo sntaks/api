@@ -57,7 +57,7 @@ function documentedEndpoints(): Collection
  */
 function apiRoutes(): Collection
 {
-    $limits = ['write' => '30/min', 'financial' => '5/min', 'stats' => '20/min', 'callback' => '100/min'];
+    $limits = ['wagers' => '1200/min', 'write' => '30/min', 'financial' => '5/min', 'stats' => '20/min', 'callback' => '100/min'];
 
     return collect(Router::getRoutes()->getRoutes())
         ->filter(fn (Route $route) => str_starts_with($route->uri(), 'api/v1/'))

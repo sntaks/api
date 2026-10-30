@@ -12,8 +12,10 @@ use App\Services\ExciseDutyService;
 use App\Services\GameWalletService;
 use App\Services\LedgerService;
 use App\Services\SignupBonusService;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -144,6 +146,19 @@ it('grants the bonus on verification, paid by the house and grossed up for excis
         ->and(LedgerEntry::where('entry_type', 'promo_credit')->count())->toBe(2)
         ->and((float) $credit->ledgerEntry->credit)->toBe(21.05)
         ->and((float) $credit->houseLedgerEntry->debit)->toBe(21.05);
+});
+
+it('locks the player wallet before the house wallet when granting', function () {
+    $walletLocks = [];
+    DB::listen(function (QueryExecuted $query) use (&$walletLocks) {
+        if (preg_match('/^select .* from [`"]?wallets[`"]?.* for update$/i', $query->sql)) {
+            $walletLocks[] = str_contains($query->sql, 'customer_id') ? 'player' : 'house';
+        }
+    });
+
+    reportVerified($this->customer)->assertOk()->assertJsonPath('data.signup_bonus.net_amount', 20);
+
+    expect(array_slice($walletLocks, 0, 2))->toBe(['player', 'house']);
 });
 
 it('grants the bonus once however often verification is reported', function () {

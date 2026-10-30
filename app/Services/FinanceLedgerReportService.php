@@ -228,7 +228,8 @@ class FinanceLedgerReportService
      * Filters: sort (net_gaming, deposited, staked, won, withdrawn, balance, shop_loaded, shop_withdrawn), limit (default 10).
      * net_gaming is winnings plus refunds minus stakes: positive means the customer is up.
      * deposited is everything paid in, gross: M-Pesa deposits plus cash loaded at bet shops (shop_loaded,
-     * net of reversed loads); excise_paid is the duty taken from it. withdrawn is everything taken out:
+     * net of reversed loads); excise_paid is the duty taken from it (excise_duty entries only, never winnings
+     * tax, though both are tax_withheld). withdrawn is everything taken out:
      * M-Pesa withdrawals plus shop cash withdrawals (shop_withdrawn: collected or waiting to be collected).
      *
      * @param  array<string, string>  $filters
@@ -255,7 +256,7 @@ class FinanceLedgerReportService
         $staked = $sum('stake', 'debit');
         $won = $sum('payout', 'credit');
         $refunded = $sum('refund', 'credit');
-        $excisePaid = $sum('tax_withheld', 'debit');
+        $excisePaid = "COALESCE(SUM(CASE WHEN l.entry_type IN ('excise_duty', 'excise_duty_reversal') THEN l.debit - l.credit ELSE 0 END), 0)";
 
         $rows = DB::table('ledger_entries as l')
             ->join('wallets as w', 'w.id', '=', 'l.wallet_id')

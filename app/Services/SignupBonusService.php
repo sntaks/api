@@ -233,6 +233,8 @@ class SignupBonusService
                     return null;
                 }
 
+                // Lock order: the player wallet, then the house wallet (the checks keep their old order).
+                $wallet = Wallet::lockForUpdate()->where('customer_id', $customer->id)->first();
                 $houseWallet = Wallet::lockForUpdate()->find((int) config('wallets.house_wallet_id', 1));
                 if (! $houseWallet || (float) $houseWallet->balance < $amounts['gross']) {
                     Log::warning('Signup bonus not granted: the house wallet cannot fund it', ['customer_id' => $customer->id, 'house_balance' => $houseWallet?->balance, 'gross' => $amounts['gross']]);
@@ -240,7 +242,6 @@ class SignupBonusService
                     return null;
                 }
 
-                $wallet = Wallet::lockForUpdate()->where('customer_id', $customer->id)->first();
                 if (! $wallet) {
                     $this->logSkip($customer, 'no_wallet');
 

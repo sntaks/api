@@ -257,7 +257,11 @@ return [
     | Categories: cash_in, cash_out, stake, payout, house_revenue, refund,
     | adjustment, transfer, escrow_movement, coin, tax_withheld,
     | referral_bonus, referral_payout, promotion, capital, shop_float,
-    | shop_load, shop_cash_out.
+    | shop_load, shop_cash_out, house_banked_win.
+    |
+    | house_banked_win entries (wager_stake_settled) are the stakes a house-banked
+    | product (sportsbook, crash) keeps from open wagers. Its GGR is these minus
+    | payouts. open_wagers holds the stake of each open cash wager.
     |
     | capital entries (house_funding) are owner money paid into the paybill and
     | credited to the house wallet. Single-sided like deposits (the cash side
@@ -295,6 +299,7 @@ return [
         'referral_wallets' => ['label' => 'Referral wallets (unspent bonuses)', 'type' => 'contingent'],
         'bet_shop_floats' => ['label' => 'Bet shop floats (prepaid)', 'type' => 'liability'],
         'shop_withdrawals' => ['label' => 'Shop cash withdrawals waiting to be paid', 'type' => 'liability'],
+        'open_wagers' => ['label' => 'Open wagers (escrow)', 'type' => 'liability'],
     ],
 
     'entry_types' => [
@@ -327,6 +332,13 @@ return [
         'shop_withdrawal_hold' => 'escrow_movement',
         'shop_withdrawal_release' => 'escrow_movement',
         'shop_cash_out' => 'shop_cash_out',
+        'wager_stake' => 'stake',
+        'wager_stake_settled' => 'house_banked_win',
+        'wager_payout' => 'payout',
+        'wager_free_bet_payout' => 'promotion',
+        'wager_bonus' => 'promotion',
+        'wager_refund' => 'refund',
+        'winnings_tax' => 'tax_withheld',
     ],
 
 ];

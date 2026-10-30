@@ -5,6 +5,7 @@ use App\Models\Deposit;
 use App\Models\ExciseDutyCharge;
 use App\Models\ExciseDutyRemittance;
 use App\Models\FinancialSnapshot;
+use App\Models\WagerSettlement;
 use App\Models\Wallet;
 use App\Services\FinanceSnapshotService;
 use App\Services\LedgerService;
@@ -160,6 +161,19 @@ it('adds the duty each customer paid to the top customers report', function () {
     $row = exciseGet($this, 'customers/top')['items'][0];
 
     expect($row)->toMatchArray(['customer_id' => $this->customer->id, 'deposited' => 100, 'excise_paid' => 5, 'balance' => 95]);
+});
+
+it('leaves winnings tax out of the duty each customer paid', function () {
+    // the house wallet is left out of the report: keep it off the customer's wallet id whatever the ids are
+    config(['wallets.house_wallet_id' => PHP_INT_MAX]);
+    exciseDeposit($this, 100, 'EXS0000007');
+    $wallet = Wallet::where('customer_id', $this->customer->id)->sole();
+    app(LedgerService::class)->recordWinningsTax(WagerSettlement::factory()->create(), $wallet, 3);
+
+    $row = exciseGet($this, 'customers/top')['items'][0];
+
+    // winnings tax is tax_withheld too, but it is not excise duty
+    expect($row)->toMatchArray(['customer_id' => $this->customer->id, 'excise_paid' => 5, 'balance' => 92]);
 });
 
 // returns and remittances
