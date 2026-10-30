@@ -12,8 +12,10 @@ use App\Services\CompetitionPayoutService;
 use App\Services\CompetitionWalletService;
 use App\Services\GameWalletService;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -108,6 +110,25 @@ it('refunds every game player their full stake and reverses the house cuts', fun
     expect((float) $winnerWallet->fresh()->balance)->toBe(100.0);
     expect((float) $this->houseWallet->fresh()->balance)->toBe(0.0);
     expect(LedgerEntry::where('entry_type', 'house_cut')->where('status', 'settled')->count())->toBe(0);
+});
+
+it('locks the players\' wallets before the house wallet and reverses the cuts on the locked house row', function () {
+    ['game' => $game, 'complainant' => $complainant] = settledGame($this);
+    $complaint = openComplaint($this, ['customer_id' => $complainant->id, 'game_wallet_id' => $game->id]);
+    // whole-row reads only: the house customer_id lookup reads no balance
+    $walletReads = [];
+    DB::listen(function (QueryExecuted $query) use (&$walletReads) {
+        if (preg_match('/^select \* from [`"]?wallets[`"]?/i', $query->sql)) {
+            $walletReads[] = $query->sql;
+        }
+    });
+
+    closeComplaint($this, $complaint, 'resolve')->assertOk()->assertJsonPath('data.house_cuts_reversed', 19);
+
+    $locks = array_map(fn (string $sql) => str_contains($sql, 'customer_id') ? 'player' : 'house', $walletReads);
+    expect($walletReads)->each->toContain('for update')
+        ->and($locks)->toBe(['player', 'player', 'house'])
+        ->and((float) $this->houseWallet->fresh()->balance)->toBe(0.0);
 });
 
 it('keeps the kadi product on reversed game house cuts and leaves the dispute refunds as platform', function () {

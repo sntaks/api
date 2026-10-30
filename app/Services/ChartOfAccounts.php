@@ -56,6 +56,7 @@ class ChartOfAccounts
             LedgerEntry::WALLET_TYPE_REFERRAL => 'referral_wallets',
             LedgerEntry::WALLET_TYPE_BET_SHOP => 'bet_shop_floats',
             LedgerEntry::WALLET_TYPE_SHOP_WITHDRAWAL => 'shop_withdrawals',
+            LedgerEntry::WALLET_TYPE_WAGER => 'open_wagers',
             default => $walletId === (int) config('wallets.house_wallet_id', 1) ? 'house_wallet' : 'customer_wallets',
         };
     }

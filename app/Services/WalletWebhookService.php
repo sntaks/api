@@ -28,6 +28,20 @@ class WalletWebhookService
         'competition_bet' => 'game',
         'competition_payout' => 'game',
         'adjustment' => 'adjustment',
+        'wager_stake' => 'game',
+        'wager_stake_reversal' => 'game',
+        'wager_stake_settled' => 'game',
+        'wager_stake_settled_reversal' => 'game',
+        'wager_payout' => 'game',
+        'wager_payout_reversal' => 'game',
+        'wager_free_bet_payout' => 'game',
+        'wager_free_bet_payout_reversal' => 'game',
+        'wager_bonus' => 'game',
+        'wager_bonus_reversal' => 'game',
+        'wager_refund' => 'game',
+        'wager_refund_reversal' => 'game',
+        'winnings_tax' => 'game',
+        'winnings_tax_reversal' => 'game',
     ];
 
     /**

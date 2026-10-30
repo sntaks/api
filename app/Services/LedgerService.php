@@ -19,6 +19,8 @@ use App\Models\Referral;
 use App\Models\ReferralWallet;
 use App\Models\ReferralWithdrawal;
 use App\Models\ShopWithdrawal;
+use App\Models\Wager;
+use App\Models\WagerSettlement;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Models\Withdraw;
@@ -1102,10 +1104,19 @@ class LedgerService
     /**
      * Take back a house cut so it can be refunded. The reversal keeps the original's reference and
      * source, so the income statement reduces the same revenue line on the day it is reversed.
+     *
+     * Pass the house wallet the caller locked so the balance changes on that instance, not on a plain re-read
+     * that could return an older REPEATABLE READ snapshot.
+     *
+     * @throws \LogicException
      */
-    public function reverseHouseCut(LedgerEntry $houseCut, Complaint $complaint): LedgerEntry
+    public function reverseHouseCut(LedgerEntry $houseCut, Complaint $complaint, ?Wallet $lockedHouseWallet = null): LedgerEntry
     {
-        $houseWallet = $houseCut->wallet;
+        if ($lockedHouseWallet && (int) $lockedHouseWallet->id !== (int) $houseCut->wallet_id) {
+            throw new \LogicException("House cut {$houseCut->id} is on wallet {$houseCut->wallet_id}, not the locked wallet {$lockedHouseWallet->id}");
+        }
+
+        $houseWallet = $lockedHouseWallet ?? $houseCut->wallet;
         $amount = (float) $houseCut->credit;
 
         $balanceBefore = $houseWallet->balance;
@@ -1252,6 +1263,7 @@ class LedgerService
             $wallet instanceof ReferralWallet => LedgerEntry::WALLET_TYPE_REFERRAL,
             $wallet instanceof BetShopWallet => LedgerEntry::WALLET_TYPE_BET_SHOP,
             $wallet instanceof ShopWithdrawal => LedgerEntry::WALLET_TYPE_SHOP_WITHDRAWAL,
+            $wallet instanceof Wager => LedgerEntry::WALLET_TYPE_WAGER,
             default => LedgerEntry::WALLET_TYPE_WALLET,
         };
     }
@@ -1291,6 +1303,170 @@ class LedgerService
             balanceBefore: $balanceBefore,
             balanceAfter: $wallet->balance,
             metadata: ['pending_id' => $hold->pending_id]
+        );
+    }
+
+    /**
+     * Move a cash wager's stake from the player's wallet into the wager's own escrow.
+     *
+     * @return array{0: LedgerEntry, 1: LedgerEntry} [player entry, wager entry]
+     */
+    public function recordWagerStake(Wager $wager, Wallet $playerWallet, float $amount): array
+    {
+        return $this->move('wager_stake', $wager, $playerWallet, $wager, $amount);
+    }
+
+    /**
+     * Release a settled wager's stake from its escrow to the house wallet.
+     *
+     * @return array{0: LedgerEntry, 1: LedgerEntry} [wager entry, house entry]
+     */
+    public function recordWagerStakeSettled(WagerSettlement $settlement, Wager $wager, Wallet $houseWallet, float $amount): array
+    {
+        return $this->move('wager_stake_settled', $settlement, $wager, $houseWallet, $amount);
+    }
+
+    /**
+     * Pay a winning cash wager's gross payout from the house wallet to the player.
+     *
+     * @return array{0: LedgerEntry, 1: LedgerEntry} [house entry, player entry]
+     */
+    public function recordWagerPayout(WagerSettlement $settlement, Wallet $houseWallet, Wallet $playerWallet, float $amount): array
+    {
+        return $this->move('wager_payout', $settlement, $houseWallet, $playerWallet, $amount);
+    }
+
+    /**
+     * Pay a winning free bet from the house wallet to the player. The voucher itself never touched the wallet.
+     *
+     * @return array{0: LedgerEntry, 1: LedgerEntry} [house entry, player entry]
+     */
+    public function recordWagerFreeBetPayout(WagerSettlement $settlement, Wallet $houseWallet, Wallet $playerWallet, float $amount): array
+    {
+        return $this->move('wager_free_bet_payout', $settlement, $houseWallet, $playerWallet, $amount);
+    }
+
+    /**
+     * Pay a settlement's bonus from the house wallet to the player.
+     *
+     * @return array{0: LedgerEntry, 1: LedgerEntry} [house entry, player entry]
+     */
+    public function recordWagerBonus(WagerSettlement $settlement, Wallet $houseWallet, Wallet $playerWallet, float $amount): array
+    {
+        return $this->move('wager_bonus', $settlement, $houseWallet, $playerWallet, $amount);
+    }
+
+    /**
+     * Return a voided cash wager's stake from its escrow to the player.
+     *
+     * @return array{0: LedgerEntry, 1: LedgerEntry} [wager entry, player entry]
+     */
+    public function recordWagerRefund(WagerSettlement $settlement, Wager $wager, Wallet $playerWallet, float $amount): array
+    {
+        return $this->move('wager_refund', $settlement, $wager, $playerWallet, $amount);
+    }
+
+    /**
+     * Withhold winnings tax from the player's wallet. Single-sided like excise duty: the tax is owed to the
+     * tax authority, outside the ledger's wallets.
+     */
+    public function recordWinningsTax(WagerSettlement $settlement, Wallet $playerWallet, float $amount): LedgerEntry
+    {
+        $balanceBefore = $playerWallet->balance;
+        $playerWallet->balance -= $amount;
+        $playerWallet->save();
+
+        return $this->createEntry(
+            entryType: 'winnings_tax',
+            referenceable: $settlement,
+            wallet: $playerWallet,
+            customerId: $playerWallet->customer_id,
+            debit: $amount,
+            credit: 0,
+            balanceBefore: $balanceBefore,
+            balanceAfter: $playerWallet->balance,
+            metadata: ['wager_id' => $settlement->wager_id, 'tax_base' => (float) $settlement->tax_base, 'rate' => (float) $settlement->tax_rate]
+        );
+    }
+
+    /**
+     * Post the exact negation of a settlement's legs: tax back, bonus back, payout back, then the stake back
+     * to escrow (from the house for a loss or win, from the player for a void). The player's wallet may go
+     * below zero; the caller holds the locks and has already decided the reversal is allowed.
+     *
+     * Every balance is changed on the instance the caller's locking read returned, never on a fresh read: under
+     * REPEATABLE READ a plain SELECT returns the transaction's snapshot, which can predate a balance another
+     * transaction committed while this one waited for the lock, and saving from it would lose that update.
+     * A leg on a wallet the caller did not pass (so did not lock) is refused before anything moves.
+     *
+     * @return list<LedgerEntry> the reversal entries, in posting order
+     *
+     * @throws \LogicException
+     */
+    public function reverseWagerEntries(WagerSettlement $settlement, Wager $wager, ?Wallet $playerWallet, ?Wallet $houseWallet): array
+    {
+        $order = ['winnings_tax', 'wager_bonus', 'wager_payout', 'wager_free_bet_payout', 'wager_stake_settled', 'wager_refund'];
+
+        $entries = LedgerEntry::where('referenceable_type', WagerSettlement::class)
+            ->where('referenceable_id', $settlement->id)
+            ->where('status', 'settled')
+            ->whereNotIn('entry_type', array_map(fn (string $type) => $type.'_reversal', $order))
+            ->orderBy('id')
+            ->get()
+            ->sortBy(fn (LedgerEntry $entry) => array_search($entry->entry_type, $order, true))
+            ->values();
+
+        $locked = array_values(array_filter([$playerWallet, $houseWallet]));
+        $legs = $entries->map(fn (LedgerEntry $entry) => [$entry, $this->lockedWagerLegWallet($entry, $wager, $locked)]);
+
+        return $legs->map(fn (array $leg) => $this->reverseWagerEntry($leg[0], $leg[1]))->all();
+    }
+
+    /**
+     * The caller's locked instance that holds an entry's balance.
+     *
+     * @param  list<Wallet>  $locked
+     *
+     * @throws \LogicException
+     */
+    private function lockedWagerLegWallet(LedgerEntry $entry, Wager $wager, array $locked): Wager|Wallet
+    {
+        if ($entry->wallet_type === LedgerEntry::WALLET_TYPE_WAGER) {
+            if ((int) $entry->wallet_id !== (int) $wager->id) {
+                throw new \LogicException("Wager entry {$entry->id} belongs to wager {$entry->wallet_id}, not the locked wager {$wager->id}");
+            }
+
+            return $wager;
+        }
+
+        foreach ($locked as $wallet) {
+            if ((int) $wallet->id === (int) $entry->wallet_id) {
+                return $wallet;
+            }
+        }
+
+        throw new \LogicException("Wager entry {$entry->id} is on wallet {$entry->wallet_id}, which the caller did not lock");
+    }
+
+    private function reverseWagerEntry(LedgerEntry $entry, Wager|Wallet $wallet): LedgerEntry
+    {
+        $balanceBefore = $wallet->balance;
+        $wallet->balance += (float) $entry->debit - (float) $entry->credit;
+        $wallet->save();
+
+        $entry->status = 'reversed';
+        $entry->save();
+
+        return $this->createEntry(
+            entryType: $entry->entry_type.'_reversal',
+            referenceable: $entry->referenceable,
+            wallet: $wallet,
+            customerId: $entry->customer_id,
+            debit: $entry->credit,
+            credit: $entry->debit,
+            balanceBefore: $balanceBefore,
+            balanceAfter: $wallet->balance,
+            metadata: ['original_entry_id' => $entry->entry_id]
         );
     }
 

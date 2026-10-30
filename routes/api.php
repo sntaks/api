@@ -65,6 +65,7 @@ use App\Http\Controllers\api\v1\StkLoadController;
 use App\Http\Controllers\api\v1\TransactionController;
 use App\Http\Controllers\api\v1\UnmatchedDepositController;
 use App\Http\Controllers\api\v1\ValidationController;
+use App\Http\Controllers\api\v1\WagerController;
 use App\Http\Controllers\api\v1\WalletController;
 use App\Http\Controllers\api\v1\WalletTransactionController;
 use App\Http\Controllers\api\v1\WalletTransferController;
@@ -174,7 +175,16 @@ Route::prefix('/v1')->group(function () {
         Route::middleware('player.token')->group(function () {
             Route::get('/me', [PlayerSessionController::class, 'me']);
             Route::get('/me/balance', [PlayerSessionController::class, 'balance']);
+
+            // Place a bet on a house-banked product: idempotent by (product, reference), not by the idempotency middleware
+            Route::post('/wagers', [WagerController::class, 'store'])->middleware('throttle:wagers');
         });
+
+        // Settle a bet (game key only: settlements happen after the player left). Idempotent by (product, reference, version), not by the idempotency middleware
+        Route::post('/wagers/{reference}/settle', [WagerController::class, 'settle'])->middleware('throttle:wagers');
+
+        // Take back a settlement and reopen the bet (game key only). Replay-safe by (product, reference, version), not by the idempotency middleware
+        Route::post('/wagers/{reference}/reverse', [WagerController::class, 'reverse'])->middleware('throttle:wagers');
 
         // Shop system: shop API keys only, always acting for the key's own shop
         Route::prefix('/shop')->middleware(['shop.key', 'throttle:shop'])->group(function () {

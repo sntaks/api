@@ -107,7 +107,6 @@ class ComplaintService
             $houseCuts = new Collection;
 
             if ($complaint->subject_type === Complaint::SUBJECT_GAME) {
-                Wallet::lockForUpdate()->find(config('wallets.house_wallet_id', 1));
                 $houseCuts = $this->gameHouseCuts((int) $complaint->game_wallet_id);
                 $pot = $disputes->sum(fn (DisputedTransaction $dispute) => (float) $dispute->balance)
                     + $houseCuts->sum(fn (LedgerEntry $houseCut) => (float) $houseCut->credit);
@@ -126,6 +125,13 @@ class ComplaintService
                 $wallets[$customerId] = $this->customerWallet($customerId);
             }
 
+            // Lock order: the player wallets above, then the house wallet. The house cuts are reversed on this
+            // locked instance: a plain re-read could return the transaction's older snapshot (fixed by the reads
+            // above) and overwrite a house balance committed while this transaction waited for the lock.
+            $houseWallet = $complaint->subject_type === Complaint::SUBJECT_GAME
+                ? Wallet::lockForUpdate()->find(config('wallets.house_wallet_id', 1))
+                : null;
+
             foreach ($disputes as $dispute) {
                 $this->ledgerService->recordDisputeRefundFunding($dispute);
                 $dispute->status = DisputedTransaction::STATUS_REVERSED;
@@ -133,7 +139,7 @@ class ComplaintService
             }
 
             foreach ($houseCuts as $houseCut) {
-                $this->ledgerService->reverseHouseCut($houseCut, $complaint);
+                $this->ledgerService->reverseHouseCut($houseCut, $complaint, $houseWallet);
             }
 
             foreach ($refunds as $customerId => $amount) {

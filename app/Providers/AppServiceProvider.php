@@ -75,6 +75,11 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute($limit(30, $request))->by($caller($request));
         });
 
+        // Wager routes: a crash round can bring hundreds of bets a minute through one game key.
+        RateLimiter::for('wagers', function (Request $request) use ($caller, $limit) {
+            return Limit::perMinute($limit(1200, $request))->by('wagers:'.$caller($request));
+        });
+
         RateLimiter::for('financial', function (Request $request) use ($caller, $limit) {
             return Limit::perMinute($limit(5, $request))->by($caller($request));
         });
