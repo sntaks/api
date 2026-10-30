@@ -42,7 +42,7 @@ beforeEach(function () {
     $this->apiKey = createApiKey('test-referral-withdrawals-key');
     $this->headers = apiHeaders($this->apiKey->key);
 
-    $this->customer = Customer::factory()->create(['phone_no' => '0712345678']);
+    $this->customer = Customer::factory()->phoneVerified()->create(['phone_no' => '0712345678']);
     $this->referralWallet = ReferralWallet::factory()->create(['customer_id' => $this->customer->id, 'balance' => 120]);
 });
 
@@ -128,7 +128,9 @@ it('refuses before debiting when the referral shortcode is not configured', func
 });
 
 it('refuses a customer without a valid M-Pesa number', function () {
+    // Verified, so the number itself is what is refused (a new phone otherwise clears its verification first).
     $this->customer->update(['phone_no' => '12345']);
+    $this->customer->forceFill(['phone_no_verified_at' => now()])->save();
 
     requestReferralWithdrawal($this->customer, 100)->assertStatus(400);
 

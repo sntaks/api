@@ -25,6 +25,10 @@ class StkDepositController extends Controller
 
             $result = $this->stkService->initiateStkDeposit($identifier, $request->amount);
 
+            if (isset($result['refusal'])) {
+                return $result['refusal']->toResponse();
+            }
+
             return response()->json(['status' => $result['status']], 201);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 404);

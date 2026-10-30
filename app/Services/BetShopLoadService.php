@@ -48,6 +48,7 @@ class BetShopLoadService
         private ExciseDutyService $exciseDuty,
         private ReferralService $referrals,
         private FinanceMasker $masker,
+        private PlayerGate $gate,
     ) {}
 
     /**
@@ -263,6 +264,12 @@ class BetShopLoadService
 
         if ((int) $customer->status !== 1) {
             return $this->refused('The player\'s account is not active', 409, self::CODE_PLAYER_INACTIVE);
+        }
+
+        // A player on a break, or over their own deposit limit, is refused at the counter (D18).
+        $canDeposit = $this->gate->canDeposit($customer, (float) $amount);
+        if (! $canDeposit->allowed) {
+            return $this->refused($canDeposit->message, $canDeposit->statusCode, $canDeposit->code) + $canDeposit->extra;
         }
 
         $float = BetShopWallet::lockForUpdate()->firstOrCreate(['bet_shop_id' => $shop->id], ['balance' => 0]);

@@ -44,7 +44,7 @@ class ReferralWithdrawalController extends Controller
      */
     public function store(Request $request, string $encryptedIdentifier): JsonResponse
     {
-        $request->validate(['amount' => ['required', 'integer', 'min:1']]);
+        $request->validate(['amount' => ['required', 'integer', 'min:1', 'max:'.config('responsible_gambling.withdrawal_max')]]);
 
         $customer = $this->customer($encryptedIdentifier);
 
@@ -57,6 +57,8 @@ class ReferralWithdrawalController extends Controller
         return response()->json(array_filter([
             'success' => $result['success'],
             'message' => $result['message'],
+            'code' => $result['code'] ?? null,
+            'retry_after' => $result['retry_after'] ?? null,
             'data' => isset($result['withdrawal']) ? ReferralWithdrawalResource::make($result['withdrawal']) : null,
         ], fn ($value) => $value !== null), $result['status_code']);
     }
@@ -95,6 +97,8 @@ class ReferralWithdrawalController extends Controller
         return response()->json(array_filter([
             'success' => $result['success'],
             'message' => $result['message'],
+            'code' => $result['code'] ?? null,
+            'retry_after' => $result['retry_after'] ?? null,
             'data' => isset($result['withdrawal']) ? ReferralWithdrawalResource::make($result['withdrawal']) : null,
         ], fn ($value) => $value !== null), $result['status_code']);
     }

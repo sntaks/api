@@ -24,15 +24,21 @@ class ReferralWithdrawalService
     public function __construct(
         private LedgerService $ledgerService,
         private MpesaService $mpesaService,
+        private WithdrawalRules $rules,
     ) {}
 
     /**
-     * @return array{success: bool, message: string, status_code: int, withdrawal?: ReferralWithdrawal}
+     * @return array{success: bool, message: string, status_code: int, withdrawal?: ReferralWithdrawal, code?: string, retry_after?: int}
      */
     public function withdraw(Customer $customer, int $amount, ?string $actor = null): array
     {
         if (! config('referrals.withdrawals.enabled')) {
             return $this->refused('Referral withdrawals are switched off', 403);
+        }
+
+        $allowed = $this->rules->check($customer);
+        if (! $allowed->allowed) {
+            return $this->refused($allowed->message, $allowed->statusCode) + ['code' => $allowed->code] + $allowed->extra;
         }
 
         if (! $this->isConfigured()) {
@@ -81,6 +87,8 @@ class ReferralWithdrawalService
         if (! $withdrawal) {
             return $this->refused('Insufficient referral wallet balance', 400);
         }
+
+        $this->rules->record($customer);
 
         try {
             $response = $this->mpesaService->referralB2c([

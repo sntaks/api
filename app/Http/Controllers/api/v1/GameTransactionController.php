@@ -6,14 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\PagedListRequest;
 use App\Http\Requests\StoreGameTransactionRequest;
 use App\Http\Resources\GameTransactionResource;
+use App\Models\Customer;
 use App\Services\GameWalletService;
+use App\Services\PlayerGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
 
 class GameTransactionController extends Controller
 {
     public function __construct(
-        private GameWalletService $gameWalletService
+        private GameWalletService $gameWalletService,
+        private PlayerGate $gate,
     ) {}
 
     /**
@@ -29,6 +32,12 @@ class GameTransactionController extends Controller
      */
     public function store(StoreGameTransactionRequest $request): JsonResponse
     {
+        // Only an active player who is not on a break may stake. Same error shape as the route's other refusals.
+        $canPlay = $this->gate->canPlay(Customer::withTrashed()->find($request->validated('customer_id')));
+        if (! $canPlay->allowed) {
+            return response()->json(['error' => $canPlay->message, 'code' => $canPlay->code] + $canPlay->extra, $canPlay->statusCode);
+        }
+
         try {
             $result = $this->gameWalletService->createGameTransaction($request->stakeData());
 

@@ -193,7 +193,7 @@ class CustomerController extends Controller
 
     public function update(UpdateCustomerRequest $request, $encryptedIdentifier)
     {
-        $customer = $this->customerService->updateCustomer($encryptedIdentifier, $request->validated());
+        $customer = $this->customerService->updateCustomer($encryptedIdentifier, $request->validated(), $this->actorFor($request));
 
         if (! $customer) {
             return response()->json(['message' => 'Customer not found'], 404);

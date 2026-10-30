@@ -50,6 +50,11 @@ return [
         'POST api/v1/customers/{encryptedIdentifier}/shop-withdrawals',
         'POST api/v1/customers/{encryptedIdentifier}/shop-withdrawals/{withdrawalId}/cancel',
 
+        // Responsible gambling: the player's state, and starting a break
+        'GET api/v1/customers/{encryptedIdentifier}/responsible-gambling',
+        'POST api/v1/customers/{encryptedIdentifier}/exclusion',
+        'PUT api/v1/customers/{encryptedIdentifier}/deposit-limits/{period}',
+
         // Complaints
         'GET api/v1/complaints',
         'POST api/v1/complaints',

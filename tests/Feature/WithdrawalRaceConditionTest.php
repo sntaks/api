@@ -8,7 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 it('withdrawal service locks balance for update', function () {
-    $customer = Customer::factory()->create();
+    $customer = Customer::factory()->phoneVerified()->create();
     $wallet = Wallet::factory()->create(['customer_id' => $customer->id, 'balance' => 100]);
 
     $service = app(WithdrawalService::class);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\api\v1;
 
 use App\Http\Controllers\Controller;
+use App\Services\WithdrawalRules;
 use App\Services\WithdrawalService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ class WithdrawalController extends Controller
     public function __invoke(Request $request, $identifier): JsonResponse
     {
         try {
-            $validatedData = $request->validate(['amount' => 'required|numeric|min:1']);
+            $validatedData = $request->validate(['amount' => WithdrawalRules::amountRules()]);
 
             $result = $this->withdrawalService->initiateWithdrawal($identifier, $validatedData['amount']);
 
@@ -32,6 +33,7 @@ class WithdrawalController extends Controller
                 'ledger_entry_id' => $result['ledger_entry_id'] ?? null,
             ] + array_filter([
                 'code' => $result['code'] ?? null,
+                'retry_after' => $result['retry_after'] ?? null,
                 'locked_amount' => $result['locked_amount'] ?? null,
                 'available' => $result['available'] ?? null,
             ], fn ($value) => $value !== null), $statusCode);

@@ -6,7 +6,7 @@ use App\Models\Customer;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Customer>
+ * @extends Factory<Customer>
  */
 class CustomerFactory extends Factory
 {
@@ -16,6 +16,7 @@ class CustomerFactory extends Factory
      * @return array<string, mixed>
      */
     protected $model = Customer::class;
+
     public function definition(): array
     {
         return [
@@ -25,5 +26,13 @@ class CustomerFactory extends Factory
             'email_verified_at' => now(),
             'phone_no' => fake()->phoneNumber(),
         ];
+    }
+
+    /**
+     * A customer whose phone kadi has verified, as an M-Pesa withdrawal needs.
+     */
+    public function phoneVerified(): static
+    {
+        return $this->state(fn () => ['phone_no_verified_at' => now()]);
     }
 }

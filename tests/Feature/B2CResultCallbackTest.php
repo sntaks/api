@@ -16,7 +16,7 @@ uses(RefreshDatabase::class);
  */
 function acceptedB2cWithdrawal(string $conversationId): Wallet
 {
-    $customer = Customer::factory()->create(['phone_no' => '254700000009']);
+    $customer = Customer::factory()->phoneVerified()->create(['phone_no' => '254700000009']);
     $wallet = Wallet::factory()->create(['customer_id' => $customer->id, 'balance' => 200]);
 
     $mpesa = Mockery::mock(MpesaService::class);

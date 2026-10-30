@@ -25,7 +25,7 @@ beforeEach(function () {
 
 function walletFor(float $balance): Wallet
 {
-    $customer = Customer::factory()->create();
+    $customer = Customer::factory()->phoneVerified()->create();
 
     return Wallet::factory()->create(['customer_id' => $customer->id, 'balance' => $balance]);
 }
@@ -213,7 +213,9 @@ it('writes no ledger entry when a rejected or no-op adjustment changes nothing',
 
 it('reverses the wallet debit when M-Pesa rejects a withdrawal', function () {
     $wallet = walletFor(200);
+    // A new phone clears its verification; mark the new one verified, as kadi would after its OTP.
     $wallet->customer->update(['phone_no' => '254700000001']);
+    $wallet->customer->forceFill(['phone_no_verified_at' => now()])->save();
 
     $mpesa = Mockery::mock(MpesaService::class);
     $mpesa->shouldReceive('b2c')->once()->andThrow(new MpesaApiException('Service unavailable', 503));
@@ -241,7 +243,9 @@ it('does not debit the wallet when the customer has no phone number', function (
 
 it('reverses an accepted withdrawal when the B2C result callback reports failure, once', function () {
     $wallet = walletFor(200);
+    // A new phone clears its verification; mark the new one verified, as kadi would after its OTP.
     $wallet->customer->update(['phone_no' => '254700000002']);
+    $wallet->customer->forceFill(['phone_no_verified_at' => now()])->save();
 
     $mpesa = Mockery::mock(MpesaService::class);
     $mpesa->shouldReceive('b2c')->once()->andReturn(['ResponseCode' => 0, 'ConversationID' => 'AG_FAIL_1']);
@@ -265,7 +269,9 @@ it('reverses an accepted withdrawal when the B2C result callback reports failure
 
 it('leaves an accepted withdrawal alone when the B2C result callback reports success', function () {
     $wallet = walletFor(200);
+    // A new phone clears its verification; mark the new one verified, as kadi would after its OTP.
     $wallet->customer->update(['phone_no' => '254700000003']);
+    $wallet->customer->forceFill(['phone_no_verified_at' => now()])->save();
 
     $mpesa = Mockery::mock(MpesaService::class);
     $mpesa->shouldReceive('b2c')->once()->andReturn(['ResponseCode' => 0, 'ConversationID' => 'AG_OK_1']);

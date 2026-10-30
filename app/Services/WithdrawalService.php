@@ -16,6 +16,7 @@ class WithdrawalService
         private LedgerService $ledgerService,
         private MpesaService $mpesaService,
         private SignupBonusService $signupBonus,
+        private WithdrawalRules $rules,
     ) {}
 
     public function initiateWithdrawal(string $identifier, float $amount): array
@@ -36,6 +37,11 @@ class WithdrawalService
         $phone_no = $customer->phone_no ?? null;
         if (! $phone_no) {
             return ['success' => false, 'message' => 'Customer phone number not found', 'status_code' => 400];
+        }
+
+        $allowed = $this->rules->check($customer);
+        if (! $allowed->allowed) {
+            return ['success' => false, 'message' => $allowed->message, 'status_code' => $allowed->statusCode, 'code' => $allowed->code] + $allowed->extra;
         }
 
         // Debit and ledger the withdrawal up front so a failed payout can be reversed against a real entry.
@@ -84,6 +90,8 @@ class WithdrawalService
         }
 
         [$transaction, $withdraw, $ledgerEntry] = $reserved;
+
+        $this->rules->record($customer);
 
         $userParams = [
             'Amount' => $withdraw->amount,

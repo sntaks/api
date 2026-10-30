@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  */
 class LaunchTokenService
 {
-    public function __construct(private PlayerTokenService $playerTokens) {}
+    public function __construct(private PlayerTokenService $playerTokens, private PlayerGate $gate) {}
 
     /**
      * @return array{token: string, expires_at: CarbonImmutable, launch_url: string}
@@ -91,8 +91,10 @@ class LaunchTokenService
      */
     private function ensureCanLaunch(Customer $customer, Game $game): void
     {
-        if ($customer->trashed() || (int) $customer->status !== 1) {
-            throw LaunchRefused::playerInactive();
+        $canPlay = $this->gate->canPlay($customer);
+
+        if (! $canPlay->allowed) {
+            throw new LaunchRefused($canPlay->message, $canPlay->code);
         }
 
         if ($game->status !== Game::STATUS_ACTIVE || blank($game->launch_url)) {

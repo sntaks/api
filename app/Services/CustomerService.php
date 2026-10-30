@@ -28,6 +28,7 @@ class CustomerService
         private LedgerService $ledgerService,
         private ReferralService $referralService,
         private PromoCodeService $promoCodes,
+        private CustomerStatusService $statuses,
     ) {}
 
     public function listActiveCustomers(): Collection
@@ -545,7 +546,10 @@ class CustomerService
         });
     }
 
-    public function updateCustomer($identifier, array $data): ?Customer
+    /**
+     * A status change goes through CustomerStatusService, so it is audited like one made on the status route.
+     */
+    public function updateCustomer($identifier, array $data, ?string $actor = null): ?Customer
     {
         $customer = Customer::where('id', $identifier)
             ->orWhere('account_no', $identifier)
@@ -555,7 +559,13 @@ class CustomerService
             return null;
         }
 
-        $customer->update($data);
+        DB::transaction(function () use ($customer, $data, $actor) {
+            if (array_key_exists('status', $data)) {
+                $this->statuses->change($customer, (int) $data['status'], null, $actor);
+            }
+
+            $customer->update(array_diff_key($data, ['status' => true]));
+        });
 
         return $customer;
     }

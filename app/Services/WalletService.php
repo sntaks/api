@@ -14,6 +14,7 @@ class WalletService
     public function __construct(
         private LedgerService $ledgerService,
         private SignupBonusService $signupBonus,
+        private PlayerGate $gate,
     ) {}
 
     public function listWallets(): Collection
@@ -129,6 +130,15 @@ class WalletService
         $wallet = Wallet::lockForUpdate()->find($senderWalletId);
         if (! $wallet) {
             return ['success' => false, 'message' => 'Wallet not found', 'status_code' => 404];
+        }
+
+        // Moving money out of a wallet into play is a stake: only an active player who is not on a break.
+        $sender = $wallet->customer()->withTrashed()->first();
+        if ($sender) {
+            $canPlay = $this->gate->canPlay($sender);
+            if (! $canPlay->allowed) {
+                return ['success' => false, 'message' => $canPlay->message, 'status_code' => $canPlay->statusCode, 'code' => $canPlay->code];
+            }
         }
 
         if ($wallet->balance < $amount) {
