@@ -23,11 +23,13 @@ class PlayerTokenService
     }
 
     /**
-     * On logout or suspension: every game the player is in loses them at once.
+     * On logout, suspension or deletion: every game the player is in (or just $game) loses them at once.
      */
-    public function revokeAll(Customer $customer): int
+    public function revokeAll(Customer $customer, ?Game $game = null): int
     {
-        return $customer->tokens()->delete();
+        return $customer->tokens()
+            ->when($game, fn ($query) => $query->where('name', "player:{$game->code}"))
+            ->delete();
     }
 
     public static function abilityFor(string $gameCode): string

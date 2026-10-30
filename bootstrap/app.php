@@ -45,5 +45,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // $schedule->command('mpesa:fetch-balances')->hourly();
         $schedule->command('shop-withdrawals:expire')->everyFiveMinutes()->withoutOverlapping();
         $schedule->command('finance:snapshot')->dailyAt(config('finance.snapshot_time'))->withoutOverlapping();
+        // Launch tokens live 120 seconds and player tokens 12 hours; keep a day of each for audit.
+        $schedule->command('launch-tokens:prune')->daily();
+        $schedule->command('sanctum:prune-expired --hours=24')->daily();
     })
     ->create();

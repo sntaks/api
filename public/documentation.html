@@ -300,6 +300,7 @@
         <ul>
             <li><a href="#" data-section="auth" class="active"><span class="nav-icon">&#128274;</span> <span>Authentication</span></a></li>
             <li><a href="#" data-section="api-keys"><span class="nav-icon">&#128273;</span> <span>API Keys</span></a></li>
+            <li><a href="#" data-section="launch"><span class="nav-icon">&#127918;</span> <span>Launching Games</span></a></li>
         </ul>
         <div class="nav-section">Core Resources</div>
         <ul>
@@ -514,6 +515,102 @@ Content-Type: application/json
 <pre>{"success": false, "message": "API key not found"}
 {"success": false, "code": "own_key", "message": "A key cannot revoke itself"}</pre></div>
 <p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 409 (Idempotency-Key reused), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+</div>
+<!-- LAUNCHING GAMES SECTION -->
+
+<div class="doc-section" data-section="launch">
+<button class="expand-all" onclick="toggleAll('launch')">Expand / Collapse All</button>
+<div class="callback-note"><strong>How a game is launched.</strong> Players log in only on kadi; the API never takes a player's password. When a player clicks a game, kadi (site key) asks for a <strong>launch token</strong> and sends the player to the game's <code>launch_url</code> with it (an auto-submitted form, <code>token</code> field). The game server (its game key) <strong>redeems</strong> the token once for a <strong>player token</strong>, good for that player in that game only, for 12 hours. The game sends the player token as <code>Authorization: Bearer …</code> on the player routes, together with its own <code>X-API-KEY</code>. When the player token expires, the player relaunches from kadi.<pre>kadi  ── POST /customers/{id}/launch-tokens {game} ──▶ API ── {token, launch_url} ──▶ kadi
+kadi  ── form POST {launch_url} token=… ──▶ game
+game  ── POST /launch-tokens/redeem {token} ──▶ API ── {player_token, customer, balance} ──▶ game</pre></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/launch-tokens</span><span class="endpoint-desc">Launch a game for a logged-in player (kadi)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Issues a single-use launch token for this player and game, valid for 120 seconds. Call it only for a player kadi has logged in: the API trusts the site key to vouch for them. The player must be active (<code>status</code> 1) and the game <code>active</code> with a launch URL. Not idempotent on purpose: a stored response would replay a live token.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>game</td><td>string</td><td><span class="required">Required</span></td><td>A game code from <code>GET /api/v1/games</code>, e.g. <code>crash</code></td></tr><tr><td>ip</td><td>string</td><td><span class="optional">Optional</span></td><td>The player's IP address as kadi saw it (kept for audit)</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (201)</h4>
+<pre>{"success": true, "message": "Launch token issued. It works once, within its expiry.", "data": {"token": "Xq3…40 characters", "expires_at": "2026-10-30T12:02:00+03:00", "launch_url": "https://crash.kadikings.co.ke/launch"}}</pre></div>
+<div class="endpoint-section"><h4>Response (403 / 404)</h4>
+<pre>{"success": false, "message": "This player cannot play", "code": "player_inactive"}
+{"success": false, "message": "This game cannot be launched now", "code": "game_unavailable"}
+{"success": false, "message": "Customer not found"}
+{"success": false, "message": "Game not found"}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/launch-tokens/redeem</span><span class="endpoint-desc">Start a player session from a launch token (game server)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Game keys only. Uses the launch token up and returns a player token for this game, the player and their balance. A token works once, only for the game it was issued for, and only before it expires. Every bad token (unknown, expired, already used, another game's) gets the same <code>401</code>, and a token sent by the wrong game is not used up. The player and the game are checked again here. If the call times out, do not retry: the token may already be used, so send the player back to kadi to relaunch. <code>data.player_token</code> is shown only in this response.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>token</td><td>string</td><td><span class="required">Required</span></td><td>The 40-character launch token the game received from kadi</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "message": "Player session started",
+  "data": {
+    "player_token": "15|Hn0…",
+    "expires_at": "2026-10-31T00:00:00+03:00",
+    "customer": {"id": 2041, "player_no": "48213907", "account_no": "KK-6AA8B1DAAF392", "display_name": "Jane W.", "status": 1},
+    "balance": {"balance": 250.5, "locked_bonus": 0, "wallet_version": 37}
+  }
+}</pre></div>
+<div class="endpoint-section"><h4>Response (401 / 403)</h4>
+<pre>{"success": false, "message": "Invalid or expired launch token", "code": "invalid_launch_token"}
+{"message": "This route needs a game API key", "code": "game_key_required"}
+{"success": false, "message": "This player cannot play", "code": "player_inactive"}
+{"success": false, "message": "This game cannot be launched now", "code": "game_unavailable"}</pre></div>
+<p class="endpoint-note"><code>display_name</code> is the player's first name and last initial, or <code>Player 1234</code> (last four digits of the player number) when there is no name: safe for a public feed. The API never gives a game the player's phone, email, national ID or full name. <code>balance</code> may be negative after a settlement is reversed; <code>locked_bonus</code> is signup bonus that cannot be withdrawn yet but may be staked. Also returns 401 (API key), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/me</span><span class="endpoint-desc">The player behind a player token (game server)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Game key plus <code>Authorization: Bearer {player_token}</code>. The same player shape as the redeem response.</p></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "data": {"id": 2041, "player_no": "48213907", "account_no": "KK-6AA8B1DAAF392", "display_name": "Jane W.", "status": 1}}</pre></div>
+<div class="endpoint-section"><h4>Response (401 / 403)</h4>
+<pre>{"message": "Invalid or expired player token", "code": "invalid_player_token"}
+{"message": "This player cannot play", "code": "player_inactive"}
+{"message": "This route needs a game API key", "code": "game_key_required"}</pre></div>
+<p class="endpoint-note">A missing, unknown or expired token, or one issued for another game, all get the same <code>401</code>: send the player back to kadi to relaunch. Also returns 401 (API key): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/me/balance</span><span class="endpoint-desc">The player's wallet balance (game server)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Game key plus player token. The one wallet the player has across every game. <code>wallet_version</code> goes up on every change, so a game can tell a stale balance from a fresh one. <code>locked_bonus</code> is signup bonus that may be staked but not withdrawn; it is already inside <code>balance</code>. A player without a wallet gets zeros.</p></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "data": {"balance": 250.5, "locked_bonus": 0, "wallet_version": 37}}</pre></div>
+<p class="endpoint-note">Errors as for <code>GET /api/v1/me</code>. Also returns 401 (API key): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/player-tokens/revoke</span><span class="endpoint-desc">End a player's game sessions (kadi)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Call it when the player logs out of kadi. Every game the player is in gets <code>401 invalid_player_token</code> on its next call. Send <code>game</code> to end only that game's sessions. Repeating the call is harmless (<code>revoked</code> is 0). The API also ends every session by itself when a customer's <code>status</code> changes away from 1 or the customer is deleted; reactivating the customer does not bring old sessions back.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>game</td><td>string</td><td><span class="optional">Optional</span></td><td>A game code: only that game's sessions</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Player sessions ended", "data": {"revoked": 2}}</pre></div>
+<div class="endpoint-section"><h4>Response (404)</h4>
+<pre>{"success": false, "message": "Customer not found"}
+{"success": false, "message": "Game not found"}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 
 </div>
@@ -765,7 +862,7 @@ Accept: application/json</pre></div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span></div>
-<p class="endpoint-note">Send only the fields to change. Uniqueness is not checked here: a value another customer already has fails with <code>500</code>. A <a href="#" data-section="api-keys" style="color:var(--accent-blue)">site key</a> may change only <code>name</code>, <code>email</code> and <code>phone_no</code>: <code>status</code>, <code>account_no</code>, <code>google_id</code> and <code>referral_code</code> are refused with <code>422</code> ("The status field is prohibited.").</p>
+<p class="endpoint-note">Send only the fields to change. Uniqueness is not checked here: a value another customer already has fails with <code>500</code>. A <a href="#" data-section="api-keys" style="color:var(--accent-blue)">site key</a> may change only <code>name</code>, <code>email</code> and <code>phone_no</code>: <code>status</code>, <code>account_no</code>, <code>google_id</code> and <code>referral_code</code> are refused with <code>422</code> ("The status field is prohibited."). Changing <code>status</code> to anything but 1 ends the customer's game sessions (see <a href="#" data-section="launch" style="color:var(--accent-blue)">Launching Games</a>).</p>
 <div class="endpoint-section"><h4>Path Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -7688,6 +7785,7 @@ var navUls = document.querySelectorAll('.sidebar-nav ul');
 var sectionTitles = {
     'auth': { title: 'Authentication', desc: 'Base URL, API key, encrypted identifiers, idempotency, rate limits and conventions' },
     'api-keys': { title: 'API Keys', desc: 'Key scopes, game server keys and revoking keys' },
+    'launch': { title: 'Launching Games', desc: 'Launch tokens, player sessions and what a game may read about its player' },
     'customers': { title: 'Customers', desc: 'Create, find, update and verify customers; games played and leaderboards' },
     'promotions': { title: 'Promotions', desc: 'Signup bonus promo codes and customer bonuses' },
     'wallets': { title: 'Wallets', desc: 'Wallet management, balance operations, and transfers' },

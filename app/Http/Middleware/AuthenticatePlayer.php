@@ -33,7 +33,9 @@ class AuthenticatePlayer
 
         if (! $token
             || $token->tokenable_type !== Customer::class
-            || ($token->expires_at && $token->expires_at->isPast())
+            // Every player token is issued with an expiry; one without is not a player token.
+            || ! $token->expires_at
+            || $token->expires_at->isPast()
             // Exact match: a token with the '*' ability is not a player token for any game.
             || ! in_array(PlayerTokenService::abilityFor($apiKey->game->code), $token->abilities ?? [], true)) {
             return response()->json(['message' => 'Invalid or expired player token', 'code' => 'invalid_player_token'], 401);
