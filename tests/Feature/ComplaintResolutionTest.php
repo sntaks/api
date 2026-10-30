@@ -131,6 +131,23 @@ it('locks the players\' wallets before the house wallet and reverses the cuts on
         ->and((float) $this->houseWallet->fresh()->balance)->toBe(0.0);
 });
 
+it('locks the house wallet before it locks the game house cuts', function () {
+    ['game' => $game, 'complainant' => $complainant] = settledGame($this);
+    $complaint = openComplaint($this, ['customer_id' => $complainant->id, 'game_wallet_id' => $game->id]);
+    $locks = [];
+    DB::listen(function (QueryExecuted $query) use (&$locks) {
+        if (preg_match('/^select \* from [`"]?wallets[`"]?.* for update$/i', $query->sql) && ! str_contains($query->sql, 'customer_id')) {
+            $locks[] = 'house';
+        } elseif (preg_match('/^select .* from [`"]?ledger_entries[`"]?.* for update$/i', $query->sql)) {
+            $locks[] = 'house_cuts';
+        }
+    });
+
+    closeComplaint($this, $complaint, 'resolve')->assertOk()->assertJsonPath('data.house_cuts_reversed', 19);
+
+    expect(array_values(array_unique($locks)))->toBe(['house', 'house_cuts']);
+});
+
 it('keeps the kadi product on reversed game house cuts and leaves the dispute refunds as platform', function () {
     ['game' => $game, 'complainant' => $complainant] = settledGame($this);
     $complaint = openComplaint($this, ['customer_id' => $complainant->id, 'game_wallet_id' => $game->id]);

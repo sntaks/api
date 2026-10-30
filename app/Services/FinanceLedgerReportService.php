@@ -227,9 +227,10 @@ class FinanceLedgerReportService
      *
      * Filters: sort (net_gaming, deposited, staked, won, withdrawn, balance, shop_loaded, shop_withdrawn), limit (default 10).
      * net_gaming is winnings plus refunds minus stakes: positive means the customer is up.
-     * deposited is everything paid in, gross: M-Pesa deposits plus cash loaded at bet shops (shop_loaded,
-     * net of reversed loads); excise_paid is the duty taken from it (excise_duty entries only, never winnings
-     * tax, though both are tax_withheld). withdrawn is everything taken out:
+     * deposited is everything paid in, before excise duty: M-Pesa deposits plus cash loaded at bet shops
+     * (shop_loaded). Both deposited and excise_paid are net of reversals, so a reversed shop load drops out of
+     * both. excise_paid is every excise_duty entry on the wallet: the duty on deposits and on the signup bonus
+     * (whose credit is a promotion, not counted in deposited), never winnings tax, though both are tax_withheld. withdrawn is everything taken out:
      * M-Pesa withdrawals plus shop cash withdrawals (shop_withdrawn: collected or waiting to be collected).
      *
      * @param  array<string, string>  $filters

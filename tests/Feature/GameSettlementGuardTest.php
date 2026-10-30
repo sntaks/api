@@ -5,7 +5,9 @@ use App\Models\GameTransaction;
 use App\Models\GameWallet;
 use App\Models\LedgerEntry;
 use App\Models\Wallet;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
@@ -164,6 +166,50 @@ it('pays the drop house share into the configured house wallet', function () {
     expect((float) $houseWallet->fresh()->balance)->toBe(10.0)
         ->and((float) $this->house->fresh()->balance)->toBe(0.0)
         ->and(LedgerEntry::where('entry_type', 'house_cut')->sole()->wallet_id)->toBe($houseWallet->id);
+});
+
+it('locks every active player wallet before the house wallet when paying a dropped game', function () {
+    [$a, $b, $c] = [$this->players[0], $this->players[1], $this->players[2]];
+    guardStake($this, $a)->assertCreated();
+    guardStake($this, $b)->assertCreated();
+    guardStake($this, $c)->assertCreated();
+    // Make wallet id order differ from customer id order: a's wallet is recreated with a higher id
+    Wallet::where('customer_id', $a->id)->update(['id' => Wallet::max('id') + 1]);
+    $walletLocks = [];
+    $playerLockOrder = [];
+    DB::listen(function (QueryExecuted $query) use (&$walletLocks, &$playerLockOrder) {
+        if (preg_match('/^select .* from [`"]?wallets[`"]?.* for update$/i', $query->sql)) {
+            $isPlayer = str_contains($query->sql, 'customer_id');
+            $walletLocks[] = $isPlayer ? 'player' : 'house';
+            if ($isPlayer) {
+                $playerLockOrder[] = (int) $query->bindings[0];
+            }
+        }
+    });
+
+    dropGame($this, [$a->id, $b->id], [$c->id])->assertCreated();
+
+    expect($walletLocks)->toBe(['player', 'player', 'house'])
+        ->and($playerLockOrder)->toBe(Wallet::whereIn('customer_id', [$a->id, $b->id])->orderBy('id')->pluck('customer_id')->all())
+        ->and(guardBalance($a))->toBe(945.0)
+        ->and(guardBalance($b))->toBe(945.0)
+        ->and((float) $this->house->fresh()->balance)->toBe(10.0);
+});
+
+it('keeps the house cut when the house customer is one of the active players', function () {
+    $this->house->update(['balance' => 1000]);
+    $houseCustomer = Customer::find(1);
+    [$a, $c] = [$this->players[0], $this->players[2]];
+    guardStake($this, $houseCustomer)->assertCreated();
+    guardStake($this, $a)->assertCreated();
+    guardStake($this, $c)->assertCreated();
+
+    dropGame($this, [$houseCustomer->id, $a->id], [$c->id])->assertCreated();
+
+    $houseLedger = LedgerEntry::where('wallet_type', LedgerEntry::WALLET_TYPE_WALLET)->where('wallet_id', $this->house->id)->get();
+    expect((float) $this->house->fresh()->balance)->toBe(955.0)
+        ->and(1000 + (float) $houseLedger->sum('credit') - (float) $houseLedger->sum('debit'))->toBe(955.0)
+        ->and(guardBalance($a))->toBe(945.0);
 });
 
 it('keeps a game open for stakes while it is open', function () {

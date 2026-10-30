@@ -205,6 +205,14 @@ it('counts shop cash in each customer\'s deposited and withdrawn', function () {
     ]);
 });
 
+it('nets a reversed shop load out of both deposited and excise paid', function () {
+    shopDay($this);
+
+    $bob = collect(shopFinance($this, 'customers/top', '&limit=10')['items'])->firstWhere('customer_id', $this->bob->id);
+
+    expect($bob)->toMatchArray(['deposited' => 0, 'shop_loaded' => 0, 'excise_paid' => 0]);
+});
+
 it('shows float paid back and counter cash in the cash flow', function () {
     shopDay($this);
 
