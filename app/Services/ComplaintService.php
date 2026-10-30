@@ -105,12 +105,21 @@ class ComplaintService
             $complaint = $this->lockedPendingComplaint($complaintId);
             $disputes = $complaint->disputedTransactions()->held()->orderBy('id')->lockForUpdate()->get();
             $houseCuts = new Collection;
+            $houseWallet = null;
 
             if ($complaint->subject_type === Complaint::SUBJECT_GAME) {
+                // Lock order: the players' wallets, the house wallet, then the house cuts it gives back. The cuts are
+                // reversed on this locked house instance: a plain re-read could return the transaction's older
+                // snapshot and overwrite a house balance committed while this transaction waited for the lock.
+                $stakes = $this->gameStakes((int) $complaint->game_wallet_id);
+                foreach (Wallet::whereIn('customer_id', array_keys($stakes))->orderBy('id')->pluck('customer_id') as $customerId) {
+                    $this->customerWallet($customerId);
+                }
+                $houseWallet = Wallet::lockForUpdate()->find(config('wallets.house_wallet_id', 1));
                 $houseCuts = $this->gameHouseCuts((int) $complaint->game_wallet_id);
                 $pot = $disputes->sum(fn (DisputedTransaction $dispute) => (float) $dispute->balance)
                     + $houseCuts->sum(fn (LedgerEntry $houseCut) => (float) $houseCut->credit);
-                $refunds = $this->share($pot, $this->gameStakes((int) $complaint->game_wallet_id));
+                $refunds = $this->share($pot, $stakes);
             } else {
                 $refunds = [];
                 foreach ($disputes as $dispute) {
@@ -124,13 +133,6 @@ class ComplaintService
             foreach (array_keys($refunds) as $customerId) {
                 $wallets[$customerId] = $this->customerWallet($customerId);
             }
-
-            // Lock order: the player wallets above, then the house wallet. The house cuts are reversed on this
-            // locked instance: a plain re-read could return the transaction's older snapshot (fixed by the reads
-            // above) and overwrite a house balance committed while this transaction waited for the lock.
-            $houseWallet = $complaint->subject_type === Complaint::SUBJECT_GAME
-                ? Wallet::lockForUpdate()->find(config('wallets.house_wallet_id', 1))
-                : null;
 
             foreach ($disputes as $dispute) {
                 $this->ledgerService->recordDisputeRefundFunding($dispute);

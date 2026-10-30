@@ -5,7 +5,9 @@ use App\Models\Customer;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Services\CompetitionWalletService;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -29,6 +31,36 @@ it('records a competition entry whose competition wallet id matches no customer 
     ], apiHeaders($apiKey->key))->assertCreated();
 
     expect(WalletTransaction::where('transaction_type', 'c2w')->sole())->sender_id->toBe($competitionWallet->id)
+        ->and((float) $playerWallet->fresh()->balance)->toBe(50.0)
+        ->and((float) $houseWallet->fresh()->balance)->toBe(5.0)
+        ->and((float) $competitionWallet->fresh()->balance)->toBe(45.0);
+});
+
+it('locks the competition wallet, the player wallet, then the house wallet when staking', function () {
+    $apiKey = createApiKey('test-competition-lock-key');
+    $house = Customer::factory()->create(['id' => 1]);
+    $houseWallet = Wallet::forceCreate(['id' => 1, 'customer_id' => $house->id, 'balance' => 0]);
+    $player = Customer::factory()->create();
+    $playerWallet = Wallet::factory()->create(['customer_id' => $player->id, 'balance' => 100]);
+    $competitionWallet = CompetitionWallet::create([
+        'competition_id' => 'TOURN-L', 'cmp_uid' => '777', 'game_type' => 1, 'customer_id' => $player->id,
+        'level' => 1, 'jp_rounds' => 3, 'balance' => 0, 'status' => 1,
+    ]);
+    $locks = [];
+    DB::listen(function (QueryExecuted $query) use (&$locks) {
+        if (preg_match('/^select .* from [`"]?(competition_wallets|wallets)[`"]?.* for update$/i', $query->sql, $match)) {
+            $locks[] = $match[1] === 'competition_wallets' ? 'competition' : (str_contains($query->sql, 'customer_id') ? 'player' : 'house');
+        }
+    });
+
+    $this->postJson('/api/v1/competition/transactions', [
+        'competition_wallet_id' => $competitionWallet->id,
+        'customer_id' => $player->id,
+        'payment_type' => 'deposit',
+        'amount' => 50,
+    ], apiHeaders($apiKey->key))->assertCreated();
+
+    expect($locks)->toBe(['competition', 'player', 'house'])
         ->and((float) $playerWallet->fresh()->balance)->toBe(50.0)
         ->and((float) $houseWallet->fresh()->balance)->toBe(5.0)
         ->and((float) $competitionWallet->fresh()->balance)->toBe(45.0);

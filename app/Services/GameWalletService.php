@@ -770,9 +770,13 @@ class GameWalletService
         $playerShare = $gameStarted ? floor(($totalBalance - $houseShare) / $activeCount) : 0;
 
         $payouts = [];
+        $winners = $gameStarted ? $this->lockActiveWallets($active) : [];
 
         if ($gameStarted && $houseShare > 0) {
-            $houseWallet = Wallet::lockForUpdate()->find($houseWalletId);
+            // Never two instances of one row: when the house customer is also an active player, its locked
+            // player instance takes the cut, or the later payout save would overwrite it
+            $houseWallet = collect($winners)->first(fn (array $winner) => $winner['wallet']->id === $houseWalletId)['wallet']
+                ?? Wallet::lockForUpdate()->find($houseWalletId);
 
             $houseTransaction = GameTransaction::create([
                 'game_wallet_id' => $gameWallet->id,
@@ -797,17 +801,7 @@ class GameWalletService
         }
 
         if ($gameStarted) {
-            foreach ($active as $activePlayer) {
-                $activeCustomer = Customer::find($activePlayer);
-                if (! $activeCustomer) {
-                    continue;
-                }
-
-                $wallet = Wallet::where('customer_id', $activeCustomer->id)->lockForUpdate()->first();
-                if (! $wallet) {
-                    throw new \Exception('Player wallet not found.');
-                }
-
+            foreach ($winners as ['customer' => $activeCustomer, 'wallet' => $wallet]) {
                 $payoutTransaction = GameTransaction::create([
                     'game_wallet_id' => $gameWallet->id,
                     'customer_id' => $activeCustomer->id,
@@ -836,5 +830,35 @@ class GameWalletService
         }
 
         return $payouts;
+    }
+
+    /**
+     * The active players' wallets, locked before the house wallet (the platform lock order: players, then the
+     * house) and in wallet id order like every other path that locks several players, so two settlements sharing
+     * players cannot deadlock. Returned in the order the players were given; an unknown customer is skipped, a
+     * customer without a wallet is an error.
+     *
+     * @param  array<int, int|string>  $active
+     * @return list<array{customer: Customer, wallet: Wallet}>
+     */
+    private function lockActiveWallets(array $active): array
+    {
+        $customers = Customer::whereIn('id', $active)->get()->keyBy('id');
+        $wallets = [];
+
+        foreach (Wallet::whereIn('customer_id', $customers->keys())->orderBy('id')->pluck('customer_id') as $customerId) {
+            $wallets[$customerId] = Wallet::where('customer_id', $customerId)->lockForUpdate()->first();
+        }
+
+        $winners = [];
+        foreach ($active as $activePlayer) {
+            $customer = $customers->get($activePlayer);
+
+            if ($customer) {
+                $winners[] = ['customer' => $customer, 'wallet' => $wallets[$customer->id] ?? throw new \Exception('Player wallet not found.')];
+            }
+        }
+
+        return $winners;
     }
 }

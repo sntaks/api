@@ -236,11 +236,19 @@ class CompetitionWalletService
             throw new \InvalidArgumentException('Insufficient balance or Wallet not found.');
         }
 
-        $wallet = $customer->wallet;
-
         $competitionTransaction = null;
 
-        DB::transaction(function () use ($competitionWallet, $wallet, $data, &$competitionTransaction) {
+        DB::transaction(function () use ($competitionWallet, $customer, $data, &$competitionTransaction) {
+            // Lock order: the competition wallet, the player's wallet, then the house wallet. Every balance changes
+            // on these locked rows and the stake is checked under the lock, so two stakes at once can neither spend
+            // the same money nor overwrite each other's balances.
+            $competitionWallet = CompetitionWallet::lockForUpdate()->find($competitionWallet->id);
+            $wallet = Wallet::where('customer_id', $customer->id)->lockForUpdate()->first();
+
+            if ($wallet->balance < $data['amount']) {
+                throw new \InvalidArgumentException('Insufficient balance or Wallet not found.');
+            }
+
             $totalBalance = $data['amount'];
             $competitionType = $competitionWallet->game_type;
 
@@ -272,7 +280,7 @@ class CompetitionWalletService
             $competitionWallet->save();
 
             if ($houseCompetitionShare > 0) {
-                $houseWallet = Wallet::find(config('wallets.house_wallet_id', 1));
+                $houseWallet = Wallet::lockForUpdate()->find(config('wallets.house_wallet_id', 1));
                 $this->ledgerService->recordHouseCut(
                     $houseWallet,
                     (float) $houseCompetitionShare,
