@@ -176,7 +176,22 @@ class CompetitionWalletService
             throw new \InvalidArgumentException('Customer wallet not found');
         }
 
-        DB::transaction(function () use ($competitionWallet, $wallet) {
+        DB::transaction(function () use ($competitionWallet, $customer) {
+            // Lock order: the competition wallet, then the player's wallet. The checks above are repeated on the
+            // locked row, so two withdrawals at once cannot both pay the same balance out.
+            $competitionWallet = CompetitionWallet::lockForUpdate()->find($competitionWallet->id)
+                ?? throw new \InvalidArgumentException('Competition Wallet not found');
+
+            if ($competitionWallet->status !== 1) {
+                throw new \InvalidArgumentException('Competition Wallet is not open for withdrawal');
+            }
+
+            if ($competitionWallet->isUnderDispute()) {
+                throw new \InvalidArgumentException('Competition Wallet is frozen by a pending complaint');
+            }
+
+            $wallet = Wallet::where('customer_id', $customer->id)->lockForUpdate()->first()
+                ?? throw new \InvalidArgumentException('Customer wallet not found');
             $totalBalance = $competitionWallet->balance;
 
             $competitionTransaction = CompetitionTransaction::create([
