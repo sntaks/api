@@ -64,6 +64,9 @@ return [
         'GET api/v1/games',
         'POST api/v1/customers/{encryptedIdentifier}/launch-tokens',
         'POST api/v1/customers/{encryptedIdentifier}/player-tokens/revoke',
+
+        // A player's bet history
+        'GET api/v1/customers/{encryptedIdentifier}/wagers',
     ],
 
     /*
@@ -76,6 +79,9 @@ return [
         'POST api/v1/wagers',
         'POST api/v1/wagers/{reference}/settle',
         'POST api/v1/wagers/{reference}/reverse',
+        'POST api/v1/rounds/{reference}/settle',
+        'POST api/v1/rounds/{reference}/void',
+        'GET api/v1/wagers/{reference}',
     ],
 
 ];

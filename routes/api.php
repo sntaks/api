@@ -65,7 +65,9 @@ use App\Http\Controllers\api\v1\StkLoadController;
 use App\Http\Controllers\api\v1\TransactionController;
 use App\Http\Controllers\api\v1\UnmatchedDepositController;
 use App\Http\Controllers\api\v1\ValidationController;
+use App\Http\Controllers\api\v1\WagerAdminController;
 use App\Http\Controllers\api\v1\WagerController;
+use App\Http\Controllers\api\v1\WagerRoundController;
 use App\Http\Controllers\api\v1\WalletController;
 use App\Http\Controllers\api\v1\WalletTransactionController;
 use App\Http\Controllers\api\v1\WalletTransferController;
@@ -185,6 +187,18 @@ Route::prefix('/v1')->group(function () {
 
         // Take back a settlement and reopen the bet (game key only). Replay-safe by (product, reference, version), not by the idempotency middleware
         Route::post('/wagers/{reference}/reverse', [WagerController::class, 'reverse'])->middleware('throttle:wagers');
+
+        // Settle or void every wager of a round together (game key only). Rerunnable: only open, never-settled wagers are touched
+        Route::post('/rounds/{reference}/settle', [WagerRoundController::class, 'settle'])->middleware('throttle:wagers');
+        Route::post('/rounds/{reference}/void', [WagerRoundController::class, 'void'])->middleware('throttle:wagers');
+
+        // Reconcile one bet after a timeout (game key only)
+        Route::get('/wagers/{reference}', [WagerController::class, 'show'])->middleware('throttle:wagers');
+
+        // GMS (full key): search, one wager with its settlements and ledger lines, and void a stuck open bet. {id} is checked in the controller
+        Route::get('/wagers', [WagerAdminController::class, 'index']);
+        Route::get('/wagers/{id}/detail', [WagerAdminController::class, 'detail']);
+        Route::post('/wagers/{id}/void', [WagerController::class, 'adminVoid'])->middleware('throttle:write');
 
         // Shop system: shop API keys only, always acting for the key's own shop
         Route::prefix('/shop')->middleware(['shop.key', 'throttle:shop'])->group(function () {
@@ -362,6 +376,9 @@ Route::prefix('/v1')->group(function () {
             Route::post('/customers/{encryptedIdentifier}/shop-withdrawals', [ShopWithdrawalController::class, 'store'])->middleware(['throttle:financial', 'idempotency']);
             Route::get('/customers/{encryptedIdentifier}/shop-withdrawals', [ShopWithdrawalController::class, 'index']);
             Route::post('/customers/{encryptedIdentifier}/shop-withdrawals/{withdrawalId}/cancel', [ShopWithdrawalController::class, 'cancel'])->middleware(['idempotency', 'throttle:write']);
+
+            // A player's bet history (site key)
+            Route::get('/customers/{encryptedIdentifier}/wagers', [WagerAdminController::class, 'customerIndex']);
 
             // Launch a game for a logged-in kadi player (site key; never idempotent: a stored response would replay a live token)
             Route::post('/customers/{encryptedIdentifier}/launch-tokens', [LaunchTokenController::class, 'store'])->middleware('throttle:write');

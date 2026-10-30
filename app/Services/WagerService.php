@@ -72,7 +72,7 @@ class WagerService
      * The product, when the key may post wagers on it: it belongs to the key's game and is house-banked. A rake
      * product (kadi's) never takes wagers, even from its own game's key; a key without a game reaches none.
      */
-    private function allowedProduct(ApiKey $key, string $code): ?Product
+    public function allowedProduct(ApiKey $key, string $code): ?Product
     {
         $product = Product::where('code', $code)->first();
 
@@ -107,7 +107,8 @@ class WagerService
             );
             $round = WagerRound::whereKey($round->id)->sharedLock()->first();
 
-            if ($round->status !== WagerRound::STATUS_OPEN) {
+            // A non-final round settlement closes the round to places while it is still open
+            if ($round->status !== WagerRound::STATUS_OPEN || $round->closed_at !== null) {
                 return WagerResult::refused('round_closed', 'This round is closed', 409);
             }
         }
@@ -311,6 +312,57 @@ class WagerService
     }
 
     /**
+     * Void a stuck open wager on an admin's say-so: a void at the next version, settled by the admin, refunding a
+     * cash stake exactly as a game's void does. Only an open wager (a reopened one too) can be voided; anything
+     * else is refused with its state. Lock order: wager, player wallet.
+     */
+    public function adminVoid(Wager $wager, string $reason, string $adminUser): WagerResult
+    {
+        $early = $this->adminVoidRefusal($wager);
+
+        if ($early) {
+            return $early;
+        }
+
+        return DB::transaction(fn () => $this->adminVoidLocked($wager->id, $reason, $adminUser), 3);
+    }
+
+    private function adminVoidRefusal(Wager $wager): ?WagerResult
+    {
+        if ($wager->is_tombstone || $wager->status !== Wager::STATUS_OPEN) {
+            return WagerResult::refused('wager_not_open', 'Only an open wager can be voided', 409, $this->stateOf($wager));
+        }
+
+        return null;
+    }
+
+    private function adminVoidLocked(int $wagerId, string $reason, string $adminUser): WagerResult
+    {
+        $wager = Wager::whereKey($wagerId)->lockForUpdate()->firstOrFail();
+
+        $early = $this->adminVoidRefusal($wager);
+
+        if ($early) {
+            return $early;
+        }
+
+        ['player' => $needsPlayer] = $this->walletsMoved($wager, WagerSettlement::OUTCOME_VOID);
+
+        $player = $needsPlayer ? Wallet::whereKey($wager->wallet_id)->lockForUpdate()->firstOrFail() : null;
+
+        $settlement = $this->applySettlement($wager->product, $wager, $player, null, [
+            'version' => $wager->settlement_version + 1,
+            'outcome' => WagerSettlement::OUTCOME_VOID,
+            'payout' => 0,
+            'reason' => $reason,
+            'settled_by' => WagerSettlement::SETTLED_BY_ADMIN,
+            'admin_user' => $adminUser,
+        ]);
+
+        return WagerResult::settled($wager->load(['product', 'round']), $settlement);
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     private function settleUnknownReference(ApiKey $key, Product $product, string $reference, array $data): WagerResult
@@ -430,6 +482,41 @@ class WagerService
             return $early;
         }
 
+        ['player' => $needsPlayer, 'house' => $needsHouse] = $this->walletsMoved($wager, $data['outcome']);
+
+        $player = $needsPlayer ? Wallet::whereKey($wager->wallet_id)->lockForUpdate()->firstOrFail() : null;
+        $house = $needsHouse ? Wallet::whereKey(config('wallets.house_wallet_id', 1))->lockForUpdate()->firstOrFail() : null;
+
+        $settlement = $this->applySettlement($product, $wager, $player, $house, $data);
+
+        return WagerResult::settled($wager->load(['product', 'round']), $settlement);
+    }
+
+    /**
+     * Which wallets a settlement with this outcome moves money on: the player's for a win or a cash refund, the
+     * house's for a win or a cash loss. A lost or void free bet moves nothing.
+     *
+     * @return array{player: bool, house: bool}
+     */
+    public function walletsMoved(Wager $wager, string $outcome): array
+    {
+        $isFreeBet = $wager->funding === Wager::FUNDING_FREE_BET;
+
+        return [
+            'player' => $outcome === WagerSettlement::OUTCOME_WON || ($outcome === WagerSettlement::OUTCOME_VOID && ! $isFreeBet),
+            'house' => $outcome === WagerSettlement::OUTCOME_WON || ($outcome === WagerSettlement::OUTCOME_LOST && ! $isFreeBet),
+        ];
+    }
+
+    /**
+     * Settle one wager on instances the caller already locked (the wager, and the wallets `walletsMoved()` names):
+     * the tax, the settlement row, its legs in section 5.4's order, and the wager's new state. Shared by the
+     * per-wager settle and the round settle and void; the caller has checked that the version may be applied.
+     *
+     * @param  array<string, mixed>  $data  version, outcome, payout, bonus?, reason?
+     */
+    public function applySettlement(Product $product, Wager $wager, ?Wallet $player, ?Wallet $house, array $data): WagerSettlement
+    {
         $outcome = $data['outcome'];
         $isFreeBet = $wager->funding === Wager::FUNDING_FREE_BET;
         $payout = $this->cents($data['payout']);
@@ -442,12 +529,6 @@ class WagerService
 
         $settlement = $wager->settlements()->create($this->settlementAttributes($data, $payout, $bonus, $tax, $taxBase, $rate));
 
-        $needsPlayer = $outcome === WagerSettlement::OUTCOME_WON || ($outcome === WagerSettlement::OUTCOME_VOID && ! $isFreeBet);
-        $needsHouse = $outcome === WagerSettlement::OUTCOME_WON || ($outcome === WagerSettlement::OUTCOME_LOST && ! $isFreeBet);
-
-        $player = $needsPlayer ? Wallet::whereKey($wager->wallet_id)->lockForUpdate()->firstOrFail() : null;
-        $house = $needsHouse ? Wallet::whereKey(config('wallets.house_wallet_id', 1))->lockForUpdate()->firstOrFail() : null;
-
         $this->postSettlementLegs($settlement, $wager, $player, $house, $payout / 100, $bonus / 100, $tax / 100);
 
         $wager->update([
@@ -459,7 +540,7 @@ class WagerService
             'settled_at' => now(),
         ]);
 
-        return WagerResult::settled($wager->load(['product', 'round']), $settlement);
+        return $settlement;
     }
 
     /**
@@ -516,7 +597,8 @@ class WagerService
             'tax_base' => $taxBase / 100,
             'tax_rate' => $rate,
             'reason' => $data['reason'] ?? null,
-            'settled_by' => WagerSettlement::SETTLED_BY_GAME,
+            'settled_by' => $data['settled_by'] ?? WagerSettlement::SETTLED_BY_GAME,
+            'admin_user' => $data['admin_user'] ?? null,
             'status' => WagerSettlement::STATUS_APPLIED,
         ];
     }
