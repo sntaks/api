@@ -3,17 +3,21 @@
 namespace App\Services;
 
 use App\Models\Customer;
+use App\Models\StkPush;
 use App\Util\PlayerNumber;
 use Illuminate\Support\Facades\Log;
 
 class StkService
 {
-    public function __construct(private MpesaService $mpesaService) {}
+    public function __construct(private MpesaService $mpesaService, private PlayerGate $gate) {}
 
     /**
      * Prompt the customer's phone for a wallet top-up. $identifier is an id, account number or player number.
      * The M-Pesa account reference is the player number: 8 characters, check-digit protected and never
-     * edited, so the confirmation always matches back (DepositAccountResolver).
+     * edited, so the confirmation always matches back (DepositAccountResolver). A player who may not deposit
+     * (inactive, on a break, over their limit) is refused before the prompt is sent.
+     *
+     * @return array{status: string, refusal?: GateResult}
      */
     public function initiateStkDeposit(string $identifier, float $amount): array
     {
@@ -27,6 +31,12 @@ class StkService
             throw new \InvalidArgumentException('Customer not found');
         }
 
+        // Refused before the prompt is sent: no money moves, so nothing needs undoing (D18).
+        $canDeposit = $this->gate->canDeposit($customer, (float) intval($amount));
+        if (! $canDeposit->allowed) {
+            return ['status' => 'refused', 'refusal' => $canDeposit];
+        }
+
         $params = [
             'Amount' => intval($amount),
             'AccountReference' => $customer->player_no,
@@ -36,6 +46,15 @@ class StkService
 
         $response = $this->mpesaService->stkPush($params);
         Log::channel('mpesa')->info('MPESA StkPush Request Response', $response);
+
+        // An accepted prompt counts against the player's deposit limits until its money arrives.
+        if ((string) ($response['ResponseCode'] ?? '') === '0') {
+            StkPush::create([
+                'customer_id' => $customer->id,
+                'amount' => (int) $amount,
+                'checkout_request_id' => $response['CheckoutRequestID'] ?? null,
+            ]);
+        }
 
         return ['status' => 'success'];
     }

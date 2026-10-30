@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ExclusionService;
 use App\Services\PlayerTokenService;
 use App\Util\Badge;
 use App\Util\PlayerNumber;
@@ -22,6 +23,20 @@ class Customer extends Model
     use HasApiTokens, HasFactory, SoftDeletes;
 
     protected $table = 'customers';
+
+    public const STATUS_ACTIVE = 1;
+
+    public const STATUS_BLOCKED = 2;
+
+    public const STATUS_CONFIRMED = 3;
+
+    public const STATUS_CLOSED = 4;
+
+    public const STATUS_FRAUD = 5;
+
+    public const STATUS_LEAD = 6;
+
+    public const STATUSES = [self::STATUS_ACTIVE, self::STATUS_BLOCKED, self::STATUS_CONFIRMED, self::STATUS_CLOSED, self::STATUS_FRAUD, self::STATUS_LEAD];
 
     protected $fillable = [
         'account_no',
@@ -104,6 +119,44 @@ class Customer extends Model
         });
 
         static::deleted(fn (Customer $customer) => app(PlayerTokenService::class)->revokeAll($customer));
+
+        // A break follows the person: a new account, or one moved onto a phone or national ID that is on a
+        // break, is put on that break too.
+        static::saved(function (Customer $customer) {
+            if ($customer->wasRecentlyCreated || $customer->wasChanged(['phone_hash', 'id_no'])) {
+                app(ExclusionService::class)->inheritFor($customer);
+            }
+        });
+    }
+
+    /**
+     * Only an active customer may play or deposit.
+     */
+    public function isActive(): bool
+    {
+        return (int) $this->status === self::STATUS_ACTIVE;
+    }
+
+    public function exclusions(): HasMany
+    {
+        return $this->hasMany(CustomerExclusion::class);
+    }
+
+    /**
+     * The break from play running now (the one that ends last), if any.
+     */
+    public function activeExclusion(): ?CustomerExclusion
+    {
+        return $this->exclusions()->where('ends_at', '>', now())->orderByDesc('ends_at')->first();
+    }
+
+    /**
+     * Blocked, flagged for fraud, or any code GMS does not define: may not play, deposit or withdraw. An
+     * unknown state never releases money.
+     */
+    public function isSuspended(): bool
+    {
+        return ! in_array((int) $this->status, [self::STATUS_ACTIVE, self::STATUS_CONFIRMED, self::STATUS_CLOSED, self::STATUS_LEAD], true);
     }
 
     /**

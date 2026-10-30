@@ -53,6 +53,7 @@ class ShopWithdrawalService
         private LedgerService $ledgerService,
         private SignupBonusService $signupBonus,
         private FinanceMasker $masker,
+        private PlayerGate $gate,
     ) {}
 
     /**
@@ -79,8 +80,10 @@ class ShopWithdrawalService
             return $this->refused('That bet shop is not taking withdrawals', 409, self::CODE_SHOP_NOT_ACTIVE);
         }
 
-        if ((int) $customer->status !== 1) {
-            return $this->refused('The account is not active', 409, self::CODE_PLAYER_INACTIVE);
+        // Only a suspended player is stopped (D16): a closed or not-yet-active account, or a player on a break, may still take their money out.
+        $canWithdraw = $this->gate->canWithdraw($customer);
+        if (! $canWithdraw->allowed) {
+            return $this->refused($canWithdraw->message, $canWithdraw->statusCode, $canWithdraw->code);
         }
 
         if (blank($customer->id_no)) {

@@ -311,14 +311,16 @@ it('keeps the bonus locked until it has been staked, not counting refunded stake
 
 it('refuses a withdrawal that would take locked bonus', function () {
     reportVerified($this->customer);
+    // 40 of the player's own money on top of the 20 locked bonus: a withdrawal of 50 (the minimum) would take 10 of the bonus.
+    app(LedgerService::class)->recordAdjustment($this->wallet->fresh(), 40, 'test top-up');
 
-    $this->postJson('/api/v1/withdraw/'.encryptId($this->customer->id), ['amount' => 10], $this->headers)
+    $this->postJson('/api/v1/withdraw/'.encryptId($this->customer->id), ['amount' => 50], $this->headers)
         ->assertStatus(400)
         ->assertJsonPath('code', 'signup_bonus_locked')
         ->assertJsonPath('locked_amount', 20)
-        ->assertJsonPath('available', 0);
+        ->assertJsonPath('available', 40);
 
-    expect((float) $this->wallet->fresh()->balance)->toBe(20.0);
+    expect((float) $this->wallet->fresh()->balance)->toBe(60.0);
 });
 
 it('lets the customer move money above the locked bonus', function () {

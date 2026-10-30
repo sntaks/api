@@ -7,13 +7,16 @@ use App\Http\Requests\PagedListRequest;
 use App\Http\Requests\StoreCompetitionTransactionRequest;
 use App\Http\Requests\UpdateCompetitionTransactionRequest;
 use App\Http\Resources\CompetitionTransactionResource;
+use App\Models\Customer;
 use App\Services\CompetitionWalletService;
+use App\Services\PlayerGate;
 use Illuminate\Support\Facades\Log;
 
 class CompetitionTransactionController extends Controller
 {
     public function __construct(
-        private CompetitionWalletService $walletService
+        private CompetitionWalletService $walletService,
+        private PlayerGate $gate,
     ) {}
 
     /**
@@ -29,6 +32,12 @@ class CompetitionTransactionController extends Controller
      */
     public function store(StoreCompetitionTransactionRequest $request)
     {
+        // Only an active player who is not on a break may stake. Same error shape as the route's other refusals.
+        $canPlay = $this->gate->canPlay(Customer::withTrashed()->find($request->validated('customer_id')));
+        if (! $canPlay->allowed) {
+            return response()->json(['status' => $canPlay->message, 'code' => $canPlay->code] + $canPlay->extra, $canPlay->statusCode);
+        }
+
         try {
             $this->walletService->createCompetitionTransaction($request->stakeData());
 

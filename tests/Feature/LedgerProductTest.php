@@ -144,7 +144,7 @@ it('leaves platform entries untagged', function () {
         'finance.excise_duty.rate' => 0.05,
         'finance.excise_duty.effective_from' => null,
     ]);
-    $customer = Customer::factory()->create(['account_no' => 'KK-PRODUCT00001', 'phone_no' => '254700000019']);
+    $customer = Customer::factory()->phoneVerified()->create(['account_no' => 'KK-PRODUCT00001', 'phone_no' => '254700000019']);
     Wallet::factory()->create(['customer_id' => $customer->id, 'balance' => 0]);
 
     payPaybill('KK-PRODUCT00001', '254700000019', 'PRODPLAT01', 200)->assertCreated();

@@ -305,6 +305,7 @@
         <div class="nav-section">Core Resources</div>
         <ul>
             <li><a href="#" data-section="customers"><span class="nav-icon">&#128100;</span> <span>Customers</span></a></li>
+            <li><a href="#" data-section="rg"><span class="nav-icon">&#128737;</span> <span>Responsible Gambling</span></a></li>
             <li><a href="#" data-section="promotions"><span class="nav-icon">&#127873;</span> <span>Promotions</span></a></li>
             <li><a href="#" data-section="wallets"><span class="nav-icon">&#128176;</span> <span>Wallets</span></a></li>
             <li><a href="#" data-section="wallet-txns"><span class="nav-icon">&#128179;</span> <span>Wallet Transactions</span></a></li>
@@ -611,6 +612,125 @@ game  ── POST /launch-tokens/redeem {token} ──▶ API ── {player_tok
 <pre>{"success": false, "message": "Customer not found"}
 {"success": false, "message": "Game not found"}</pre></div>
 <p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+</div>
+<!-- RESPONSIBLE GAMBLING SECTION -->
+
+<div class="doc-section" data-section="rg">
+<button class="expand-all" onclick="toggleAll('rg')">Expand / Collapse All</button>
+<div class="callback-note"><strong>Who may do what.</strong> Only an <strong>active</strong> player (<code>status</code> 1) may stake, deposit or launch a game. <strong>Suspended</strong> players (2 Blocked, 5 Fraud) may not withdraw either. Everyone else (3 Confirmed, 4 Closed, 6 Lead) may only withdraw. Money owed to a player (game settlements, payouts, refunds) is always paid, whatever the status. A refused action answers <code>{"success": false, "message": "…", "code": "player_inactive" | "player_suspended"}</code> with <code>403</code>.</div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-put">PUT</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/status</span><span class="endpoint-desc">Set a customer's status, with a reason (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Full keys only. Records who changed the status, through which key, and why. A status other than 1 ends the customer's game sessions at once. Setting the status it already has records nothing.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>status</td><td>integer</td><td><span class="required">Required</span></td><td>1 Active, 2 Blocked, 3 Confirmed, 4 Closed, 5 Fraud, 6 Lead</td></tr><tr><td>reason</td><td>string</td><td><span class="required">Required</span></td><td>3 to 500 characters</td></tr><tr><td>admin_user</td><td>string</td><td><span class="required">Required</span></td><td>The GMS user making the change (up to 100 characters)</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Status updated", "data": {"status": 2, "previous_status": 1}}</pre></div>
+<p class="endpoint-note">A status change through <code>PUT /api/v1/customers/{encryptedIdentifier}</code> is recorded too, without a reason. Also returns 401 (API key), 400 (invalid identifier), 404 (customer not found), 409 (Idempotency-Key reused), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/status-changes</span><span class="endpoint-desc">A customer's status history (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 1</td></tr><tr><td>per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 200, default 50</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "data": {"items": [{"from_status": 1, "to_status": 2, "reason": "Chargeback on M-Pesa", "admin_user": "ann", "actor": "api_key:3", "created_at": "2026-10-30 11:00:00"}], "pagination": {"page": 1, "per_page": 50, "total": 1, "last_page": 1}}}</pre></div>
+<p class="endpoint-note">Newest first. Also returns 401 (API key), 400 (invalid identifier), 404 (customer not found): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/responsible-gambling</span><span class="endpoint-desc">A player's status, break and deposit limits (kadi)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Everything kadi's responsible gambling page shows. <code>can_play</code> is false while the player is inactive or on a break. <code>exclusion</code> is the break running now, or <code>null</code>.</p></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "status": 1,
+    "can_play": false,
+    "exclusion": {"type": "cool_off", "ends_at": "2026-11-06T11:00:00+03:00"},
+    "deposit_limits": [
+      {"period": "day", "amount": 1000, "pending_amount": 5000, "pending_from": "2026-10-31T11:00:00+03:00", "remaining": 750},
+      {"period": "week", "amount": 5000, "pending_amount": null, "pending_from": null, "remaining": 4750}
+    ],
+    "deposit_remaining": 750
+  }
+}</pre></div>
+<p class="endpoint-note"><code>deposit_remaining</code> is what the player can deposit now under all their limits (the smallest <code>remaining</code>), or <code>null</code> with no limit. Also returns 401 (API key), 400 (invalid identifier), 404 (customer not found): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-put">PUT</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/deposit-limits/{period}</span><span class="endpoint-desc">Set, cut, raise or remove a deposit limit (kadi)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;"><code>{period}</code> is <code>day</code>, <code>week</code> or <code>month</code>: a rolling 24 hours, 7 days or 30 days. Each limit caps what the player may deposit within its window: paybill and STK top-ups and bet-shop loads, net of reversals, plus STK prompts from the last few minutes whose money has not arrived. <strong>A first limit or a lower one applies at once. A higher limit, or removing one, waits 24 hours</strong> (until <code>pending_from</code>). The limits cover every game.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>amount</td><td>integer|null</td><td><span class="required">Required</span></td><td>Whole shillings, 10 to 1,000,000; <code>null</code> removes the limit (after 24 hours)</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Deposit limit saved", "data": {"period": "day", "amount": 1000, "pending_amount": 5000, "pending_from": "2026-10-31T11:00:00+03:00"}}</pre></div>
+<p class="endpoint-note">An unknown period answers <code>404</code>. Also returns 401 (API key), 400 (invalid identifier), 404 (customer not found), 409 (Idempotency-Key reused), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/exclusion</span><span class="endpoint-desc">Start a break from play (kadi)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">The player asks for a break on kadi. From then until <code>ends_at</code> the player cannot deposit, stake or launch a game (<code>403 player_excluded</code>, with <code>excluded_until</code>), but can log in and withdraw. It covers every game. Their game sessions end at once. <strong>A break can be extended but never shortened or ended early, by anyone</strong>: there is no route for it. Asking for a cool-off while a self-exclusion runs keeps it a self-exclusion. <strong>A break follows the person:</strong> it keeps the phone and national ID it was taken with, and every account with that phone or ID (the player's other accounts, a new sign-up, or an account changed onto that phone or ID later) is put on the same break.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>type</td><td>string</td><td><span class="required">Required</span></td><td><code>cool_off</code> or <code>self_exclusion</code></td></tr><tr><td>duration</td><td>string</td><td><span class="required">Required</span></td><td>Cool-off: <code>24h</code>, <code>7d</code>, <code>30d</code>. Self-exclusion: <code>6m</code>, <code>1y</code>, <code>5y</code>.</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (201)</h4>
+<pre>{"success": true, "message": "Break started", "data": {"type": "cool_off", "duration": "7d", "starts_at": "2026-10-30T11:00:00+03:00", "ends_at": "2026-11-06T11:00:00+03:00"}}</pre></div>
+<div class="endpoint-section"><h4>Response (422)</h4>
+<pre>{"success": false, "message": "The current break already lasts longer. A break can be made longer, but not shorter.", "code": "exclusion_shorter", "excluded_until": "2026-11-29T11:00:00+03:00"}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 404 (customer not found), 409 (Idempotency-Key reused), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/exclusions</span><span class="endpoint-desc">Every break a player took (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 1</td></tr><tr><td>per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 200, default 50</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "data": {"items": [{"type": "cool_off", "duration": "7d", "starts_at": "2026-10-30T11:00:00+03:00", "ends_at": "2026-11-06T11:00:00+03:00", "actor": "api_key:5"}], "pagination": {"page": 1, "per_page": 50, "total": 1, "last_page": 1}}}</pre></div>
+<p class="endpoint-note">Newest first. Full keys only. Also returns 401 (API key), 400 (invalid identifier), 404 (customer not found): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/responsible-gambling/flags</span><span class="endpoint-desc">Deposits credited against a player's own rules (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Paybill money that has already arrived is always credited, even when the player is inactive, on a break or over their deposit limit (an STK top-up or a shop load would have been refused). Each such deposit is flagged here for review: <code>rg_deposit_inactive</code>, <code>rg_deposit_while_excluded</code> or <code>rg_deposit_over_limit</code>. Unmatched-deposit assigns are flagged the same way. Newest first.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>customer</td><td>integer</td><td><span class="optional">Optional</span></td><td>A customer id</td></tr><tr><td>type</td><td>string</td><td><span class="optional">Optional</span></td><td>One of the three flag types</td></tr><tr><td>resolved</td><td>boolean</td><td><span class="optional">Optional</span></td><td><code>0</code> open only, <code>1</code> resolved only</td></tr><tr><td>page / per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>per_page 1 to 200, default 50</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "data": {"items": [{"id": 412, "type": "rg_deposit_over_limit", "customer_id": 2041, "details": {"deposit_id": 9921, "trans_id": "TJU8XK2LQ1", "amount": 1500, "remaining": 500, "excluded_until": null, "status": 1}, "created_at": "2026-10-30T11:00:00+03:00", "resolved_at": null}], "pagination": {"page": 1, "per_page": 50, "total": 1, "last_page": 1}}}</pre></div>
+<p class="endpoint-note">Full keys only. Also returns 401 (API key), 422 (validation): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/responsible-gambling/flags/{id}/resolve</span><span class="endpoint-desc">Mark a flag reviewed (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Records who reviewed the flag and what they did (for example a refund made by hand). It moves no money. Resolving a resolved flag changes nothing.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>admin_user</td><td>string</td><td><span class="required">Required</span></td><td>The GMS user (up to 100 characters)</td></tr><tr><td>note</td><td>string</td><td><span class="required">Required</span></td><td>3 to 500 characters</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Flag resolved", "data": {"id": 412, "type": "rg_deposit_over_limit", "customer_id": 2041, "details": {"…": "…", "resolution": {"admin_user": "ann", "note": "Player asked to keep it", "actor": "api_key:3"}}, "created_at": "2026-10-30T11:00:00+03:00", "resolved_at": "2026-10-30T12:00:00+03:00"}}</pre></div>
+<p class="endpoint-note">Full keys only. An unknown id answers <code>404</code>. Also returns 401 (API key), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 
 </div>
@@ -2172,6 +2292,7 @@ Content-Type: application/json
 <pre>{
   "status": "error"
 }</pre></div>
+<p class="endpoint-note"><strong>Since responsible gambling (P4):</strong> the sending player must be active and not on a break: otherwise <code>403</code> with <code>code</code> <code>player_inactive</code> / <code>player_excluded</code>. See <a href="#" data-section="rg" style="color:var(--accent-blue)">Responsible Gambling</a>.</p>
 <p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 409 (Idempotency-Key reused), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 
@@ -2532,6 +2653,7 @@ Content-Type: application/json
 <pre>{
   "status": "The amount field is required."
 }</pre></div>
+<p class="endpoint-note"><strong>Since responsible gambling (P4):</strong> refused before the prompt is sent when the player is inactive or on a break (<code>403 player_inactive</code> / <code>player_excluded</code>) or the amount is above what their deposit limits leave (<code>422 deposit_limit</code> with <code>remaining</code>). See <a href="#" data-section="rg" style="color:var(--accent-blue)">Responsible Gambling</a>.</p>
 <p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 409 (Idempotency-Key reused), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 
@@ -3033,6 +3155,7 @@ Content-Type: application/json
   "ledger_entry_id": null
 }</pre></div>
 <p class="endpoint-note">The outcome is in <code>status</code>: <code>"success"</code>, or the error message. Check <code>code</code> for the locked-bonus case.</p>
+<p class="endpoint-note"><strong>Since responsible gambling (P4):</strong> <code>amount</code> must be whole shillings from 50 to 150,000 (<code>422</code>). A suspended player (status 2, 5 or an undefined code) gets <code>403 player_suspended</code>; a phone kadi has not verified gets <code>422 phone_unverified</code>; more than 5 withdrawals an hour (main and referral wallet together) get <code>429 too_many_withdrawals</code> with <code>retry_after</code> in seconds. A player on a break may still withdraw. See <a href="#" data-section="rg" style="color:var(--accent-blue)">Responsible Gambling</a>.</p>
 <p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 409 (Idempotency-Key reused), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 
@@ -4067,6 +4190,7 @@ Content-Type: application/json
 <pre>{
   "error": "..."
 }</pre></div>
+<p class="endpoint-note"><strong>Since responsible gambling (P4):</strong> only an active player who is not on a break may stake: otherwise <code>403 {"error": "…", "code": "player_inactive" | "player_excluded"}</code> (with <code>excluded_until</code> for a break), and nothing is debited. See <a href="#" data-section="rg" style="color:var(--accent-blue)">Responsible Gambling</a>.</p>
 <p class="endpoint-note">Also returns 401 (API key), 409 (Idempotency-Key reused), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 
@@ -4773,6 +4897,7 @@ Content-Type: application/json
 <pre>{
   "status": "Error creating Competition Transaction"
 }</pre></div>
+<p class="endpoint-note"><strong>Since responsible gambling (P4):</strong> only an active player who is not on a break may stake: otherwise <code>403 {"status": "…", "code": "player_inactive" | "player_excluded"}</code>. See <a href="#" data-section="rg" style="color:var(--accent-blue)">Responsible Gambling</a>.</p>
 <p class="endpoint-note">Also returns 401 (API key), 409 (Idempotency-Key reused), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 
@@ -5263,6 +5388,7 @@ Content-Type: application/json
 // 502 - Safaricom rejected the payout; the money is back in the referral wallet (data.status "failed")
 // 202 - outcome unknown; kept pending for review (data.status "pending")
 // 503 - the referral shortcode is not configured on the server</pre></div>
+<p class="endpoint-note"><strong>Since responsible gambling (P4):</strong> at most 150,000; the same suspended-player, verified-phone and 5-an-hour rules as <code>POST /api/v1/withdraw/{encryptedIdentifier}</code> (<code>403 player_suspended</code>, <code>422 phone_unverified</code>, <code>429 too_many_withdrawals</code>), with the hourly count shared between both wallets. See <a href="#" data-section="rg" style="color:var(--accent-blue)">Responsible Gambling</a>.</p>
 </div></div>
 <div class="endpoint">
 <div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/referral-wallet/withdrawals</span><span class="endpoint-desc">The customer's referral withdrawals</span><span class="chevron">&#9654;</span></div>
@@ -5727,6 +5853,7 @@ Content-Type: application/json
 <pre>{"success": true, "message": "Show this pickup code at the shop to collect the cash. It is not shown again.", "data": {"withdrawal_id": "9d2f6c1e-3b7a-4c55-8e0d-2a1f4b6c7d8e", "shop_no": "S101", "shop_name": "Kariobangi Bet Shop", "amount": 1000.00, "status": "pending", "expires_at": "2026-10-17T10:00:00+03:00", "requested_at": "2026-10-16T10:00:00+03:00", "closed_at": null, "close_reason": null, "pickup_code": "482913"}}</pre></div>
 <div class="endpoint-section"><h4>Response (422)</h4>
 <pre>{"success": false, "message": "An ID number is needed on the account to withdraw cash at a shop", "code": "id_required"}</pre></div>
+<p class="endpoint-note"><strong>Since responsible gambling (P4):</strong> only a suspended player (status 2, 5 or an undefined code) is refused, with <code>403 player_suspended</code> (was <code>409 player_inactive</code> for any status but 1). Closed and not-yet-active accounts, and players on a break, may withdraw. See <a href="#" data-section="rg" style="color:var(--accent-blue)">Responsible Gambling</a>.</p>
 <p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 404 (customer), 429: see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 
@@ -5845,6 +5972,7 @@ Content-Type: application/json
 <pre>{"success": false, "code": "insufficient_float", "message": "The shop float is too low for this load", "float_balance": 300.00}</pre></div>
 <div class="endpoint-section"><h4>Response (422)</h4>
 <pre>{"success": false, "code": "daily_limit_reached", "message": "The player can be loaded at most KES 50000 a day at shops; KES 10000 is left today"}</pre></div>
+<p class="endpoint-note"><strong>Since responsible gambling (P4):</strong> a player on a break gets <code>403 player_excluded</code>, and a load above what the player's deposit limits leave gets <code>422 deposit_limit</code> with <code>remaining</code>. Nothing is loaded. See <a href="#" data-section="rg" style="color:var(--accent-blue)">Responsible Gambling</a>.</p>
 <p class="endpoint-note">Also returns 401 (API key), 403, 429: see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 
@@ -7786,6 +7914,7 @@ var sectionTitles = {
     'auth': { title: 'Authentication', desc: 'Base URL, API key, encrypted identifiers, idempotency, rate limits and conventions' },
     'api-keys': { title: 'API Keys', desc: 'Key scopes, game server keys and revoking keys' },
     'launch': { title: 'Launching Games', desc: 'Launch tokens, player sessions and what a game may read about its player' },
+    'rg': { title: 'Responsible Gambling', desc: 'Account status, breaks from play, deposit limits and the flags GMS reviews' },
     'customers': { title: 'Customers', desc: 'Create, find, update and verify customers; games played and leaderboards' },
     'promotions': { title: 'Promotions', desc: 'Signup bonus promo codes and customer bonuses' },
     'wallets': { title: 'Wallets', desc: 'Wallet management, balance operations, and transfers' },

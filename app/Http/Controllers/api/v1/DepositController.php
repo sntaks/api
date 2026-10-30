@@ -12,6 +12,7 @@ use App\Services\ExciseDutyService;
 use App\Services\HouseFundingService;
 use App\Services\LedgerService;
 use App\Services\ReferralService;
+use App\Services\WalletDepositService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -25,6 +26,7 @@ class DepositController extends Controller
         private ReferralService $referralService,
         private HouseFundingService $houseFunding,
         private DepositAccountResolver $resolver,
+        private WalletDepositService $walletDeposits,
     ) {}
 
     /**
@@ -92,8 +94,12 @@ class DepositController extends Controller
             ], 202);
         }
 
+        // As for a C2B confirmation: the money has arrived, so it is credited, and flagged when the player's own
+        // rules would have refused it (D18).
+        $canDeposit = $this->walletDeposits->assess($deposit, $customer);
+
         // Credit, excise duty and transaction row are written together or not at all.
-        [$wallet, $transaction, $ledgerEntry] = DB::transaction(function () use ($customer, $deposit, $amount, $match) {
+        [$wallet, $transaction, $ledgerEntry] = DB::transaction(function () use ($customer, $deposit, $amount, $match, $canDeposit) {
             $wallet = Wallet::firstOrCreate(
                 ['customer_id' => $customer->id],
                 ['balance' => 0]
@@ -118,6 +124,10 @@ class DepositController extends Controller
             $deposit->update(['status' => Deposit::STATUS_COMPLETED, 'matched_by' => $match->matchedBy]);
 
             $this->referralService->recordDeposit($deposit, $customer->id);
+
+            if (! $canDeposit->allowed) {
+                $this->walletDeposits->flag($deposit, $customer, $canDeposit);
+            }
 
             return [$wallet, $transaction, $ledgerEntry];
         });

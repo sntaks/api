@@ -83,7 +83,8 @@ it('refuses a withdrawal the player cannot make', function (Closure $setUp, int 
 })->with([
     'no ID number on file' => [fn ($test) => $test->player->update(['id_no' => null]), 500, 422, 'id_required'],
     'more than the wallet holds' => [fn ($test) => null, 3001, 409, 'insufficient_balance'],
-    'inactive account' => [fn ($test) => $test->player->update(['status' => 0]), 500, 409, 'player_inactive'],
+    'suspended account' => [fn ($test) => $test->player->update(['status' => 2]), 500, 403, 'player_suspended'],
+    'unknown status' => [fn ($test) => $test->player->update(['status' => 0]), 500, 403, 'player_suspended'],
     'suspended shop' => [fn ($test) => $test->shop->update(['status' => BetShop::STATUS_SUSPENDED]), 500, 409, 'shop_not_active'],
 ]);
 

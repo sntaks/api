@@ -90,6 +90,8 @@ class ShopController extends Controller
             'message' => $result['message'],
             'data' => isset($result['load']) ? $this->loads->present($result['load']) + ['float_balance' => $result['float_balance']] : null,
             'float_balance' => ! isset($result['load']) && isset($result['float_balance']) ? $result['float_balance'] : null,
+            'remaining' => $result['remaining'] ?? null,
+            'excluded_until' => $result['excluded_until'] ?? null,
         ], fn ($value) => $value !== null), $result['status_code']);
     }
 

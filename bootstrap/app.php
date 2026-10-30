@@ -48,5 +48,6 @@ return Application::configure(basePath: dirname(__DIR__))
         // Launch tokens live 120 seconds and player tokens 12 hours; keep a day of each for audit.
         $schedule->command('launch-tokens:prune')->daily();
         $schedule->command('sanctum:prune-expired --hours=24')->daily();
+        $schedule->command('stk-pushes:prune')->daily();
     })
     ->create();

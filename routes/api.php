@@ -24,6 +24,7 @@ use App\Http\Controllers\api\v1\ComplaintController;
 use App\Http\Controllers\api\v1\ConfirmationController;
 use App\Http\Controllers\api\v1\CustomerController;
 use App\Http\Controllers\api\v1\CustomerPromotionController;
+use App\Http\Controllers\api\v1\CustomerStatusController;
 use App\Http\Controllers\api\v1\DecryptIdentifierController;
 use App\Http\Controllers\api\v1\DepositController;
 use App\Http\Controllers\api\v1\DropConnectionController;
@@ -54,6 +55,7 @@ use App\Http\Controllers\api\v1\ReferralB2CTimeoutController;
 use App\Http\Controllers\api\v1\ReferralController;
 use App\Http\Controllers\api\v1\ReferralWithdrawalController;
 use App\Http\Controllers\api\v1\RegisterC2BUrlsController;
+use App\Http\Controllers\api\v1\ResponsibleGamblingController;
 use App\Http\Controllers\api\v1\ShopController;
 use App\Http\Controllers\api\v1\ShopWithdrawalController;
 use App\Http\Controllers\api\v1\StatsController;
@@ -154,6 +156,10 @@ Route::prefix('/v1')->group(function () {
         Route::get('/api-keys', [ApiKeyController::class, 'index']);
         Route::post('/games/{code}/keys', [ApiKeyController::class, 'issueGameKey'])->middleware('throttle:write');
 
+        // Responsible gambling flags (GMS): deposits credited although the player's own rules would have refused them
+        Route::get('/responsible-gambling/flags', [ResponsibleGamblingController::class, 'flags']);
+        Route::post('/responsible-gambling/flags/{id}/resolve', [ResponsibleGamblingController::class, 'resolveFlag'])->middleware('throttle:write');
+
         // A game swaps the launch token kadi gave its player for a player token (game keys only; never idempotent: a stored response would replay a live token)
         Route::post('/launch-tokens/redeem', [LaunchTokenController::class, 'redeem'])->middleware('throttle:write');
 
@@ -240,6 +246,14 @@ Route::prefix('/v1')->group(function () {
             Route::put('/customers/{encryptedIdentifier}', [CustomerController::class, 'update']);
             Route::put('/customers/{encryptedIdentifier}/wallet', [CustomerController::class, 'update_wallet']);
             Route::delete('/customers/{encryptedIdentifier}', [CustomerController::class, 'destroy']);
+            // Account status (GMS): set with a reason, and the history of changes
+            Route::put('/customers/{encryptedIdentifier}/status', [CustomerStatusController::class, 'update'])->middleware(['idempotency', 'throttle:write']);
+            Route::get('/customers/{encryptedIdentifier}/status-changes', [CustomerStatusController::class, 'index']);
+            // Responsible gambling: kadi shows the player's state and starts a break (never ends one); GMS reads the history
+            Route::get('/customers/{encryptedIdentifier}/responsible-gambling', [ResponsibleGamblingController::class, 'show']);
+            Route::post('/customers/{encryptedIdentifier}/exclusion', [ResponsibleGamblingController::class, 'storeExclusion'])->middleware(['idempotency', 'throttle:write']);
+            Route::get('/customers/{encryptedIdentifier}/exclusions', [ResponsibleGamblingController::class, 'exclusions']);
+            Route::put('/customers/{encryptedIdentifier}/deposit-limits/{period}', [ResponsibleGamblingController::class, 'setDepositLimit'])->middleware(['idempotency', 'throttle:write']);
             // Customer Email Verification Routes
             Route::get('/customers/{encryptedIdentifier}/verify-email', EmailVerifiedController::class);
             // Customer Transactions Routes
