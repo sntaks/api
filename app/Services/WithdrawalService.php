@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Transaction;
 use App\Models\Wallet;
 use App\Models\Withdraw;
+use App\Models\WithdrawalApproval;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -19,7 +20,7 @@ class WithdrawalService
         private WithdrawalRules $rules,
     ) {}
 
-    public function initiateWithdrawal(string $identifier, float $amount): array
+    public function initiateWithdrawal(string $identifier, float $amount, ?string $actor = null): array
     {
         $customer = Customer::where('id', $identifier)
             ->orWhere('account_no', $identifier)
@@ -44,8 +45,11 @@ class WithdrawalService
             return ['success' => false, 'message' => $allowed->message, 'status_code' => $allowed->statusCode, 'code' => $allowed->code] + $allowed->extra;
         }
 
-        // Debit and ledger the withdrawal up front so a failed payout can be reversed against a real entry.
-        $reserved = DB::transaction(function () use ($wallet, $amount) {
+        $held = $amount >= (float) config('responsible_gambling.approval_threshold');
+
+        // Debit and ledger the withdrawal up front so a failed payout can be reversed against a real entry. A
+        // withdrawal of approval_threshold or more is held for approval in the same transaction (D15).
+        $reserved = DB::transaction(function () use ($wallet, $amount, $customer, $phone_no, $held, $actor) {
             $lockedWallet = Wallet::lockForUpdate()->find($wallet->id);
 
             if ($lockedWallet->balance < $amount) {
@@ -78,6 +82,17 @@ class WithdrawalService
                 'balance_after' => $ledgerEntry->balance_after,
             ]);
 
+            if ($held) {
+                WithdrawalApproval::create([
+                    'withdraw_id' => $withdraw->id,
+                    'customer_id' => $customer->id,
+                    'amount' => $amount,
+                    'phone_no' => $phone_no,
+                    'status' => WithdrawalApproval::STATUS_AWAITING,
+                    'requested_by' => $actor,
+                ]);
+            }
+
             return [$transaction, $withdraw, $ledgerEntry];
         });
 
@@ -93,9 +108,34 @@ class WithdrawalService
 
         $this->rules->record($customer);
 
+        if ($held) {
+            return [
+                'success' => true,
+                'held' => true,
+                'message' => 'awaiting_approval',
+                'withdrawal_id' => $withdraw->id,
+                'ledger_entry_id' => $ledgerEntry->entry_id,
+                'status_code' => 202,
+            ];
+        }
+
+        $result = $this->sendPayout($transaction, $withdraw, $phone_no);
+
+        return $result['success'] ? $result + ['ledger_entry_id' => $ledgerEntry->entry_id] : $result;
+    }
+
+    /**
+     * Ask M-Pesa to pay a reserved withdrawal to $phone. Accepted: the transaction waits for the B2C result.
+     * Refused or failed: the hold is reversed at once and the withdrawal marked failed. Used when the
+     * withdrawal is requested, and when a held one is approved.
+     *
+     * @return array{success: bool, message: string, status_code: int}
+     */
+    public function sendPayout(Transaction $transaction, Withdraw $withdraw, string $phone): array
+    {
         $userParams = [
             'Amount' => $withdraw->amount,
-            'PartyB' => $phone_no,
+            'PartyB' => $phone,
             'Remarks' => 'Business Payment',
         ];
 
@@ -136,7 +176,6 @@ class WithdrawalService
             return [
                 'success' => true,
                 'message' => 'success',
-                'ledger_entry_id' => $ledgerEntry->entry_id,
                 'status_code' => 201,
             ];
         } else {
@@ -147,91 +186,13 @@ class WithdrawalService
                 'status' => 3,
             ]);
 
+            // The code goes in the message, not in `receipt`: receipts are unique, and M-Pesa repeats its codes.
             $withdraw->update([
                 'disburse' => 3,
-                'receipt' => $response['ResponseCode'] ?? null,
-                'error_message' => $response['ResponseDescription'] ?? 'Unknown Error',
+                'error_message' => 'M-Pesa ResponseCode '.($response['ResponseCode'] ?? '?').': '.($response['ResponseDescription'] ?? 'Unknown Error'),
             ]);
 
             return ['success' => false, 'message' => 'Unknown Error', 'status_code' => 500];
         }
-    }
-
-    public function approveWithdrawal(string $identifier): array
-    {
-        $transaction = Transaction::find($identifier);
-        if (! $transaction) {
-            return ['success' => false, 'message' => 'Transaction not found', 'status_code' => 404];
-        }
-
-        if ($transaction->payment_type == Withdraw::class && $transaction->status == 1) {
-            $withdrawal = Withdraw::create([
-                'transaction_id' => $transaction->id,
-                'amount' => $transaction->amount,
-            ]);
-
-            $transaction->payment_id = $withdrawal->id;
-            $transaction->status = '2';
-            $transaction->save();
-
-            return [
-                'success' => true,
-                'message' => 'Withdrawal request approved successfully.',
-                'withdraw' => $withdrawal,
-                'transaction' => $transaction,
-                'status_code' => 200,
-            ];
-        }
-
-        return ['success' => false, 'message' => 'Invalid or already processed withdrawal request.', 'status_code' => 400];
-    }
-
-    public function disburse(string $identifier): array
-    {
-        $withdraw = Withdraw::find($identifier);
-        if (! $withdraw) {
-            return ['success' => false, 'message' => 'Transaction not found', 'status_code' => 404];
-        }
-
-        if ($withdraw->status == 1 && $withdraw->disburse == 1 && $withdraw->receipt == null && $withdraw->transactions()->first()->payment_type == Withdraw::class) {
-            $userParams = [
-                'Amount' => $withdraw->amount,
-                'PartyB' => $withdraw->transactions()->first()->wallet->customer->phone_no,
-                'Remarks' => 'Business Payment',
-            ];
-
-            try {
-                $response = $this->mpesaService->b2c($userParams);
-            } catch (MpesaApiException $e) {
-                $withdraw->disburse = 3;
-                $withdraw->error_message = $e->getMessage();
-                $withdraw->save();
-
-                return [
-                    'success' => false,
-                    'message' => 'Disbursement failed: '.$e->getMessage(),
-                    'status_code' => 500,
-                ];
-            }
-
-            if ($response['ResponseCode'] == 0) {
-                $withdraw->disburse = 2;
-                $withdraw->receipt = $response['ConversationID'];
-            } else {
-                $withdraw->disburse = 3;
-                $withdraw->receipt = $response['errorCode'] ?? null;
-                $withdraw->error_message = $response['errorMessage'] ?? $response['ResponseDescription'] ?? 'Unknown Error';
-            }
-            $withdraw->save();
-
-            return [
-                'success' => true,
-                'message' => 'Disbursement processed successfully.',
-                'withdraw' => $withdraw,
-                'status_code' => 200,
-            ];
-        }
-
-        return ['success' => false, 'message' => 'Invalid or already processed Disburse request.', 'status_code' => 400];
     }
 }

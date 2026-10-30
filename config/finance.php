@@ -217,6 +217,7 @@ return [
     | stuck_game_hours         an open game or competition wallet holding a
     |                          balance and untouched this long is flagged.
     | stuck_withdrawal_hours   a withdrawal pending this long is flagged.
+    | approval_warn_hours      a withdrawal held for approval this long is flagged.
     | stale_mpesa_balance_hours  the M-Pesa balance fetch is overdue after this.
     | aged_dispute_days        a complaint still pending after this many days
     |                          is flagged.
@@ -227,6 +228,7 @@ return [
         'tolerance' => 0.01,
         'stuck_game_hours' => 24,
         'stuck_withdrawal_hours' => 24,
+        'approval_warn_hours' => 24,
         'stale_mpesa_balance_hours' => 3,
         'aged_dispute_days' => (int) env('FINANCE_AGED_DISPUTE_DAYS', 3),
     ],
