@@ -3155,7 +3155,76 @@ Content-Type: application/json
   "ledger_entry_id": null
 }</pre></div>
 <p class="endpoint-note">The outcome is in <code>status</code>: <code>"success"</code>, or the error message. Check <code>code</code> for the locked-bonus case.</p>
-<p class="endpoint-note"><strong>Since responsible gambling (P4):</strong> <code>amount</code> must be whole shillings from 50 to 150,000 (<code>422</code>). A suspended player (status 2, 5 or an undefined code) gets <code>403 player_suspended</code>; a phone kadi has not verified gets <code>422 phone_unverified</code>; more than 5 withdrawals an hour (main and referral wallet together) get <code>429 too_many_withdrawals</code> with <code>retry_after</code> in seconds. A player on a break may still withdraw. See <a href="#" data-section="rg" style="color:var(--accent-blue)">Responsible Gambling</a>.</p>
+<p class="endpoint-note"><strong>Since responsible gambling (P4):</strong> <code>amount</code> must be whole shillings from 50 to 150,000 (<code>422</code>). A suspended player (status 2, 5 or an undefined code) gets <code>403 player_suspended</code>; a phone kadi has not verified gets <code>422 phone_unverified</code>; more than 5 withdrawals an hour (main and referral wallet together) get <code>429 too_many_withdrawals</code> with <code>retry_after</code> in seconds. A player on a break may still withdraw. See <a href="#" data-section="rg" style="color:var(--accent-blue)">Responsible Gambling</a>. <strong>Withdrawals of KES 20,000 or more are held for approval (P4b):</strong> the money leaves the wallet, M-Pesa is not called yet, and the answer is <code>202 {"status": "awaiting_approval", "withdrawal_id": 812, "ledger_entry_id": "…"}</code>. GMS approves (pays the phone verified at this moment) or rejects (refunds); the player may cancel it on kadi.</p>
+<p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 409 (Idempotency-Key reused), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/withdrawals/pending</span><span class="endpoint-desc">Withdrawals waiting for approval (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">M-Pesa withdrawals of KES 20,000 or more held for a decision, oldest first. The money is already out of the player's wallet. Full keys only.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>customer</td><td>integer</td><td><span class="optional">Optional</span></td><td>A customer id</td></tr><tr><td>page / per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>per_page 1 to 200, default 50</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "data": {"items": [{"withdrawal_id": 812, "customer_id": 2041, "player_no": "48213907", "name": "Jane Wanjiru", "amount": 25000, "phone_no": "254712345678", "status": "awaiting", "requested_by": "api_key:5", "requested_at": "2026-10-30T12:00:00+03:00", "admin_user": null, "decided_by": null, "reason": null, "decided_at": null, "payout_status": "pending", "payout_error": null}], "pagination": {"page": 1, "per_page": 50, "total": 1, "last_page": 1}}}</pre>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;"><code>payout_status</code> says where the money is: <code>pending</code> (waiting for a decision), <code>sent</code> (M-Pesa accepted it), <code>failed</code> (M-Pesa refused, or rejected: refunded), <code>cancelled</code> (refunded), or <code>unconfirmed</code> (approved but M-Pesa never answered). <code>payout_error</code> is the reason when there is one.</p></div>
+<p class="endpoint-note">Reconciliation warns (<code>withdrawals_awaiting_approval</code>) on any waiting over 24 hours. Also returns 401 (API key), 422 (validation): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/withdrawals/approvals</span><span class="endpoint-desc">Every held withdrawal and its decision (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>status</td><td>string</td><td><span class="optional">Optional</span></td><td><code>awaiting</code>, <code>approved</code>, <code>rejected</code> or <code>cancelled</code></td></tr><tr><td>customer</td><td>integer</td><td><span class="optional">Optional</span></td><td>A customer id</td></tr><tr><td>from / to</td><td>date</td><td><span class="optional">Optional</span></td><td>When it was asked for</td></tr><tr><td>page / per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>per_page 1 to 200, default 50</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Newest first, items as for <code>GET /api/v1/withdrawals/pending</code>.</p></div>
+<p class="endpoint-note">Full keys only. Also returns 401 (API key), 422 (validation): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/withdrawals/{id}/approve</span><span class="endpoint-desc">Approve a held withdrawal and pay it (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;"><code>{id}</code> is the <code>withdrawal_id</code>. Records the decision, then asks M-Pesa to pay the phone verified when the withdrawal was asked for (not the player's current number). A withdrawal is decided once: the approval stands even when M-Pesa refuses the payout, in which case the player is refunded at once (<code>502</code>). The B2C result then settles it like any other withdrawal. Full keys only.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>admin_user</td><td>string</td><td><span class="required">Required</span></td><td>The GMS user approving it (up to 100 characters)</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200 / 502)</h4>
+<pre>{"success": true, "message": "Approved: the payout was sent to M-Pesa", "data": {"withdrawal_id": 812, "status": "approved", "admin_user": "ann", "decided_by": "api_key:3", "…": "…"}}
+{"success": false, "message": "Approved, but M-Pesa refused the payout; the player has been refunded", "data": {"withdrawal_id": 812, "status": "approved", "…": "…"}}</pre></div>
+<div class="endpoint-section"><h4>Response (504)</h4>
+<pre>{"success": false, "code": "payout_unknown", "message": "Approved, but M-Pesa did not answer: the payout may or may not have been made. Do not retry; check the M-Pesa statement.", "data": {"withdrawal_id": 812, "status": "approved", "payout_status": "unconfirmed", "…": "…"}}</pre>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">M-Pesa timed out or could not be reached. The approval stands and nothing is refunded, because M-Pesa may have paid. Check the M-Pesa statement before doing anything else; the withdrawal also shows in reconciliation as stuck.</p></div>
+<div class="endpoint-section"><h4>Response (404 / 409)</h4>
+<pre>{"success": false, "message": "No withdrawal waiting for approval has that id", "code": "not_found"}
+{"success": false, "message": "This withdrawal has already been decided", "code": "not_awaiting", "status": "rejected"}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 409 (Idempotency-Key reused), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/withdrawals/{id}/reject</span><span class="endpoint-desc">Reject a held withdrawal and refund it (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Refunds the held amount to the player's wallet at once (a <code>withdrawal_reversal</code> ledger entry); kadi's balance updates through the wallet webhook. Decided once, as for approve. Full keys only.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>admin_user</td><td>string</td><td><span class="required">Required</span></td><td>The GMS user rejecting it</td></tr><tr><td>reason</td><td>string</td><td><span class="required">Required</span></td><td>3 to 500 characters; kept on the withdrawal as "Rejected: …"</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Rejected: the player has been refunded", "data": {"withdrawal_id": 812, "status": "rejected", "reason": "Account under review", "…": "…"}}</pre></div>
+<p class="endpoint-note">404 and 409 as for approve. Also returns 401 (API key), 409 (Idempotency-Key reused), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/withdrawals/{id}/cancel</span><span class="endpoint-desc">The player cancels a held withdrawal (kadi)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">A player takes back their own withdrawal of KES 20,000 or more while it waits for approval. <code>{id}</code> is the <code>withdrawal_id</code> from the <code>202</code>. The money returns to the wallet at once; kadi's balance updates through the wallet webhook. Another player's withdrawal is not found (<code>404</code>); a decided one gets <code>409 not_awaiting</code>. A held withdrawal never expires by itself: it waits until GMS decides it or the player cancels it.</p></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Cancelled: the money is back in the wallet", "data": {"withdrawal_id": 812, "amount": 25000, "status": "cancelled", "reason": "Cancelled by the player", "…": "…"}}</pre></div>
 <p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 409 (Idempotency-Key reused), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 

@@ -68,6 +68,7 @@ use App\Http\Controllers\api\v1\ValidationController;
 use App\Http\Controllers\api\v1\WalletController;
 use App\Http\Controllers\api\v1\WalletTransactionController;
 use App\Http\Controllers\api\v1\WalletTransferController;
+use App\Http\Controllers\api\v1\WithdrawalApprovalController;
 use App\Http\Controllers\api\v1\WithdrawalController;
 use App\Http\Controllers\api\v1\WithdrawController;
 use Illuminate\Support\Facades\Route;
@@ -155,6 +156,12 @@ Route::prefix('/v1')->group(function () {
         // API keys (GMS): list every key, issue a game's keys (not idempotent on purpose: a stored response would keep the new key for 24 hours)
         Route::get('/api-keys', [ApiKeyController::class, 'index']);
         Route::post('/games/{code}/keys', [ApiKeyController::class, 'issueGameKey'])->middleware('throttle:write');
+
+        // Withdrawals held for approval (GMS): list, approve (pays M-Pesa), reject (refunds)
+        Route::get('/withdrawals/pending', [WithdrawalApprovalController::class, 'pending']);
+        Route::get('/withdrawals/approvals', [WithdrawalApprovalController::class, 'index']);
+        Route::post('/withdrawals/{id}/approve', [WithdrawalApprovalController::class, 'approve'])->middleware(['idempotency', 'throttle:write']);
+        Route::post('/withdrawals/{id}/reject', [WithdrawalApprovalController::class, 'reject'])->middleware(['idempotency', 'throttle:write']);
 
         // Responsible gambling flags (GMS): deposits credited although the player's own rules would have refused them
         Route::get('/responsible-gambling/flags', [ResponsibleGamblingController::class, 'flags']);
@@ -348,6 +355,8 @@ Route::prefix('/v1')->group(function () {
 
             // Launch a game for a logged-in kadi player (site key; never idempotent: a stored response would replay a live token)
             Route::post('/customers/{encryptedIdentifier}/launch-tokens', [LaunchTokenController::class, 'store'])->middleware('throttle:write');
+            // The player cancels their own withdrawal held for approval (site key); the money returns to the wallet
+            Route::post('/customers/{encryptedIdentifier}/withdrawals/{id}/cancel', [WithdrawalApprovalController::class, 'cancel'])->middleware(['idempotency', 'throttle:write']);
             // End a player's game sessions, e.g. on kadi logout (site key)
             Route::post('/customers/{encryptedIdentifier}/player-tokens/revoke', [PlayerSessionController::class, 'revoke'])->middleware('throttle:write');
 

@@ -24,9 +24,18 @@ class WithdrawalController extends Controller
         try {
             $validatedData = $request->validate(['amount' => WithdrawalRules::amountRules()]);
 
-            $result = $this->withdrawalService->initiateWithdrawal($identifier, $validatedData['amount']);
+            $result = $this->withdrawalService->initiateWithdrawal($identifier, $validatedData['amount'], $this->actorFor($request));
 
             $statusCode = $result['status_code'] ?? 500;
+
+            // A withdrawal of approval_threshold or more is held: the money is out of the wallet, the payout waits for GMS.
+            if ($result['held'] ?? false) {
+                return response()->json([
+                    'status' => 'awaiting_approval',
+                    'withdrawal_id' => $result['withdrawal_id'],
+                    'ledger_entry_id' => $result['ledger_entry_id'],
+                ], 202);
+            }
 
             return response()->json([
                 'status' => $result['success'] ? 'success' : $result['message'],

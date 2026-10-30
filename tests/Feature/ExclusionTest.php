@@ -23,6 +23,7 @@ function takeBreak(object $test, string $type, string $duration, ?ApiKey $key = 
 }
 
 it('starts a cool-off and refuses play until it ends', function () {
+    $this->freezeTime();
     takeBreak($this, 'cool_off', '7d')
         ->assertCreated()
         ->assertJsonPath('data.type', 'cool_off')
@@ -54,6 +55,7 @@ it('lets the player play again when the break ends', function () {
 });
 
 it('extends a break but never shortens it', function () {
+    $this->freezeTime();
     takeBreak($this, 'cool_off', '30d')->assertCreated();
 
     takeBreak($this, 'cool_off', '7d')
@@ -122,6 +124,8 @@ it('refuses to redeem a launch token issued before the break', function () {
 });
 
 it('shows kadi the responsible gambling state of a player', function () {
+    // The break's end is compared with now() to the second: a second boundary between request and assertion would flake.
+    $this->freezeTime();
     $this->getJson('/api/v1/customers/'.encryptId($this->player->id).'/responsible-gambling', apiHeaders($this->site->key))
         ->assertOk()
         ->assertJsonPath('data.status', 1)

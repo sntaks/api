@@ -44,6 +44,7 @@ return [
         'POST api/v1/deposits/{encryptedIdentifier}',
         'POST api/v1/load/{encryptedIdentifier}',
         'POST api/v1/withdraw/{encryptedIdentifier}',
+        'POST api/v1/customers/{encryptedIdentifier}/withdrawals/{id}/cancel',
 
         // Cash withdrawal at a bet shop, asked for by the player
         'GET api/v1/customers/{encryptedIdentifier}/shop-withdrawals',

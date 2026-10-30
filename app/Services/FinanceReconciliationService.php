@@ -53,6 +53,7 @@ class FinanceReconciliationService
             $this->exciseDutyLedger($range),
             $this->overdueExciseDuty(),
             $this->stuckWithdrawals(),
+            $this->withdrawalsAwaitingApproval(),
             $this->failedWithdrawalsNotReversed(),
             $this->stuckEscrow(),
             $this->agedEscrow(),
@@ -408,14 +409,43 @@ class FinanceReconciliationService
     }
 
     /**
+     * Withdrawals of approval_threshold or more held for GMS longer than approval_warn_hours: the player's
+     * money is out of their wallet until someone approves, rejects or the player cancels.
+     *
+     * @return array<string, mixed>
+     */
+    private function withdrawalsAwaitingApproval(): array
+    {
+        $hours = (int) config('finance.reconciliation.approval_warn_hours');
+        $waiting = DB::table('withdrawal_approvals')
+            ->where('status', 'awaiting')
+            ->where('created_at', '<=', now()->subHours($hours));
+
+        return $this->result(
+            'withdrawals_awaiting_approval',
+            "Withdrawals waiting for approval over {$hours} hours",
+            'warn',
+            (clone $waiting)->count(),
+            (float) (clone $waiting)->sum('amount'),
+            (clone $waiting)->oldest('id')->limit(self::SAMPLE_SIZE)->get(['withdraw_id', 'customer_id', 'amount', 'created_at'])->map(fn ($row) => (array) $row)->all(),
+            'Approve or reject them with POST /withdrawals/{id}/approve or /reject.'
+        );
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function stuckWithdrawals(): array
     {
         $hours = (int) config('finance.reconciliation.stuck_withdrawal_hours');
+        // A withdrawal held for approval is waiting on purpose; withdrawals_awaiting_approval watches those.
         $stuck = DB::table('outgoing_payments')
             ->where('disburse', 1)
-            ->where('created_at', '<=', now()->subHours($hours));
+            ->where('created_at', '<=', now()->subHours($hours))
+            ->whereNotExists(fn ($query) => $query->select(DB::raw(1))
+                ->from('withdrawal_approvals')
+                ->whereColumn('withdrawal_approvals.withdraw_id', 'outgoing_payments.id')
+                ->where('withdrawal_approvals.status', 'awaiting'));
 
         return $this->result(
             'stuck_withdrawals',
