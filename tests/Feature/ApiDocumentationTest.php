@@ -131,3 +131,17 @@ it('documents each endpoint once', function () {
 
     expect($duplicates)->toBe([]);
 });
+
+it('points every game page step at an endpoint on the page', function () {
+    $page = file_get_contents(public_path('documentation.html'));
+    $slugs = documentedEndpoints()->keys()->map(function (string $endpoint) {
+        [$method, $path] = explode(' ', $endpoint, 2);
+
+        return trim(strtolower($method).'-'.preg_replace('/[^a-z0-9]+/', '-', strtolower(substr($path, strlen('/api/v1/')))), '-');
+    });
+    preg_match_all('/class="game-step" data-endpoint="([^"]+)"/', $page, $steps);
+    $referenced = collect($steps[1])->flatMap(fn (string $list) => explode(' ', $list))->unique();
+
+    expect($referenced)->not->toBeEmpty()
+        ->and($referenced->diff($slugs)->values()->all())->toBe([], 'These game page steps name an endpoint that is not on the page.');
+});

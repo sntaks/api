@@ -271,12 +271,71 @@
         ::-webkit-scrollbar-track { background: var(--bg-primary); }
         ::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
 
+        /* NAVIGATION: sub-pages, menu button, backdrop */
+        .sidebar-nav li.nav-sub a { padding: 6px 20px 6px 34px; font-size: 12px; }
+        .sidebar-nav li.nav-sub .nav-icon { font-size: 9px; }
+        .content-header { display: flex; align-items: flex-start; gap: 14px; }
+        .menu-btn { display: none; background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; width: 36px; height: 36px; font-size: 18px; cursor: pointer; flex-shrink: 0; }
+        .sidebar-backdrop { display: none; }
+        .endpoint { scroll-margin-top: 130px; }
+        .endpoint.flash { box-shadow: 0 0 0 2px var(--accent-blue); transition: box-shadow 0.3s; }
+
+        /* PAGE INDEX: the endpoints of the current page */
+        .page-index { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; }
+        .page-index h4 { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .page-index-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 2px 16px; }
+        .endpoint-link { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 4px; color: var(--text-secondary); text-decoration: none; font-size: 12px; min-width: 0; }
+        .endpoint-link:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .endpoint-link .method { min-width: 46px; font-size: 10px; padding: 1px 6px; flex-shrink: 0; }
+        .endpoint-link code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* GAME PAGES */
+        .game-intro { margin-bottom: 8px; }
+        .game-lead { color: var(--text-primary); font-size: 14px; margin-bottom: 16px; max-width: 820px; }
+        .game-facts { margin-bottom: 8px; }
+        .game-facts td:first-child { width: 140px; color: var(--text-secondary); font-family: inherit; }
+        .game-facts code, .start-table code { background: var(--bg-tertiary); padding: 1px 5px; border-radius: 4px; color: var(--accent-cyan); }
+        .start-table td:first-child { font-family: inherit; color: var(--text-primary); white-space: normal; width: 230px; }
+        .game-heading { font-size: 15px; font-weight: 600; margin: 24px 0 10px; }
+        .game-flow { font-size: 12px; }
+        .game-steps { list-style: none; counter-reset: step; margin-bottom: 8px; border-top: 1px solid var(--border-color); }
+        .game-step { counter-increment: step; display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+        .game-step::before { content: counter(step); grid-row: 1 / span 3; width: 24px; height: 24px; border-radius: 50%; background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--accent-blue); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+        .game-step-title { font-size: 14px; font-weight: 600; }
+        .game-step-note { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
+        .game-step-note code, .game-note code { background: var(--bg-tertiary); padding: 1px 5px; border-radius: 4px; color: var(--accent-cyan); }
+        .game-step-endpoints { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; }
+        .game-step-endpoints .endpoint-link { padding-left: 0; }
+        .game-endpoints-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; }
+        .game-endpoints-head .expand-all { margin: 24px 0 10px; }
+        .game-note { background: rgba(57,210,192,0.08); border: 1px solid rgba(57,210,192,0.3); border-radius: 6px; padding: 10px 14px; margin-top: 14px; font-size: 13px; color: var(--text-primary); }
+        .game-note strong:first-child { color: var(--accent-cyan); }
+
+        /* SEARCH: every page with a match, stacked */
+        .search-section-label { display: none; }
+        body.searching .search-section-label { display: block; font-size: 13px; font-weight: 600; margin: 8px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border-color); }
+        body.searching .search-section-label a { color: var(--accent-blue); text-decoration: none; }
+        body.searching .doc-section.active > :not(.endpoint):not(.search-section-label) { display: none; }
+        body.searching .doc-section.active { margin-bottom: 28px; }
+
         @media (max-width: 900px) {
-            .sidebar { width: 60px; }
-            .sidebar-header h1, .sidebar-header p, .sidebar-header .base-url, .sidebar-nav .nav-section, .sidebar-nav a span, .search-wrap { display: none; }
-            .sidebar-nav a { justify-content: center; padding: 10px; }
-            .sidebar-nav .nav-icon { width: auto; }
-            .main-content { margin-left: 60px; }
+            .sidebar { transform: translateX(-100%); transition: transform 0.2s; box-shadow: 0 0 24px rgba(0,0,0,0.5); }
+            body.nav-open .sidebar { transform: none; }
+            body.nav-open .sidebar-backdrop { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+            .main-content { margin-left: 0; }
+            .menu-btn { display: inline-flex; align-items: center; justify-content: center; }
+            .content-header { padding: 14px 16px; }
+            .content-header h2 { font-size: 19px; }
+            .content-header p { font-size: 13px; }
+            .content-body { padding: 16px 16px 60px; }
+            .endpoint-header { flex-wrap: wrap; padding: 12px; }
+            .endpoint-path { word-break: break-all; }
+            .endpoint-desc { white-space: normal; margin-left: 0; flex-basis: 100%; order: 5; }
+            .endpoint-body { padding: 0 12px 14px; }
+            .params-table { display: block; overflow-x: auto; }
+            .params-table td:first-child { white-space: normal; }
+            .page-index-grid { grid-template-columns: minmax(0, 1fr); }
+            .game-facts td:first-child, .start-table td:first-child { width: auto; }
         }
     </style>
 </head>
@@ -296,69 +355,104 @@
         <div class="search-info" id="search-info"></div>
     </div>
     <nav class="sidebar-nav">
-        <div class="nav-section">Getting Started</div>
+        <div class="nav-section">Start Here</div>
         <ul>
-            <li><a href="#" data-section="auth" class="active"><span class="nav-icon">&#128274;</span> <span>Authentication</span></a></li>
-            <li><a href="#" data-section="api-keys"><span class="nav-icon">&#128273;</span> <span>API Keys</span></a></li>
-            <li><a href="#" data-section="launch"><span class="nav-icon">&#127918;</span> <span>Launching Games</span></a></li>
+            <li><a href="#start" data-section="start"><span class="nav-icon">&#128640;</span> <span>Start Here</span></a></li>
+            <li><a href="#auth" data-section="auth"><span class="nav-icon">&#128274;</span> <span>Authentication</span></a></li>
+            <li><a href="#api-keys" data-section="api-keys"><span class="nav-icon">&#128273;</span> <span>API Keys</span></a></li>
         </ul>
-        <div class="nav-section">Core Resources</div>
+        <div class="nav-section">Games</div>
         <ul>
-            <li><a href="#" data-section="customers"><span class="nav-icon">&#128100;</span> <span>Customers</span></a></li>
-            <li><a href="#" data-section="rg"><span class="nav-icon">&#128737;</span> <span>Responsible Gambling</span></a></li>
-            <li><a href="#" data-section="promotions"><span class="nav-icon">&#127873;</span> <span>Promotions</span></a></li>
-            <li><a href="#" data-section="wallets"><span class="nav-icon">&#128176;</span> <span>Wallets</span></a></li>
-            <li><a href="#" data-section="wallet-txns"><span class="nav-icon">&#128179;</span> <span>Wallet Transactions</span></a></li>
-            <li><a href="#" data-section="deposits"><span class="nav-icon">&#128178;</span> <span>Deposits</span></a></li>
-            <li><a href="#" data-section="withdraws"><span class="nav-icon">&#128184;</span> <span>Withdrawals</span></a></li>
-            <li><a href="#" data-section="transactions"><span class="nav-icon">&#128203;</span> <span>Transactions</span></a></li>
+            <li><a href="#games" data-section="games"><span class="nav-icon">&#127922;</span> <span>Catalog &amp; Products</span></a></li>
+            <li><a href="#kadi" data-section="kadi"><span class="nav-icon">&#127183;</span> <span>Kadi</span></a></li>
+            <li class="nav-sub"><a href="#game-wallets" data-section="game-wallets"><span class="nav-icon">&#8226;</span> <span>Game Wallets</span></a></li>
+            <li class="nav-sub"><a href="#game-bets" data-section="game-bets"><span class="nav-icon">&#8226;</span> <span>Game Bets</span></a></li>
+            <li class="nav-sub"><a href="#comp-wallets" data-section="comp-wallets"><span class="nav-icon">&#8226;</span> <span>Competition Wallets</span></a></li>
+            <li class="nav-sub"><a href="#comp-txns" data-section="comp-txns"><span class="nav-icon">&#8226;</span> <span>Competition Entries</span></a></li>
+            <li><a href="#sportsbook" data-section="sportsbook"><span class="nav-icon">&#9917;</span> <span>Sportsbook</span></a></li>
+            <li><a href="#crash" data-section="crash"><span class="nav-icon">&#9992;</span> <span>Crash</span></a></li>
+            <li><a href="#slots" data-section="slots"><span class="nav-icon">&#127920;</span> <span>Slots</span></a></li>
+            <li><a href="#scratch" data-section="scratch"><span class="nav-icon">&#127903;</span> <span>Scratch Cards</span></a></li>
         </ul>
-        <div class="nav-section">Gaming</div>
+        <div class="nav-section">Game Integration</div>
         <ul>
-            <li><a href="#" data-section="games"><span class="nav-icon">&#127922;</span> <span>Games &amp; Products</span></a></li>
-            <li><a href="#" data-section="game-wallets"><span class="nav-icon">&#127918;</span> <span>Game Wallets</span></a></li>
-            <li><a href="#" data-section="game-bets"><span class="nav-icon">&#127920;</span> <span>Game Bets</span></a></li>
-            <li><a href="#" data-section="comp-wallets"><span class="nav-icon">&#127942;</span> <span>Competition Wallets</span></a></li>
-            <li><a href="#" data-section="comp-txns"><span class="nav-icon">&#128176;</span> <span>Competition Txns</span></a></li>
-            <li><a href="#" data-section="complaints"><span class="nav-icon">&#9878;</span> <span>Complaints</span></a></li>
-            <li><a href="#" data-section="referrals"><span class="nav-icon">&#129309;</span> <span>Referrals</span></a></li>
-            <li><a href="#" data-section="bet-shops"><span class="nav-icon">&#127978;</span> <span>Bet Shops</span></a></li>
-            <li><a href="#" data-section="shop-system"><span class="nav-icon">&#128421;</span> <span>Shop System</span></a></li>
+            <li><a href="#launch" data-section="launch"><span class="nav-icon">&#127918;</span> <span>Player Sessions</span></a></li>
+            <li><a href="#wager-api" data-section="wager-api"><span class="nav-icon">&#128220;</span> <span>Wager API</span></a></li>
         </ul>
-        <div class="nav-section">Finance &amp; Payments</div>
+        <div class="nav-section">Players &amp; Money</div>
         <ul>
-            <li><a href="#" data-section="financial"><span class="nav-icon">&#128177;</span> <span>Financial Ops</span></a></li>
+            <li><a href="#customers" data-section="customers"><span class="nav-icon">&#128100;</span> <span>Customers</span></a></li>
+            <li><a href="#rg" data-section="rg"><span class="nav-icon">&#128737;</span> <span>Responsible Gambling</span></a></li>
+            <li><a href="#promotions" data-section="promotions"><span class="nav-icon">&#127873;</span> <span>Promotions</span></a></li>
+            <li><a href="#referrals" data-section="referrals"><span class="nav-icon">&#129309;</span> <span>Referrals</span></a></li>
+            <li><a href="#complaints" data-section="complaints"><span class="nav-icon">&#9878;</span> <span>Complaints</span></a></li>
+            <li><a href="#wallets" data-section="wallets"><span class="nav-icon">&#128176;</span> <span>Wallets</span></a></li>
+            <li><a href="#wallet-txns" data-section="wallet-txns"><span class="nav-icon">&#128179;</span> <span>Wallet Transactions</span></a></li>
+            <li><a href="#deposits" data-section="deposits"><span class="nav-icon">&#128178;</span> <span>Deposits</span></a></li>
+            <li><a href="#withdraws" data-section="withdraws"><span class="nav-icon">&#128184;</span> <span>Withdrawals</span></a></li>
+            <li><a href="#transactions" data-section="transactions"><span class="nav-icon">&#128203;</span> <span>Transactions</span></a></li>
+            <li><a href="#financial" data-section="financial"><span class="nav-icon">&#128177;</span> <span>Financial Ops</span></a></li>
         </ul>
-        <div class="nav-section">Analytics</div>
+        <div class="nav-section">Back Office (GMS)</div>
         <ul>
-            <li><a href="#" data-section="stats"><span class="nav-icon">&#128200;</span> <span>Statistics</span></a></li>
+            <li><a href="#bets-admin" data-section="bets-admin"><span class="nav-icon">&#129534;</span> <span>Bets (All Games)</span></a></li>
+            <li><a href="#stats" data-section="stats"><span class="nav-icon">&#128200;</span> <span>Statistics</span></a></li>
+        </ul>
+        <div class="nav-section">Bet Shops</div>
+        <ul>
+            <li><a href="#bet-shops" data-section="bet-shops"><span class="nav-icon">&#127978;</span> <span>Bet Shops</span></a></li>
+            <li><a href="#shop-system" data-section="shop-system"><span class="nav-icon">&#128421;</span> <span>Shop System</span></a></li>
         </ul>
         <div class="nav-section">Finance Reporting</div>
         <ul>
-            <li><a href="#" data-section="finance-overview"><span class="nav-icon">&#128214;</span> <span>Finance Overview</span></a></li>
-            <li><a href="#" data-section="finance-statements"><span class="nav-icon">&#129534;</span> <span>Statements</span></a></li>
-            <li><a href="#" data-section="finance-reports"><span class="nav-icon">&#128269;</span> <span>Drill-downs</span></a></li>
-            <li><a href="#" data-section="finance-expenses"><span class="nav-icon">&#129534;</span> <span>Expenses</span></a></li>
-            <li><a href="#" data-section="finance-excise"><span class="nav-icon">&#127963;</span> <span>Excise Duty</span></a></li>
-            <li><a href="#" data-section="finance-winnings-tax"><span class="nav-icon">&#129534;</span> <span>Winnings Tax</span></a></li>
-            <li><a href="#" data-section="finance-export"><span class="nav-icon">&#128229;</span> <span>CSV Export</span></a></li>
+            <li><a href="#finance-overview" data-section="finance-overview"><span class="nav-icon">&#128214;</span> <span>Finance Overview</span></a></li>
+            <li><a href="#finance-statements" data-section="finance-statements"><span class="nav-icon">&#129534;</span> <span>Statements</span></a></li>
+            <li><a href="#finance-reports" data-section="finance-reports"><span class="nav-icon">&#128269;</span> <span>Drill-downs</span></a></li>
+            <li><a href="#finance-expenses" data-section="finance-expenses"><span class="nav-icon">&#129534;</span> <span>Expenses</span></a></li>
+            <li><a href="#finance-excise" data-section="finance-excise"><span class="nav-icon">&#127963;</span> <span>Excise Duty</span></a></li>
+            <li><a href="#finance-winnings-tax" data-section="finance-winnings-tax"><span class="nav-icon">&#129534;</span> <span>Winnings Tax</span></a></li>
+            <li><a href="#finance-export" data-section="finance-export"><span class="nav-icon">&#128229;</span> <span>CSV Export</span></a></li>
         </ul>
         <div class="nav-section">Reference</div>
         <ul>
-            <li><a href="#" data-section="errors"><span class="nav-icon">&#9888;</span> <span>Error Responses</span></a></li>
+            <li><a href="#errors" data-section="errors"><span class="nav-icon">&#9888;</span> <span>Error Responses</span></a></li>
         </ul>
     </nav>
 </div>
 
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
 <!-- MAIN CONTENT -->
 <div class="main-content">
     <div class="content-header" id="content-header">
-        <h2 id="section-title">Authentication</h2>
-        <p id="section-desc">API key setup, encrypted identifiers, rate limits, and idempotency</p>
+        <button class="menu-btn" id="menu-btn" aria-label="Open the navigation">&#9776;</button>
+        <div>
+            <h2 id="section-title">Start Here</h2>
+            <p id="section-desc">Which pages to read for what you are building</p>
+        </div>
     </div>
     <div class="content-body">
 <!-- AUTH SECTION -->
-<div class="doc-section active" data-section="auth">
+<div class="doc-section" data-section="start">
+<div class="auth-box">
+<h3>Find your pages</h3>
+<p>Pick what you are building. Every page lists its endpoints at the top; links can be shared (for example <code>#slots/post-wagers-instant</code> opens that endpoint on the Slots page). Press <code>/</code> to search every endpoint.</p>
+<table class="params-table start-table">
+<tr><th>You are building</th><th>Key</th><th>Read</th></tr>
+<tr><td>A sportsbook, crash, slots or scratch card game server</td><td>Game key, bound to your game, plus a player token</td><td>Your game's page: <a href="#sportsbook" data-section="sportsbook" style="color:var(--accent-blue)">Sportsbook</a>, <a href="#crash" data-section="crash" style="color:var(--accent-blue)">Crash</a>, <a href="#slots" data-section="slots" style="color:var(--accent-blue)">Slots</a> or <a href="#scratch" data-section="scratch" style="color:var(--accent-blue)">Scratch Cards</a>. It lists everything you call, in order. The full rules are in <a href="#launch" data-section="launch" style="color:var(--accent-blue)">Player Sessions</a> and the <a href="#wager-api" data-section="wager-api" style="color:var(--accent-blue)">Wager API</a>.</td></tr>
+<tr><td>The kadi game server</td><td>Full key</td><td><a href="#kadi" data-section="kadi" style="color:var(--accent-blue)">Kadi</a> and its pages (game wallets, game bets, competitions)</td></tr>
+<tr><td>The kadi site</td><td>Site key</td><td><a href="#customers" data-section="customers" style="color:var(--accent-blue)">Customers</a>, <a href="#rg" data-section="rg" style="color:var(--accent-blue)">Responsible Gambling</a>, <a href="#promotions" data-section="promotions" style="color:var(--accent-blue)">Promotions</a>, <a href="#referrals" data-section="referrals" style="color:var(--accent-blue)">Referrals</a>, <a href="#deposits" data-section="deposits" style="color:var(--accent-blue)">Deposits</a>, <a href="#withdraws" data-section="withdraws" style="color:var(--accent-blue)">Withdrawals</a>, <a href="#complaints" data-section="complaints" style="color:var(--accent-blue)">Complaints</a>, launching games in <a href="#launch" data-section="launch" style="color:var(--accent-blue)">Player Sessions</a>, and a player's bets in <a href="#bets-admin" data-section="bets-admin" style="color:var(--accent-blue)">Bets</a></td></tr>
+<tr><td>GMS (back office)</td><td>Full key</td><td>Back office, <a href="#games" data-section="games" style="color:var(--accent-blue)">Catalog &amp; Products</a>, <a href="#bet-shops" data-section="bet-shops" style="color:var(--accent-blue)">Bet Shops</a> and Finance Reporting</td></tr>
+<tr><td>A bet shop till</td><td>Shop key</td><td><a href="#shop-system" data-section="shop-system" style="color:var(--accent-blue)">Shop System</a></td></tr>
+</table>
+</div>
+<div class="auth-box">
+<h3>Every integration</h3>
+<p><a href="#auth" data-section="auth" style="color:var(--accent-blue)">Authentication</a> (base URL, API key header, encrypted ids, idempotency, rate limits and conventions), <a href="#api-keys" data-section="api-keys" style="color:var(--accent-blue)">API Keys</a> (scopes) and <a href="#errors" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div>
+</div>
+
+<div class="doc-section" data-section="auth">
 <div class="auth-box">
 <h3>Base URL and format</h3>
 <p>All endpoints on this page are under <code>https://api.kadi-kings.co.ke/api/v1</code> and speak JSON. Send <code>Accept: application/json</code> on every request: without it, a validation failure redirects (302) instead of returning <code>422</code> JSON. Send <code>Content-Type: application/json</code> with a body.</p><pre>X-API-KEY: your-api-key-here
@@ -599,6 +693,27 @@ game  ── POST /launch-tokens/redeem {token} ──▶ API ── {player_tok
 <p class="endpoint-note">Errors as for <code>GET /api/v1/me</code>. Also returns 401 (API key): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/player-tokens/revoke</span><span class="endpoint-desc">End a player's game sessions (kadi)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Call it when the player logs out of kadi. Every game the player is in gets <code>401 invalid_player_token</code> on its next call. Send <code>game</code> to end only that game's sessions. Repeating the call is harmless (<code>revoked</code> is 0). The API also ends every session by itself when a customer's <code>status</code> changes away from 1 or the customer is deleted; reactivating the customer does not bring old sessions back.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>game</td><td>string</td><td><span class="optional">Optional</span></td><td>A game code: only that game's sessions</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Player sessions ended", "data": {"revoked": 2}}</pre></div>
+<div class="endpoint-section"><h4>Response (404)</h4>
+<pre>{"success": false, "message": "Customer not found"}
+{"success": false, "message": "Game not found"}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+</div>
+
+<div class="doc-section" data-section="wager-api">
+<button class="expand-all" onclick="toggleAll('wager-api')">Expand / Collapse All</button>
+<div class="auth-box"><h3>Building a game?</h3><p>Each game page lists, in order, exactly the endpoints that game calls, with notes for that game and its own codes in the examples: <a href="#sportsbook" data-section="sportsbook" style="color:var(--accent-blue)">Sportsbook</a>, <a href="#crash" data-section="crash" style="color:var(--accent-blue)">Crash</a>, <a href="#slots" data-section="slots" style="color:var(--accent-blue)">Slots</a>, <a href="#scratch" data-section="scratch" style="color:var(--accent-blue)">Scratch Cards</a>. This page is the full reference they are built from.</p></div>
+
 <div class="callback-note"><strong>Wagers (house-banked games).</strong> For a game where the house is the other side of every bet (sportsbook, crash, slots, scratch cards). One wallet per player across every game: <code>POST /api/v1/wagers</code> moves the stake into the bet's own escrow, a settlement pays the escrow out to the house or the player, and the house wallet may go negative (it is owner capital). A bet is identified by <code>product</code> + <code>reference</code>, a reference of your choosing (up to 100 characters).
 <pre>place  ──▶ open ──▶ settle v1 (won | lost | void) ──▶ reverse ──▶ open ──▶ settle v2 …
                     └─▶ admin void (GMS, a stuck open bet)</pre>
@@ -731,6 +846,11 @@ Other refusals from the same checks: <code>403 game_key_required</code> and <cod
 <table class="params-table"><tr><th>Status</th><th>code</th><th>When</th></tr><tr><td>403</td><td>product_not_allowed</td><td>The product is unknown, belongs to another game, or is not house-banked</td></tr><tr><td>404</td><td>wager_not_found</td><td>No bet of that product has that reference</td></tr><tr><td>422</td><td>validation_failed</td><td><code>product</code> is missing, or <code>reference</code> is longer than 100 characters</td></tr><tr><td>429</td><td>rate_limited</td><td>The 1200/min limit is spent (<code>Retry-After</code> header), <code>retryable</code> true</td></tr><tr><td>500</td><td>server_error</td><td>Unexpected failure, <code>retryable</code> true</td></tr></table></div>
 <p class="endpoint-note">Also returns 401 (API key), 403 (<code>route_not_allowed</code>): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
+</div>
+
+<div class="doc-section" data-section="bets-admin">
+<button class="expand-all" onclick="toggleAll('bets-admin')">Expand / Collapse All</button>
+<div class="callback-note"><strong>Bets on house-banked games.</strong> The kadi site shows a player their bet history; GMS searches every bet, opens one with its settlements and ledger lines, and voids a bet that is stuck open. Game servers use the <a href="#wager-api" data-section="wager-api" style="color:var(--accent-blue)">Wager API</a> instead.</div>
 
 <div class="endpoint">
 <div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/wagers</span><span class="endpoint-desc">A player's bet history (kadi)</span><span class="chevron">&#9654;</span></div>
@@ -790,23 +910,6 @@ Other refusals from the same checks: <code>403 game_key_required</code> and <cod
 <table class="params-table"><tr><th>Status</th><th>code</th><th>When</th></tr><tr><td>404</td><td>wager_not_found</td><td><code>{id}</code> is not a number or no bet has it</td></tr><tr><td>409</td><td>wager_not_open</td><td>The bet is won, lost, void or a tombstone; <code>status</code> and <code>settlement_version</code> give its state</td></tr><tr><td>422</td><td>validation_failed</td><td><code>reason</code> or <code>admin_user</code> is missing or too long</td></tr></table></div>
 <p class="endpoint-note">Also returns 401 (API key), 403 (<code>route_not_allowed</code>): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
-
-<div class="endpoint">
-<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/customers/{encryptedIdentifier}/player-tokens/revoke</span><span class="endpoint-desc">End a player's game sessions (kadi)</span><span class="chevron">&#9654;</span></div>
-<div class="endpoint-body">
-<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-rate">30/min</span></div>
-<div class="endpoint-section"><h4>Description</h4>
-<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Call it when the player logs out of kadi. Every game the player is in gets <code>401 invalid_player_token</code> on its next call. Send <code>game</code> to end only that game's sessions. Repeating the call is harmless (<code>revoked</code> is 0). The API also ends every session by itself when a customer's <code>status</code> changes away from 1 or the customer is deleted; reactivating the customer does not bring old sessions back.</p></div>
-<div class="endpoint-section"><h4>Request Body</h4>
-<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>game</td><td>string</td><td><span class="optional">Optional</span></td><td>A game code: only that game's sessions</td></tr></table></div>
-<div class="endpoint-section"><h4>Response (200)</h4>
-<pre>{"success": true, "message": "Player sessions ended", "data": {"revoked": 2}}</pre></div>
-<div class="endpoint-section"><h4>Response (404)</h4>
-<pre>{"success": false, "message": "Customer not found"}
-{"success": false, "message": "Game not found"}</pre></div>
-<p class="endpoint-note">Also returns 401 (API key), 400 (invalid identifier), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
-</div></div>
-
 </div>
 <!-- RESPONSIBLE GAMBLING SECTION -->
 
@@ -3600,7 +3703,7 @@ Accept: application/json</pre></div>
 
 <div class="doc-section" data-section="games">
 <button class="expand-all" onclick="toggleAll('games')">Expand / Collapse All</button>
-<div class="callback-note"><strong>Games and products.</strong> A <strong>game</strong> is one app on the platform (kadi, and later the sportsbook and crash): it has a lobby tile and the <code>launch_url</code> kadi sends a player to. A <strong>product</strong> is a revenue line finance reports on, and belongs to one game: kadi has <code>kadi</code> (single games), <code>kadi_tournament</code> and <code>kadi_jackpot</code>. <code>revenue_model</code> is <code>rake</code> (the house takes a cut of player-vs-player pots) or <code>house_banked</code> (players play against the house). Every ledger entry of a game carries its product; deposits, withdrawals, excise duty, promotions, referrals, bet shop float and adjustments carry none (platform). Codes never change. New games and products are added on the server (<code>php artisan game:create</code>, <code>php artisan product:create</code>). <code>status</code> for both: <code>active</code>, <code>suspended</code> or <code>retired</code>.</div>
+<div class="callback-note"><strong>Games and products.</strong> A <strong>game</strong> is one app on the platform (kadi, sportsbook, crash, slots and scratch cards): it has a lobby tile and the <code>launch_url</code> kadi sends a player to. A <strong>product</strong> is a revenue line finance reports on, and belongs to one game: kadi has <code>kadi</code> (single games), <code>kadi_tournament</code> and <code>kadi_jackpot</code>. <code>revenue_model</code> is <code>rake</code> (the house takes a cut of player-vs-player pots) or <code>house_banked</code> (players play against the house). Every ledger entry of a game carries its product; deposits, withdrawals, excise duty, promotions, referrals, bet shop float and adjustments carry none (platform). Codes never change. New games and products are added on the server (<code>php artisan game:create</code>, <code>php artisan product:create</code>). <code>status</code> for both: <code>active</code>, <code>suspended</code> or <code>retired</code>.</div>
 
 <div class="endpoint">
 <div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/games</span><span class="endpoint-desc">The lobby: games and their products</span><span class="chevron">&#9654;</span></div>
@@ -3683,6 +3786,137 @@ Content-Type: application/json
 <p class="endpoint-note">Also returns 401 (API key), 422 (validation), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
 </div></div>
 
+</div>
+
+<div class="doc-section" data-section="kadi">
+<div class="game-intro">
+<p class="game-lead">Kadi is the card game players play against each other. The house does not bet: it takes a cut of each pot (a <strong>rake</strong>). Single games, tournaments and jackpots each have their own escrow wallets. Every endpoint below is used only by kadi; each links to its full documentation on the Kadi pages.</p>
+<table class="params-table game-facts"><tr><td>Revenue model</td><td><code>rake</code>: the house takes a share of player-vs-player pots (rates in the <a href="#finance-overview" data-section="finance-overview" style="color:var(--accent-blue)">fee schedule</a>)</td></tr><tr><td>Products</td><td><code>kadi</code> (single games), <code>kadi_tournament</code>, <code>kadi_jackpot</code></td></tr><tr><td>Key</td><td>The kadi game server uses a full key; the kadi site uses its site key for complaints</td></tr><tr><td>Launch</td><td>Kadi's own play form, not the launch-token flow of the other games</td></tr></table>
+<h3 class="game-heading">The flow</h3>
+<pre class="game-flow">new game     ── POST /game/wallets ──────────▶ the game's escrow wallet
+each player  ── POST /game/bets ─────────────▶ stake into the game wallet
+game ends    ── POST /game/withdraw/{id} ────▶ winner paid (less 5%)
+             └─ /game/drop/{id} | /game/credit | /game/refund for dropped or cancelled games</pre>
+</div>
+<h3 class="game-heading">Single games</h3>
+<ol class="game-steps" data-game-name="Kadi" data-link-only>
+<li class="game-step" data-endpoint="post-game-wallets"><div class="game-step-title">Open a game wallet</div><div class="game-step-note">The escrow for one game. Status 1 open, 3 closed.</div></li>
+<li class="game-step" data-endpoint="post-game-bets"><div class="game-step-title">Each player stakes</div><div class="game-step-note">The stake leaves the player's wallet and goes into the game wallet.</div></li>
+<li class="game-step" data-endpoint="post-game-withdraw-encryptedidentifier"><div class="game-step-title">Pay the winner</div><div class="game-step-note">Closes the game; a further 5% is taken, rounded down.</div></li>
+<li class="game-step" data-endpoint="post-game-drop-encryptedidentifier post-game-credit post-game-refund"><div class="game-step-title">Dropped or cancelled games</div><div class="game-step-note">Settle a game where players disconnected, pay each remaining player their share of a voided game, or refund every stake.</div></li>
+<li class="game-step" data-endpoint="get-game-results post-game-income"><div class="game-step-title">Results and income</div><div class="game-step-note">Decided games with each player's result, and the house share by number of players.</div></li>
+</ol>
+<h3 class="game-heading">Tournaments and jackpots</h3>
+<ol class="game-steps" data-game-name="Kadi" data-link-only>
+<li class="game-step" data-endpoint="post-competition-wallets"><div class="game-step-title">Open the player's competition wallet</div><div class="game-step-note">One wallet per player per competition (<code>cmp_uid</code>).</div></li>
+<li class="game-step" data-endpoint="post-competition-transactions"><div class="game-step-title">Enter</div><div class="game-step-note">The entry fee moves from the wallet into the competition wallet, less the house share (10% tournament, 20% jackpot).</div></li>
+<li class="game-step" data-endpoint="post-competition-payout"><div class="game-step-title">After each round</div><div class="game-step-note">The loser's whole competition balance moves to the winner.</div></li>
+<li class="game-step" data-endpoint="post-competition-withdraw-encryptedidentifier"><div class="game-step-title">Pay out</div><div class="game-step-note">The competition wallet is paid to the customer's main wallet and closed.</div></li>
+<li class="game-step" data-endpoint="get-competition-results-encryptedidentifier get-competition-awards-encryptedidentifier post-competition-income-encryptedidentifier"><div class="game-step-title">Results and income</div><div class="game-step-note">Round results, winners, and the house share by number of rounds.</div></li>
+</ol>
+<h3 class="game-heading">Disputed results</h3>
+<ol class="game-steps" data-game-name="Kadi" data-link-only>
+<li class="game-step" data-endpoint="post-complaints"><div class="game-step-title">A player complains (kadi site)</div><div class="game-step-note">The disputed winnings are held in dispute escrow at once.</div></li>
+<li class="game-step" data-endpoint="post-complaints-encryptedidentifier-resolve post-complaints-encryptedidentifier-reject post-complaints-encryptedidentifier-cancel"><div class="game-step-title">GMS decides</div><div class="game-step-note">Valid: the disputed transactions are reversed. Invalid or withdrawn: the held money goes back.</div></li>
+</ol>
+<p class="endpoint-note">Admin corrections (overwriting or deleting a game wallet, game transaction, competition wallet or competition transaction) are on the Kadi pages: <a href="#game-wallets" data-section="game-wallets" style="color:var(--accent-blue)">Game Wallets</a>, <a href="#game-bets" data-section="game-bets" style="color:var(--accent-blue)">Game Bets</a>, <a href="#comp-wallets" data-section="comp-wallets" style="color:var(--accent-blue)">Competition Wallets</a>, <a href="#comp-txns" data-section="comp-txns" style="color:var(--accent-blue)">Competition Entries</a>.</p>
+</div>
+
+<div class="doc-section" data-section="sportsbook">
+<div class="game-intro">
+<p class="game-lead">Players bet against the house on sports events. One bet slip is one wager: its stake leaves the player's wallet when the slip is placed and is settled when every selection is decided, through your outbox, so a settlement is never lost.</p>
+<table class="params-table game-facts"><tr><td>Revenue model</td><td><code>house_banked</code>: the house is the other side of every bet</td></tr><tr><td>Products</td><td><code>sportsbook</code> (bet slips), <code>sportsbook_jackpot</code> (jackpot entries)</td></tr><tr><td>Key</td><td>A game key bound to this game (<code>X-API-KEY</code>), plus the player token (<code>Authorization: Bearer</code>) on player routes</td></tr><tr><td>Rate limit</td><td>1,200 wager calls a minute per key, raised with the key multiplier (up to 20&times;); <code>429</code> is retryable</td></tr><tr><td>Settlement</td><td>Asynchronous and versioned: one outbox row per settlement, delivered in order per slip</td></tr></table>
+<h3 class="game-heading">The flow</h3>
+<pre class="game-flow">kadi         ── launch token ──▶ sportsbook ── POST /launch-tokens/redeem ──▶ player token
+slip placed  ── POST /wagers ──────────────────────▶ stake into the slip's escrow (open)
+slip decided ── POST /wagers/{ref}/settle  v1 ─────▶ won | lost | void   (from the outbox)
+result fixed ── POST /wagers/{ref}/reverse v1 ─────▶ open again ──▶ settle v2 …
+timeout      ── GET /wagers/{ref}?product= ────────▶ what happened to the slip</pre>
+</div>
+<h3 class="game-heading">Endpoints this game calls, in order</h3>
+<ol class="game-steps" data-game-name="Sportsbook" data-substitute='[["crash_classic", "sportsbook"], ["\"round_reference\": \"round-1\"", "\"round_reference\": null"], ["bet-1", "slip-1"]]'>
+<li class="game-step" data-endpoint="post-launch-tokens-redeem"><div class="game-step-title">Start the session</div><div class="game-step-note">Once per launch: kadi posts a launch token to your <code>launch_url</code>; trade it for a player token good for 12 hours in your game only. Do not retry on a timeout (the token may already be used): send the player back to kadi to relaunch.</div></li>
+<li class="game-step" data-endpoint="get-me get-me-balance"><div class="game-step-title">Show the player and their balance</div><div class="game-step-note">The player has one wallet across every game. Read the balance again after a bet; <code>wallet_version</code> tells a stale balance from a fresh one.</div></li>
+<li class="game-step" data-endpoint="post-wagers"><div class="game-step-title">Place a bet slip</div><div class="game-step-note">Synchronous, one call per slip: <code>reference</code> is your slip id; no <code>round_reference</code>. A free bet sends <code>free_bet_amount</code> instead of <code>stake</code>. Jackpot entries use product <code>sportsbook_jackpot</code>. Write the slip locally as pending first; mark it open on <code>201</code>/<code>200</code>, rejected on any other 4xx except <code>429</code>.</div></li>
+<li class="game-step" data-endpoint="post-wagers-reference-settle"><div class="game-step-title">Settle the slip</div><div class="game-step-note">When every selection is decided, from your outbox, versions of one slip in order. <code>payout</code> includes the stake on a cash win; a multibet bonus goes in <code>bonus</code>; a slip on a cancelled event settles <code>void</code> (the stake goes back). Winnings tax is withheld by the API at the product's rate. <code>409 version_out_of_order</code>: retry later.</div></li>
+<li class="game-step" data-endpoint="post-wagers-reference-reverse"><div class="game-step-title">Correct a result</div><div class="game-step-note">A result changed after you settled: reverse the current version (the slip reopens with its stake back in escrow), then settle the next version with the right result. The player may go below zero; that is allowed.</div></li>
+<li class="game-step" data-endpoint="get-wagers-reference"><div class="game-step-title">Find out what happened</div><div class="game-step-note">After a timeout on a place or a settle, before doing anything else. A slip that was never placed answers <code>404</code>: send a <code>void</code> settle for it (a tombstone) and mark it void.</div></li>
+</ol>
+<div class="game-endpoints-head"><h3 class="game-heading">Endpoint details</h3><button class="expand-all" onclick="toggleAll('sportsbook')">Expand / Collapse All</button></div>
+<div class="game-endpoints"></div>
+</div>
+
+<div class="doc-section" data-section="crash">
+<div class="game-intro">
+<p class="game-lead">An Aviator-style game: players bet during a short betting window, then cash out before the plane crashes. Every bet belongs to a <strong>round</strong>, and the whole round is settled in one call when the plane crashes.</p>
+<table class="params-table game-facts"><tr><td>Revenue model</td><td><code>house_banked</code>: the house is the other side of every bet</td></tr><tr><td>Products</td><td><code>crash_classic</code> (the examples on this page)</td></tr><tr><td>Key</td><td>A game key bound to this game (<code>X-API-KEY</code>), plus the player token (<code>Authorization: Bearer</code>) on player routes</td></tr><tr><td>Rate limit</td><td>1,200 wager calls a minute per key, raised with the key multiplier (up to 20&times;); <code>429</code> is retryable</td></tr><tr><td>Settlement</td><td>Per round: the winners in one call (batches of up to 1,000), every other bet loses</td></tr></table>
+<h3 class="game-heading">The flow</h3>
+<pre class="game-flow">kadi           ── launch token ──▶ crash ── POST /launch-tokens/redeem ──▶ player token
+betting window ── POST /wagers {round_reference} ──▶ each bet: stake into escrow
+manual cash-out ─ POST /wagers/{ref}/settle v1 won ─▶ paid at once (optional)
+plane crashes  ── POST /rounds/{ref}/settle {winners} ─▶ winners paid, the rest lost
+round broken   ── POST /rounds/{ref}/void ───────────▶ every open bet refunded</pre>
+</div>
+<h3 class="game-heading">Endpoints this game calls, in order</h3>
+<ol class="game-steps" data-game-name="Crash">
+<li class="game-step" data-endpoint="post-launch-tokens-redeem"><div class="game-step-title">Start the session</div><div class="game-step-note">Once per launch: kadi posts a launch token to your <code>launch_url</code>; trade it for a player token good for 12 hours in your game only. Do not retry on a timeout (the token may already be used): send the player back to kadi to relaunch.</div></li>
+<li class="game-step" data-endpoint="get-me get-me-balance"><div class="game-step-title">Show the player and their balance</div><div class="game-step-note">The player has one wallet across every game. Read the balance again after a bet; <code>wallet_version</code> tells a stale balance from a fresh one.</div></li>
+<li class="game-step" data-endpoint="post-wagers"><div class="game-step-title">Place a bet</div><div class="game-step-note">During the betting window, one call per bet with <code>round_reference</code> = the round id (the round is created on first use). A player may have several bets in a round. Once the round is closed a place answers <code>409 round_closed</code>.</div></li>
+<li class="game-step" data-endpoint="post-wagers-reference-settle"><div class="game-step-title">Pay a manual cash-out at once (optional)</div><div class="game-step-note">To show the money before the round ends: settle that bet <code>won</code> at version 1 with its payout. Leave it out of the round's <code>winners</code>, or send it there with the same payout (it then counts as <code>already_settled</code>).</div></li>
+<li class="game-step" data-endpoint="post-rounds-reference-settle"><div class="game-step-title">Settle the round</div><div class="game-step-note">When the plane crashes: the round's winners with their payouts (auto cash-outs included), at most 1,000 per call. A larger round goes in batches with <code>final: false</code>, then one <code>final: true</code> call, sent only after every batch answered <code>200</code>. Every other open bet loses. Safe to repeat.</div></li>
+<li class="game-step" data-endpoint="post-rounds-reference-void"><div class="game-step-title">Void a broken round</div><div class="game-step-note">The round cannot finish (a server fault before the flight ends): every open bet is refunded and the round is closed. Safe to repeat.</div></li>
+<li class="game-step" data-endpoint="post-wagers-reference-reverse"><div class="game-step-title">Correct a settled bet</div><div class="game-step-note">Rare. Reverse the bet's current version, then settle it on its own at the next version: round calls leave a reopened bet open.</div></li>
+<li class="game-step" data-endpoint="get-wagers-reference"><div class="game-step-title">Find out what happened</div><div class="game-step-note">After a timeout on a place or a settle, before doing anything else.</div></li>
+</ol>
+<div class="game-endpoints-head"><h3 class="game-heading">Endpoint details</h3><button class="expand-all" onclick="toggleAll('crash')">Expand / Collapse All</button></div>
+<div class="game-endpoints"></div>
+</div>
+
+<div class="doc-section" data-section="slots">
+<div class="game-intro">
+<p class="game-lead">Each spin is decided by your game the moment it is played, so a spin is <strong>one call</strong>: the stake goes in and any win comes out in one transaction. There is nothing to settle later and no outbox. Refunds are not part of the flow.</p>
+<table class="params-table game-facts"><tr><td>Revenue model</td><td><code>house_banked</code>: the house is the other side of every spin</td></tr><tr><td>Products</td><td>One per slot title, e.g. <code>slots_fruit_mania</code>, each with its own <code>max_stake</code> and <code>max_payout</code></td></tr><tr><td>Key</td><td>A game key bound to this game (<code>X-API-KEY</code>), plus the player token (<code>Authorization: Bearer</code>) on player routes</td></tr><tr><td>Rate limit</td><td>1,200 wager calls a minute per key, raised with the key multiplier (up to 20&times;); <code>429</code> is retryable. One spin is one call: size the multiplier for peak spins a minute</td></tr><tr><td>Settlement</td><td>Instant: placed and settled in the same call</td></tr></table>
+<h3 class="game-heading">The flow</h3>
+<pre class="game-flow">kadi    ── launch token ──▶ slots ── POST /launch-tokens/redeem ──▶ player token
+spin    ── POST /wagers/instant {stake, outcome, payout} ──▶ stake in, win out, one transaction
+timeout ── the same call again (a replay) ──▶ then GET /wagers/{ref}?product=
+fault   ── POST /wagers/{ref}/reverse v1 ──▶ POST /wagers/{ref}/settle v2   (rare)</pre>
+</div>
+<h3 class="game-heading">Endpoints this game calls, in order</h3>
+<ol class="game-steps" data-game-name="Slots" data-substitute='[["crash_classic", "slots_fruit_mania"], ["\"round_reference\": \"round-1\"", "\"round_reference\": null"], ["bet-1", "spin-1"]]'>
+<li class="game-step" data-endpoint="post-launch-tokens-redeem"><div class="game-step-title">Start the session</div><div class="game-step-note">Once per launch: kadi posts a launch token to your <code>launch_url</code>; trade it for a player token good for 12 hours in your game only. Do not retry on a timeout (the token may already be used): send the player back to kadi to relaunch.</div></li>
+<li class="game-step" data-endpoint="get-me get-me-balance"><div class="game-step-title">Show the player and their balance</div><div class="game-step-note">The player has one wallet across every game. Read the balance again after a bet; <code>wallet_version</code> tells a stale balance from a fresh one.</div></li>
+<li class="game-step" data-endpoint="post-wagers-instant"><div class="game-step-title">Play a spin</div><div class="game-step-note">One call per spin, after your game has decided it: <code>reference</code> = the spin id, <code>outcome</code> <code>won</code> or <code>lost</code>, <code>payout</code> the gross win including the stake (0 for a loss). A free spin sends <code>funding: free_bet</code> and <code>free_bet_amount</code>. A <code>403</code> or <code>422</code> means the spin did not happen: show it as not played. A <code>409 reference_conflict</code> does <strong>not</strong> mean that: look the spin up.</div></li>
+<li class="game-step" data-endpoint="get-wagers-reference"><div class="game-step-title">Find out what happened</div><div class="game-step-note">After a timeout: first send the same call again (a replay answers <code>200</code> and moves no money); if that fails too, look the spin up. <code>404</code> means no money moved and the spin did not happen.</div></li>
+<li class="game-step" data-endpoint="post-wagers-reference-reverse"><div class="game-step-title">Undo a wrong spin (rare)</div><div class="game-step-note">A spin was paid wrongly (a machine fault): reverse version 1. The stake goes back into the spin's escrow and the spin is open again.</div></li>
+<li class="game-step" data-endpoint="post-wagers-reference-settle"><div class="game-step-title">Settle the corrected spin</div><div class="game-step-note">Only after a reverse: settle the right result at version 2 (or ask GMS to void the spin).</div></li>
+</ol>
+<div class="game-endpoints-head"><h3 class="game-heading">Endpoint details</h3><button class="expand-all" onclick="toggleAll('slots')">Expand / Collapse All</button></div>
+<div class="game-endpoints"></div>
+</div>
+
+<div class="doc-section" data-section="scratch">
+<div class="game-intro">
+<p class="game-lead">A card bought and revealed at once is <strong>one call</strong>, like a slot spin. A card bought now and revealed later is a normal bet: placed at purchase, settled when it is revealed. Refunds are not part of the flow.</p>
+<table class="params-table game-facts"><tr><td>Revenue model</td><td><code>house_banked</code>: the house is the other side of every card</td></tr><tr><td>Products</td><td>One per card type and price, e.g. <code>scratch_gold_100</code>: <code>min_stake</code> = <code>max_stake</code> = the price, <code>max_payout</code> = the top prize</td></tr><tr><td>Key</td><td>A game key bound to this game (<code>X-API-KEY</code>), plus the player token (<code>Authorization: Bearer</code>) on player routes</td></tr><tr><td>Rate limit</td><td>1,200 wager calls a minute per key, raised with the key multiplier (up to 20&times;); <code>429</code> is retryable</td></tr><tr><td>Settlement</td><td>Instant when revealed at purchase; otherwise placed, then settled at reveal</td></tr></table>
+<h3 class="game-heading">The flow</h3>
+<pre class="game-flow">kadi                ── launch token ──▶ scratch ── POST /launch-tokens/redeem ──▶ player token
+buy + reveal at once ── POST /wagers/instant ──────▶ one transaction
+buy now             ── POST /wagers ─────────────▶ price into escrow (open)
+reveal later        ── POST /wagers/{ref}/settle v1 ─▶ won | lost</pre>
+</div>
+<h3 class="game-heading">Endpoints this game calls, in order</h3>
+<ol class="game-steps" data-game-name="Scratch Cards" data-substitute='[["crash_classic", "scratch_gold_100"], ["slots_fruit_mania", "scratch_gold_100"], ["\"round_reference\": \"round-1\"", "\"round_reference\": null"], ["bet-1", "card-1"], ["spin-81", "card-81"], ["\"stake\": 20", "\"stake\": 100"]]'>
+<li class="game-step" data-endpoint="post-launch-tokens-redeem"><div class="game-step-title">Start the session</div><div class="game-step-note">Once per launch: kadi posts a launch token to your <code>launch_url</code>; trade it for a player token good for 12 hours in your game only. Do not retry on a timeout (the token may already be used): send the player back to kadi to relaunch.</div></li>
+<li class="game-step" data-endpoint="get-me get-me-balance"><div class="game-step-title">Show the player and their balance</div><div class="game-step-note">The player has one wallet across every game. Read the balance again after a bet; <code>wallet_version</code> tells a stale balance from a fresh one.</div></li>
+<li class="game-step" data-endpoint="post-wagers-instant"><div class="game-step-title">Buy and reveal a card</div><div class="game-step-note">One call per card: <code>stake</code> = the card price (any other amount answers <code>422 stake_below_limit</code> or <code>stake_above_limit</code>), <code>outcome</code> and <code>payout</code> from the card. A free card sends <code>funding: free_bet</code> and <code>free_bet_amount</code>. A <code>403</code> or <code>422</code> means the card was not sold; a <code>409 reference_conflict</code> does not: look the card up.</div></li>
+<li class="game-step" data-endpoint="post-wagers"><div class="game-step-title">Buy a card to reveal later</div><div class="game-step-note">The price leaves the wallet at purchase and the card stays open until it is revealed. <code>reference</code> = the card id.</div></li>
+<li class="game-step" data-endpoint="post-wagers-reference-settle"><div class="game-step-title">Reveal the card</div><div class="game-step-note">Settle the card <code>won</code> or <code>lost</code> at version 1 when the player reveals it, through your outbox.</div></li>
+<li class="game-step" data-endpoint="get-wagers-reference"><div class="game-step-title">Find out what happened</div><div class="game-step-note">After a timeout: send the same call again first (a replay moves no money), then look the card up. <code>404</code> means it was not sold.</div></li>
+<li class="game-step" data-endpoint="post-wagers-reference-reverse"><div class="game-step-title">Correct a card (rare)</div><div class="game-step-note">A card was paid wrongly: reverse its current version, then settle the next version with the right result.</div></li>
+</ol>
+<div class="game-endpoints-head"><h3 class="game-heading">Endpoint details</h3><button class="expand-all" onclick="toggleAll('scratch')">Expand / Collapse All</button></div>
+<div class="game-endpoints"></div>
 </div>
 <!-- GAME WALLETS SECTION -->
 
@@ -8351,50 +8585,53 @@ id,trans_id,amount,kind,status,customer_id,customer_name,msisdn,bill_ref_no,crea
 <script>
 var STORAGE_KEY = 'kadi-docs-section';
 var BASE_URL = 'https://api.kadi-kings.co.ke';
+var DEFAULT_SECTION = 'start';
+
+var sectionTitles = {
+    'start': { title: 'Start Here', desc: 'Which pages to read for what you are building' },
+    'auth': { title: 'Authentication', desc: 'Base URL, API key, encrypted identifiers, idempotency, rate limits and conventions' },
+    'api-keys': { title: 'API Keys', desc: 'Key scopes, game server keys and revoking keys' },
+    'games': { title: 'Catalog & Products', desc: 'The lobby, and the games and products finance reports on' },
+    'kadi': { title: 'Kadi', desc: 'The player-vs-player card game: single games, tournaments, jackpots and disputed results' },
+    'game-wallets': { title: 'Kadi: Game Wallets', desc: 'Game escrow wallets, results and game income' },
+    'game-bets': { title: 'Kadi: Game Bets', desc: 'Stakes, paying the winner, dropped connections, refunds and game transactions' },
+    'comp-wallets': { title: 'Kadi: Competition Wallets', desc: 'Tournament and jackpot wallets, round payouts, withdrawals, results and awards' },
+    'comp-txns': { title: 'Kadi: Competition Entries', desc: 'Competition entries and transaction records' },
+    'sportsbook': { title: 'Sportsbook', desc: 'Bet slips placed now and settled when the events are decided' },
+    'crash': { title: 'Crash', desc: 'Bets in rounds, settled in one call when the plane crashes' },
+    'slots': { title: 'Slots', desc: 'One call per spin: the stake and the win in one transaction' },
+    'scratch': { title: 'Scratch Cards', desc: 'Cards revealed at once in one call, or bought now and revealed later' },
+    'launch': { title: 'Player Sessions', desc: 'Launch tokens, player tokens and what a game may read about its player' },
+    'wager-api': { title: 'Wager API', desc: 'The full rules for placing, settling, reversing and looking up bets on house-banked games' },
+    'customers': { title: 'Customers', desc: 'Create, find, update and verify customers; games played and leaderboards' },
+    'rg': { title: 'Responsible Gambling', desc: 'Account status, breaks from play, deposit limits and the flags GMS reviews' },
+    'promotions': { title: 'Promotions', desc: 'Signup bonus promo codes and customer bonuses' },
+    'referrals': { title: 'Referrals', desc: 'Referral codes, bonuses, referral wallets and referral withdrawals' },
+    'complaints': { title: 'Complaints', desc: 'Disputed results: holding winnings in escrow, resolving, rejecting and cancelling' },
+    'wallets': { title: 'Wallets', desc: 'Wallet management, balance operations, and transfers' },
+    'wallet-txns': { title: 'Wallet Transactions', desc: 'Wallet transaction history and daily totals' },
+    'deposits': { title: 'Deposits', desc: 'M-Pesa deposits, STK Push prompts and unmatched deposits' },
+    'withdraws': { title: 'Withdrawals', desc: 'M-Pesa B2C payouts from customer wallets' },
+    'transactions': { title: 'Transactions', desc: 'Wallet deposits and withdrawals as transaction records' },
+    'financial': { title: 'Financial Operations', desc: 'STK Push for coin loads, gifts and emoji; stored B2C balance' },
+    'bets-admin': { title: 'Bets (All Games)', desc: 'A player\'s bet history, and searching, inspecting and voiding bets in GMS' },
+    'stats': { title: 'Statistics', desc: 'Signups, games played, retention and today\'s house income' },
+    'bet-shops': { title: 'Bet Shops', desc: 'Physical shops, their keys, float, cash loads and cash withdrawals' },
+    'shop-system': { title: 'Shop System', desc: 'The routes a bet shop till calls with its shop key' },
+    'finance-overview': { title: 'Finance Overview', desc: 'Common parameters, response format, dates, test customers, caching, privacy and the fee schedule' },
+    'finance-statements': { title: 'Financial Statements', desc: 'Summary, income statement, house-banked games, cash flow, balance sheet, trial balance, reconciliation and taxes' },
+    'finance-reports': { title: 'Finance Drill-downs', desc: 'Deposits, withdrawals, purchases, games, competitions, ledger, adjustments, disputes, referrals, promotions and customer reports' },
+    'finance-expenses': { title: 'Expenses', desc: 'Record, void and list operating expenses' },
+    'finance-excise': { title: 'Excise Duty', desc: 'Excise duty taken from deposits, monthly returns and payments to KRA' },
+    'finance-winnings-tax': { title: 'Winnings Tax', desc: 'Tax withheld from house-banked wins, monthly returns and payments to KRA' },
+    'finance-export': { title: 'CSV Export', desc: 'Download any finance report as a CSV file' },
+    'errors': { title: 'Error Responses', desc: 'Status codes and error bodies' }
+};
 
 function toggle(el) {
     el.closest('.endpoint').classList.toggle('open');
 }
 
-function copyEndpoint(path, btn) {
-    var url = BASE_URL + path;
-    navigator.clipboard.writeText(url).then(function() {
-        btn.textContent = 'Copied!';
-        btn.classList.add('copied');
-        setTimeout(function() {
-            btn.textContent = 'Copy URL';
-            btn.classList.remove('copied');
-        }, 1500);
-    }).catch(function() {
-        var input = document.createElement('input');
-        input.value = url;
-        document.body.appendChild(input);
-        input.select();
-        document.execCommand('copy');
-        document.body.removeChild(input);
-        btn.textContent = 'Copied!';
-        btn.classList.add('copied');
-        setTimeout(function() {
-            btn.textContent = 'Copy URL';
-            btn.classList.remove('copied');
-        }, 1500);
-    });
-}
-
-function addCopyButtons() {
-    document.querySelectorAll('.endpoint-path').forEach(function(pathEl) {
-        if (pathEl.closest('.endpoint-header').querySelector('.copy-btn')) return;
-        var btn = document.createElement('button');
-        btn.className = 'copy-btn';
-        btn.textContent = 'Copy URL';
-        btn.onclick = function(e) {
-            e.stopPropagation();
-            copyEndpoint(pathEl.textContent, btn);
-        };
-        pathEl.parentNode.insertBefore(btn, pathEl.nextSibling);
-    });
-}
-addCopyButtons();
 function toggleAll(sectionId) {
     var section = document.querySelector('.doc-section[data-section="' + sectionId + '"]');
     if (!section) return;
@@ -8406,114 +8643,268 @@ function toggleAll(sectionId) {
     });
 }
 
-// Sidebar navigation
-var navLinks = document.querySelectorAll('.sidebar-nav a[data-section]');
-var docSections = document.querySelectorAll('.doc-section');
-var navSections = document.querySelectorAll('.sidebar-nav .nav-section');
-var navUls = document.querySelectorAll('.sidebar-nav ul');
-var sectionTitles = {
-    'auth': { title: 'Authentication', desc: 'Base URL, API key, encrypted identifiers, idempotency, rate limits and conventions' },
-    'api-keys': { title: 'API Keys', desc: 'Key scopes, game server keys and revoking keys' },
-    'launch': { title: 'Launching Games', desc: 'Launch tokens, player sessions and what a game may read about its player' },
-    'rg': { title: 'Responsible Gambling', desc: 'Account status, breaks from play, deposit limits and the flags GMS reviews' },
-    'customers': { title: 'Customers', desc: 'Create, find, update and verify customers; games played and leaderboards' },
-    'promotions': { title: 'Promotions', desc: 'Signup bonus promo codes and customer bonuses' },
-    'wallets': { title: 'Wallets', desc: 'Wallet management, balance operations, and transfers' },
-    'wallet-txns': { title: 'Wallet Transactions', desc: 'Wallet transaction history and daily totals' },
-    'deposits': { title: 'Deposits', desc: 'M-Pesa deposits, STK Push prompts and unmatched deposits' },
-    'withdraws': { title: 'Withdrawals', desc: 'M-Pesa B2C payouts from customer wallets' },
-    'transactions': { title: 'Transactions', desc: 'Wallet deposits and withdrawals as transaction records' },
-    'games': { title: 'Games & Products', desc: 'The lobby, and the games and products finance reports on' },
-    'game-wallets': { title: 'Game Wallets', desc: 'Game escrow wallets, results and game income' },
-    'game-bets': { title: 'Game Bets', desc: 'Stakes, paying the winner, dropped connections, refunds and game transactions' },
-    'comp-wallets': { title: 'Competition Wallets', desc: 'Tournament and jackpot wallets, round payouts, withdrawals, results and awards' },
-    'comp-txns': { title: 'Competition Transactions', desc: 'Competition entries and transaction records' },
-    'complaints': { title: 'Complaints', desc: 'Disputed results: holding winnings in escrow, resolving, rejecting and cancelling' },
-    'referrals': { title: 'Referrals', desc: 'Referral codes, bonuses, referral wallets and referral withdrawals' },
-    'financial': { title: 'Financial Operations', desc: 'STK Push for coin loads, gifts and emoji; stored B2C balance' },
-    'stats': { title: 'Statistics', desc: 'Signups, games played, retention and today\'s house income' },
-    'finance-overview': { title: 'Finance Overview', desc: 'Common parameters, response format, dates, test customers, caching, privacy and the fee schedule' },
-    'finance-statements': { title: 'Financial Statements', desc: 'Summary, income statement, cash flow, balance sheet, trial balance, reconciliation and taxes' },
-    'finance-reports': { title: 'Finance Drill-downs', desc: 'Deposits, withdrawals, purchases, games, competitions, ledger, adjustments, disputes, referrals, promotions and customer reports' },
-    'finance-expenses': { title: 'Expenses', desc: 'Record, void and list operating expenses' },
-    'finance-excise': { title: 'Excise Duty', desc: 'Excise duty taken from deposits, monthly returns and payments to KRA' },
-    'finance-winnings-tax': { title: 'Winnings Tax', desc: 'Tax withheld from house-banked wins, monthly returns and payments to KRA' },
-    'finance-export': { title: 'CSV Export', desc: 'Download any finance report as a CSV file' },
-    'errors': { title: 'Error Responses', desc: 'Status codes and error bodies' }
-};
-
-function showSection(sectionId) {
-    docSections.forEach(function(s) { s.classList.remove('active'); });
-    navLinks.forEach(function(a) { a.classList.remove('active'); });
-
-    var target = document.querySelector('.doc-section[data-section="' + sectionId + '"]');
-    var link = document.querySelector('.sidebar-nav a[data-section="' + sectionId + '"]');
-    if (target) target.classList.add('active');
-    if (link) link.classList.add('active');
-
-    var info = sectionTitles[sectionId];
-    if (info) {
-        document.getElementById('section-title').textContent = info.title;
-        document.getElementById('section-desc').textContent = info.desc;
+function copyText(text, btn, label) {
+    function done() {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(function() {
+            btn.textContent = label;
+            btn.classList.remove('copied');
+        }, 1500);
     }
-    window.scrollTo(0, 0);
-
-    try { localStorage.setItem(STORAGE_KEY, sectionId); } catch(e) {}
+    function fallback() {
+        var input = document.createElement('input');
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        done();
+    }
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(done).catch(fallback);
+    } else {
+        fallback();
+    }
 }
 
-navLinks.forEach(function(link) {
-    link.addEventListener('click', function(e) {
-        e.preventDefault();
-        clearSearch();
-        showSection(this.getAttribute('data-section'));
+// --- ENDPOINT IDS: "post-wagers-instant" from POST /api/v1/wagers/instant ---
+var docSections = document.querySelectorAll('.doc-section');
+var sourceEndpoints = {};
+
+function slugFor(endpoint) {
+    var method = endpoint.querySelector('.method').textContent.trim().toLowerCase();
+    var path = endpoint.querySelector('.endpoint-path').textContent.trim().replace(/^\/api\/v1\//, '');
+    return (method + '-' + path.toLowerCase().replace(/[^a-z0-9]+/g, '-')).replace(/^-+|-+$/g, '');
+}
+
+function sectionOf(el) {
+    return el.closest('.doc-section').getAttribute('data-section');
+}
+
+document.querySelectorAll('.doc-section .endpoint').forEach(function(ep) {
+    var slug = slugFor(ep);
+    ep.setAttribute('data-slug', slug);
+    sourceEndpoints[slug] = ep;
+});
+
+function endpointLink(source, sectionId) {
+    var a = document.createElement('a');
+    a.className = 'endpoint-link';
+    a.href = '#' + sectionId + '/' + source.getAttribute('data-slug');
+    var method = source.querySelector('.method');
+    var badge = document.createElement('span');
+    badge.className = method.className;
+    badge.textContent = method.textContent.trim();
+    var path = document.createElement('code');
+    path.textContent = source.querySelector('.endpoint-path').textContent.trim();
+    var desc = source.querySelector('.endpoint-desc');
+    if (desc) a.title = desc.textContent.trim();
+    a.appendChild(badge);
+    a.appendChild(path);
+    return a;
+}
+
+// --- GAME PAGES: each step's endpoints, rendered from the one source block with the game's notes and codes ---
+document.querySelectorAll('.game-steps').forEach(function(list) {
+    var sectionId = sectionOf(list);
+    var gameName = list.getAttribute('data-game-name');
+    var substitutions = JSON.parse(list.getAttribute('data-substitute') || '[]');
+    var linkOnly = list.hasAttribute('data-link-only');
+    var target = list.closest('.doc-section').querySelector('.game-endpoints');
+
+    list.querySelectorAll('.game-step').forEach(function(step) {
+        var links = document.createElement('div');
+        links.className = 'game-step-endpoints';
+        var note = step.querySelector('.game-step-note');
+
+        step.getAttribute('data-endpoint').split(/\s+/).forEach(function(slug) {
+            var source = sourceEndpoints[slug];
+            if (!source) {
+                console.warn('Docs: unknown endpoint ' + slug + ' on ' + sectionId);
+                return;
+            }
+            links.appendChild(endpointLink(source, linkOnly ? sectionOf(source) : sectionId));
+            if (linkOnly) return;
+
+            var copy = source.cloneNode(true);
+            copy.classList.add('endpoint-clone');
+            copy.classList.remove('open');
+            var body = copy.querySelector('.endpoint-body');
+            if (note) {
+                var box = document.createElement('div');
+                box.className = 'game-note';
+                box.innerHTML = '<strong>In ' + gameName + ':</strong> ' + note.innerHTML;
+                var tags = body.querySelector('.tags');
+                body.insertBefore(box, tags ? tags.nextSibling : body.firstChild);
+            }
+            if (substitutions.length) {
+                copy.querySelectorAll('pre').forEach(function(pre) {
+                    var text = pre.textContent;
+                    substitutions.forEach(function(pair) { text = text.split(pair[0]).join(pair[1]); });
+                    pre.textContent = text;
+                });
+            }
+            target.appendChild(copy);
+        });
+        step.appendChild(links);
     });
 });
 
-// Handle internal section links
+// --- PAGE INDEX: every page with two or more endpoints lists them at the top ---
+docSections.forEach(function(section) {
+    if (section.querySelector('.game-steps')) return;
+    var endpoints = section.querySelectorAll(':scope > .endpoint');
+    if (endpoints.length < 2) return;
+    var index = document.createElement('nav');
+    index.className = 'page-index';
+    index.innerHTML = '<h4>On this page (' + endpoints.length + ')</h4><div class="page-index-grid"></div>';
+    var grid = index.querySelector('.page-index-grid');
+    endpoints.forEach(function(ep) { grid.appendChild(endpointLink(ep, section.getAttribute('data-section'))); });
+    section.insertBefore(index, endpoints[0]);
+});
+
+// --- SEARCH LABELS: shown above each page's matches while searching ---
+docSections.forEach(function(section) {
+    var id = section.getAttribute('data-section');
+    var label = document.createElement('div');
+    label.className = 'search-section-label';
+    label.innerHTML = '<a href="#' + id + '"></a>';
+    label.firstChild.textContent = (sectionTitles[id] || { title: id }).title;
+    section.insertBefore(label, section.firstChild);
+});
+
+// --- HEADER BUTTONS: copy the URL, copy a link to this endpoint on this page ---
+document.querySelectorAll('.endpoint').forEach(function(ep) {
+    var header = ep.querySelector('.endpoint-header');
+    var pathEl = header.querySelector('.endpoint-path');
+    var copyUrl = document.createElement('button');
+    copyUrl.className = 'copy-btn';
+    copyUrl.textContent = 'Copy URL';
+    copyUrl.onclick = function(e) {
+        e.stopPropagation();
+        copyText(BASE_URL + pathEl.textContent.trim(), copyUrl, 'Copy URL');
+    };
+    var copyLink = document.createElement('button');
+    copyLink.className = 'copy-btn';
+    copyLink.textContent = 'Link';
+    copyLink.title = 'Copy a link to this endpoint on this page';
+    copyLink.onclick = function(e) {
+        e.stopPropagation();
+        copyText(location.href.split('#')[0] + '#' + sectionOf(ep) + '/' + ep.getAttribute('data-slug'), copyLink, 'Link');
+    };
+    pathEl.parentNode.insertBefore(copyLink, pathEl.nextSibling);
+    pathEl.parentNode.insertBefore(copyUrl, pathEl.nextSibling);
+});
+
+// Internal links become real links, so they can be opened in a new tab and shared
+document.querySelectorAll('a[data-section]').forEach(function(a) {
+    a.setAttribute('href', '#' + a.getAttribute('data-section'));
+});
+
+// --- NAVIGATION: #section or #section/endpoint-id ---
+var navLinks = document.querySelectorAll('.sidebar-nav a[data-section]');
+var navUls = document.querySelectorAll('.sidebar-nav ul');
+var navSections = document.querySelectorAll('.sidebar-nav .nav-section');
+
+function setHeader(title, desc) {
+    document.getElementById('section-title').textContent = title;
+    document.getElementById('section-desc').textContent = desc;
+}
+
+function showSection(sectionId) {
+    docSections.forEach(function(s) { s.classList.toggle('active', s.getAttribute('data-section') === sectionId); });
+    navLinks.forEach(function(a) { a.classList.toggle('active', a.getAttribute('data-section') === sectionId); });
+    var info = sectionTitles[sectionId];
+    if (info) setHeader(info.title, info.desc);
+    document.title = (info ? info.title + ' · ' : '') + 'Kadi Kings API Documentation';
+    try { localStorage.setItem(STORAGE_KEY, sectionId); } catch(e) {}
+}
+
+function sectionExists(id) {
+    return !!(id && document.querySelector('.doc-section[data-section="' + id + '"]'));
+}
+
+function route() {
+    var parts = location.hash.replace(/^#/, '').split('/');
+    var sectionId = parts[0];
+    if (!sectionExists(sectionId)) {
+        sectionId = DEFAULT_SECTION;
+        try { sectionId = localStorage.getItem(STORAGE_KEY) || DEFAULT_SECTION; } catch(e) {}
+        if (!sectionExists(sectionId)) sectionId = DEFAULT_SECTION;
+    }
+    showSection(sectionId);
+    document.body.classList.remove('nav-open');
+
+    var ep = parts[1] ? document.querySelector('.doc-section[data-section="' + sectionId + '"] .endpoint[data-slug="' + parts[1] + '"]') : null;
+    if (ep) {
+        ep.classList.add('open');
+        ep.scrollIntoView({ block: 'start' });
+        ep.classList.add('flash');
+        setTimeout(function() { ep.classList.remove('flash'); }, 1200);
+    } else {
+        window.scrollTo(0, 0);
+    }
+}
+
+window.addEventListener('hashchange', function() {
+    if (searching) resetSearch();
+    route();
+});
+
+// A link to the page already shown changes no hash: route it anyway
 document.addEventListener('click', function(e) {
-    var target = e.target.closest('[data-section]');
-    if (target && target.tagName === 'A') {
+    var a = e.target.closest('a[href^="#"]');
+    if (!a || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (a.getAttribute('href') === location.hash) {
         e.preventDefault();
-        clearSearch();
-        showSection(target.getAttribute('data-section'));
+        if (searching) resetSearch();
+        route();
     }
 });
 
-// --- SEARCH ---
+// --- MOBILE: the sidebar is a drawer ---
+document.getElementById('menu-btn').addEventListener('click', function() {
+    document.body.classList.toggle('nav-open');
+});
+document.getElementById('sidebar-backdrop').addEventListener('click', function() {
+    document.body.classList.remove('nav-open');
+});
+
+// --- SEARCH: every page with a match, stacked; game pages repeat the reference, so only the reference is searched ---
 var searchInput = document.getElementById('doc-search');
 var searchClear = document.getElementById('search-clear');
 var searchInfo = document.getElementById('search-info');
 var searchTimer = null;
+var searching = false;
 
-function stripHtml(html) {
-    var tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
-}
+document.querySelectorAll('.endpoint-path, .endpoint-desc').forEach(function(el) {
+    el.setAttribute('data-original', el.textContent);
+});
 
 function highlightText(text, query) {
-    if (!query) return text;
+    var safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     var re = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-    return text.replace(re, '<mark>$1</mark>');
+    return safe.replace(re, '<mark>$1</mark>');
 }
 
-function clearSearch() {
+function resetSearch() {
+    searching = false;
     searchInput.value = '';
     searchClear.classList.remove('visible');
     searchInfo.classList.remove('visible');
     searchInfo.textContent = '';
-    docSections.forEach(function(s) { s.classList.remove('active'); });
-    docSections.forEach(function(s) {
-        s.querySelectorAll('.endpoint').forEach(function(ep) {
-            ep.classList.remove('search-hidden');
-        });
-    });
+    document.body.classList.remove('searching');
+    document.querySelectorAll('.endpoint').forEach(function(ep) { ep.classList.remove('search-hidden'); });
+    document.querySelectorAll('[data-original]').forEach(function(el) { el.textContent = el.getAttribute('data-original'); });
+    navLinks.forEach(function(link) { link.closest('li').style.display = ''; });
     navSections.forEach(function(ns) { ns.classList.remove('hidden'); });
     navUls.forEach(function(ul) { ul.classList.remove('hidden'); });
-    // Restore active section from storage or default
-    var saved = 'auth';
-    try { saved = localStorage.getItem(STORAGE_KEY) || 'auth'; } catch(e) {}
-    showSection(saved);
+}
+
+function clearSearch() {
+    resetSearch();
+    route();
 }
 
 function runSearch() {
@@ -8522,100 +8913,61 @@ function runSearch() {
         clearSearch();
         return;
     }
-
+    searching = true;
+    document.body.classList.add('searching');
     searchClear.classList.add('visible');
 
-    // Count matches across all sections
-    var totalMatches = 0;
-    var sectionsWithMatches = {};
-
+    var total = 0;
+    var matched = {};
+    var matchedPages = {};
     docSections.forEach(function(section) {
-        var sectionId = section.getAttribute('data-section');
-        var endpoints = section.querySelectorAll('.endpoint');
-        var sectionMatches = 0;
-
-        endpoints.forEach(function(ep) {
+        var count = 0;
+        section.querySelectorAll(':scope > .endpoint').forEach(function(ep) {
             var pathEl = ep.querySelector('.endpoint-path');
             var descEl = ep.querySelector('.endpoint-desc');
-            var bodyText = ep.querySelector('.endpoint-body') ? stripHtml(ep.querySelector('.endpoint-body').innerHTML).toLowerCase() : '';
-
-            var path = pathEl ? pathEl.textContent.toLowerCase() : '';
-            var desc = descEl ? descEl.textContent.toLowerCase() : '';
-
-            if (path.indexOf(query) !== -1 || desc.indexOf(query) !== -1 || bodyText.indexOf(query) !== -1) {
-                ep.classList.remove('search-hidden');
-                sectionMatches++;
-                totalMatches++;
-
-                // Highlight path and description
-                if (pathEl) pathEl.innerHTML = highlightText(pathEl.getAttribute('data-original') || pathEl.textContent, query);
-                if (descEl) descEl.innerHTML = highlightText(descEl.getAttribute('data-original') || descEl.textContent, query);
-            } else {
-                ep.classList.add('search-hidden');
-            }
+            var path = pathEl.getAttribute('data-original').toLowerCase();
+            var desc = descEl ? descEl.getAttribute('data-original').toLowerCase() : '';
+            var body = ep.querySelector('.endpoint-body').textContent.toLowerCase();
+            var hit = path.indexOf(query) !== -1 || desc.indexOf(query) !== -1 || body.indexOf(query) !== -1;
+            ep.classList.toggle('search-hidden', !hit);
+            pathEl.innerHTML = hit ? highlightText(pathEl.getAttribute('data-original'), query) : pathEl.getAttribute('data-original');
+            if (descEl) descEl.innerHTML = hit ? highlightText(descEl.getAttribute('data-original'), query) : descEl.getAttribute('data-original');
+            if (hit) count++;
         });
-
-        if (sectionMatches > 0) {
-            sectionsWithMatches[sectionId] = sectionMatches;
+        var id = section.getAttribute('data-section');
+        section.classList.toggle('active', count > 0);
+        if (count > 0) {
+            matched[id] = count;
+            total += count;
+            var label = section.querySelector('.search-section-label a');
+            label.textContent = (sectionTitles[id] || { title: id }).title + ' · ' + count;
         }
     });
 
-    // Store original text for re-highlighting
-    docSections.querySelectorAll ? null : null;
-
-    // Hide nav sections with no matches
+    // A game page is not searched itself, but stays in the sidebar when its text matches
+    docSections.forEach(function(section) {
+        if (section.querySelector('.game-steps') && section.textContent.toLowerCase().indexOf(query) !== -1) {
+            matchedPages[section.getAttribute('data-section')] = true;
+        }
+    });
     navLinks.forEach(function(link) {
-        var sectionId = link.getAttribute('data-section');
-        var li = link.closest('li');
-        var ul = li ? li.parentElement : null;
-        var navSection = ul ? ul.previousElementSibling : null;
-
-        if (sectionsWithMatches[sectionId]) {
-            if (li) li.style.display = '';
-        } else {
-            if (li) li.style.display = 'none';
-        }
+        var id = link.getAttribute('data-section');
+        link.classList.remove('active');
+        link.closest('li').style.display = matched[id] || matchedPages[id] ? '' : 'none';
     });
-
-    // Hide empty nav groups
     navUls.forEach(function(ul) {
-        var visibleItems = ul.querySelectorAll('li:not([style*="display: none"])');
-        var navSection = ul.previousElementSibling;
-        if (visibleItems.length === 0) {
-            ul.classList.add('hidden');
-            if (navSection && navSection.classList.contains('nav-section')) navSection.classList.add('hidden');
-        } else {
-            ul.classList.remove('hidden');
-            if (navSection && navSection.classList.contains('nav-section')) navSection.classList.remove('hidden');
-        }
+        var visible = Array.from(ul.querySelectorAll('li')).some(function(li) { return li.style.display !== 'none'; });
+        ul.classList.toggle('hidden', !visible);
+        var heading = ul.previousElementSibling;
+        if (heading && heading.classList.contains('nav-section')) heading.classList.toggle('hidden', !visible);
     });
 
-    // Show first section with matches
-    var firstSection = Object.keys(sectionsWithMatches)[0];
-    if (firstSection) {
-        docSections.forEach(function(s) { s.classList.remove('active'); });
-        var target = document.querySelector('.doc-section[data-section="' + firstSection + '"]');
-        if (target) target.classList.add('active');
-
-        navLinks.forEach(function(a) { a.classList.remove('active'); });
-        var link = document.querySelector('.sidebar-nav a[data-section="' + firstSection + '"]');
-        if (link) link.classList.add('active');
-
-        var info = sectionTitles[firstSection];
-        if (info) {
-            document.getElementById('section-title').textContent = info.title;
-            document.getElementById('section-desc').textContent = info.desc;
-        }
-    }
-
-    searchInfo.textContent = totalMatches + ' endpoint' + (totalMatches !== 1 ? 's' : '') + ' found';
+    var pages = Object.keys(matched).length;
+    setHeader('Search', total + ' endpoint' + (total !== 1 ? 's' : '') + ' matching "' + searchInput.value.trim() + '" on ' + pages + ' page' + (pages !== 1 ? 's' : ''));
+    searchInfo.textContent = total + ' endpoint' + (total !== 1 ? 's' : '') + ' found';
     searchInfo.classList.add('visible');
+    window.scrollTo(0, 0);
 }
-
-// Save original text on load
-document.querySelectorAll('.endpoint-path, .endpoint-desc').forEach(function(el) {
-    el.setAttribute('data-original', el.textContent);
-});
 
 searchInput.addEventListener('input', function() {
     clearTimeout(searchTimer);
@@ -8631,6 +8983,7 @@ searchClear.addEventListener('click', function() {
 document.addEventListener('keydown', function(e) {
     if (e.key === '/' && document.activeElement !== searchInput) {
         e.preventDefault();
+        document.body.classList.add('nav-open');
         searchInput.focus();
     }
     if (e.key === 'Escape' && document.activeElement === searchInput) {
@@ -8639,14 +8992,7 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// --- INIT: restore saved section or default to auth ---
-var initialSection = 'auth';
-try { initialSection = localStorage.getItem(STORAGE_KEY) || 'auth'; } catch(e) {}
-// Validate the saved section exists
-if (!document.querySelector('.doc-section[data-section="' + initialSection + '"]')) {
-    initialSection = 'auth';
-}
-showSection(initialSection);
+route();
 </script>
 </body>
 </html>
