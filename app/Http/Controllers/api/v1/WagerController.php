@@ -4,6 +4,7 @@ namespace App\Http\Controllers\api\v1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AdminVoidWagerRequest;
+use App\Http\Requests\InstantWagerRequest;
 use App\Http\Requests\LookupWagerRequest;
 use App\Http\Requests\PlaceWagerRequest;
 use App\Http\Requests\ReverseWagerRequest;
@@ -36,6 +37,14 @@ class WagerController extends Controller
         $data = $request->validated();
 
         return $this->respond($this->wagers->settle($request->attributes->get('api_key'), $data['product'], $reference, $data));
+    }
+
+    /**
+     * A bet and its result in one call (a slot spin, a scratch card): game key and player token.
+     */
+    public function instant(InstantWagerRequest $request): JsonResponse
+    {
+        return $this->respond($this->wagers->placeAndSettle($request->attributes->get('api_key'), $request->attributes->get('player'), $request->validated()));
     }
 
     public function reverse(ReverseWagerRequest $request, string $reference): JsonResponse
@@ -105,6 +114,15 @@ class WagerController extends Controller
                 'code' => $refusal['code'],
                 'retryable' => $refusal['status'] >= 500 || $refusal['status'] === 429,
             ] + $refusal['extra'], $refusal['status']);
+        }
+
+        if ($result->settlement && $result->balance !== null) {
+            return response()->json(['success' => true, 'data' => [
+                'wager' => WagerResource::make($result->wager),
+                'settlement' => WagerSettlementResource::make($result->settlement),
+                'balance' => $result->balance,
+                'replayed' => $result->replayed,
+            ]], $result->replayed ? 200 : 201);
         }
 
         if ($result->settlement) {

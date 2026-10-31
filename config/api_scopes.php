@@ -77,6 +77,7 @@ return [
         'GET api/v1/me',
         'GET api/v1/me/balance',
         'POST api/v1/wagers',
+        'POST api/v1/wagers/instant',
         'POST api/v1/wagers/{reference}/settle',
         'POST api/v1/wagers/{reference}/reverse',
         'POST api/v1/rounds/{reference}/settle',

@@ -28,6 +28,7 @@ it('lists active games in sort order with their products', function () {
             'name' => 'Crash',
             'revenue_model' => 'house_banked',
             'status' => 'active',
+            'min_stake' => null,
             'max_stake' => null,
             'max_payout' => null,
             'winnings_tax_rate' => 0,

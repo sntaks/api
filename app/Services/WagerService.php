@@ -98,6 +98,25 @@ class WagerService
      */
     private function placeLocked(ApiKey $key, Customer $player, Product $product, array $data): WagerResult
     {
+        $placed = $this->insertWager($key, $player, $product, $data);
+
+        if ($placed instanceof WagerResult) {
+            return $placed;
+        }
+
+        return WagerResult::placed($placed['wager']->load(['product', 'round']), $this->balanceOf($placed['wallet']->id));
+    }
+
+    /**
+     * The place itself, inside the caller's transaction: the round (shared lock), the stake limits, the player's
+     * wallet (locked) and its balance, then the wager row and its stake leg. Returns the new wager and the locked
+     * wallet, or the refusal.
+     *
+     * @param  array<string, mixed>  $data
+     * @return WagerResult|array{wager: Wager, wallet: Wallet}
+     */
+    private function insertWager(ApiKey $key, Customer $player, Product $product, array $data): WagerResult|array
+    {
         $round = null;
 
         if (! empty($data['round_reference'])) {
@@ -115,6 +134,13 @@ class WagerService
 
         $isFreeBet = $data['funding'] === Wager::FUNDING_FREE_BET;
         $stakeCents = $isFreeBet ? 0 : $this->cents($data['stake']);
+
+        // A free bet is the game's voucher, not a cash stake: the cash limits do not apply to it
+        if (! $isFreeBet && $product->min_stake !== null && $stakeCents < $this->cents($product->min_stake)) {
+            return WagerResult::refused('stake_below_limit', 'The stake is below the minimum for this product', 422, [
+                'min_stake' => (float) $product->min_stake,
+            ]);
+        }
 
         if ($product->max_stake !== null && $stakeCents > $this->cents($product->max_stake)) {
             return WagerResult::refused('stake_above_limit', 'The stake is above the limit for this product', 422, [
@@ -150,7 +176,120 @@ class WagerService
             $this->ledger->recordWagerStake($wager, $wallet, $stakeCents / 100);
         }
 
-        return WagerResult::placed($wager->load(['product', 'round']), $this->balanceOf($wallet->id));
+        return ['wager' => $wager, 'wallet' => $wallet];
+    }
+
+    /**
+     * Bet and result in one transaction, for games that resolve at once (a slot spin, a scratch card): the place,
+     * then settlement version 1 as won or lost, on the same locked rows. The rows and ledger legs are exactly those
+     * of place then settle, so reversal, admin void, history and reports treat it like any other wager.
+     *
+     * A retry with the same reference and payload replays; anything else under that reference (another stake or
+     * result, a wager placed through the two-step flow, or a result since reversed) is a reference conflict.
+     *
+     * @param  array<string, mixed>  $data  product, reference, funding, stake|free_bet_amount, outcome, payout, bonus?, round_reference?, channel?, metadata?
+     */
+    public function placeAndSettle(ApiKey $key, Customer $player, array $data): WagerResult
+    {
+        $product = $this->allowedProduct($key, $data['product']);
+
+        if (! $product) {
+            return $this->productNotAllowed();
+        }
+
+        $existing = $this->findByReference($product, $data['reference']);
+
+        if ($existing) {
+            return $this->instantReplayOrConflict($existing, $player, $data);
+        }
+
+        if ($product->status !== Product::STATUS_ACTIVE) {
+            return WagerResult::refused('product_not_active', 'This product is not taking bets', 403);
+        }
+
+        if ($product->max_payout !== null
+            && $this->cents($data['payout']) + $this->cents($data['bonus'] ?? 0) > $this->cents($product->max_payout)) {
+            return WagerResult::refused('payout_above_limit', 'The payout and bonus are above the limit for this product', 422, [
+                'max_payout' => (float) $product->max_payout,
+            ]);
+        }
+
+        $allowed = $this->gate->canPlay($player);
+
+        if (! $allowed->allowed) {
+            return WagerResult::refused($allowed->code, $allowed->message, $allowed->statusCode, $allowed->extra);
+        }
+
+        try {
+            return DB::transaction(fn () => $this->placeAndSettleLocked($key, $player, $product, $data), 3);
+        } catch (UniqueConstraintViolationException) {
+            $existing = $this->findByReference($product, $data['reference']);
+
+            if ($existing) {
+                return $this->instantReplayOrConflict($existing, $player, $data);
+            }
+
+            return DB::transaction(fn () => $this->placeAndSettleLocked($key, $player, $product, $data), 3);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function placeAndSettleLocked(ApiKey $key, Customer $player, Product $product, array $data): WagerResult
+    {
+        $placed = $this->insertWager($key, $player, $product, $data);
+
+        if ($placed instanceof WagerResult) {
+            return $placed;
+        }
+
+        ['wager' => $wager, 'wallet' => $wallet] = $placed;
+        ['player' => $needsPlayer, 'house' => $needsHouse] = $this->walletsMoved($wager, $data['outcome']);
+
+        // Lock order: the new wager row is this transaction's own, the player's wallet is already locked, then the house
+        $house = $needsHouse ? Wallet::whereKey(config('wallets.house_wallet_id', 1))->lockForUpdate()->firstOrFail() : null;
+
+        $settlement = $this->applySettlement($product, $wager, $needsPlayer ? $wallet : null, $house, [
+            'version' => 1,
+            'outcome' => $data['outcome'],
+            'payout' => $data['payout'],
+            'bonus' => $data['bonus'] ?? 0,
+            'reason' => null,
+        ]);
+
+        return WagerResult::instant($wager->load(['product', 'round']), $settlement, $this->balanceOf($wallet->id));
+    }
+
+    /**
+     * A retry of an instant wager replays only when the bet and its version-1 result are what was sent and still
+     * stand; anything else under the reference is a conflict.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function instantReplayOrConflict(Wager $existing, Customer $player, array $data): WagerResult
+    {
+        $placed = $this->replayOrConflict($existing, $player, $data);
+
+        if ($placed->isRefused()) {
+            return $placed;
+        }
+
+        $settlement = WagerSettlement::where('wager_id', $existing->id)->where('version', 1)->first();
+
+        $same = $settlement !== null
+            && $existing->settlement_version === 1
+            && $settlement->status === WagerSettlement::STATUS_APPLIED
+            && $settlement->settled_by === WagerSettlement::SETTLED_BY_GAME
+            && $settlement->outcome === $data['outcome']
+            && $this->cents($settlement->payout) === $this->cents($data['payout'])
+            && $this->cents($settlement->bonus) === $this->cents($data['bonus'] ?? 0);
+
+        if (! $same) {
+            return WagerResult::refused('reference_conflict', 'This reference was used for a different bet or result', 409);
+        }
+
+        return WagerResult::instant($existing->load(['product', 'round']), $settlement, $this->balanceOf($existing->wallet_id), true);
     }
 
     /**

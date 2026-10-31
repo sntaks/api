@@ -49,6 +49,7 @@ class Product extends Model
         'name',
         'revenue_model',
         'status',
+        'min_stake',
         'max_stake',
         'max_payout',
         'winnings_tax_rate',
@@ -60,6 +61,7 @@ class Product extends Model
     protected function casts(): array
     {
         return [
+            'min_stake' => 'decimal:2',
             'max_stake' => 'decimal:2',
             'max_payout' => 'decimal:2',
             'winnings_tax_rate' => 'decimal:4',
