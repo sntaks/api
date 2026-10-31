@@ -95,7 +95,7 @@ class CompetitionWalletController extends Controller
      */
     public function update(UpdateCompetitionWalletRequest $request, $encryptedIdentifier)
     {
-        $competitionWallet = $this->walletService->updateCompetitionWallet($encryptedIdentifier, $request->validated());
+        $competitionWallet = $this->walletService->updateCompetitionWallet($encryptedIdentifier, $request->validated(), $this->actorFor($request));
         if (! $competitionWallet) {
             return response()->json(['status' => 'Competition Wallet not found'], 404);
         }

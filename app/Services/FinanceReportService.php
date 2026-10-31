@@ -25,6 +25,7 @@ class FinanceReportService
         private FinanceSnapshotService $snapshots,
         private FinanceExpenseService $expenses,
         private ExciseDutyReportService $exciseDuty,
+        private WinningsTaxReportService $winningsTax,
         private FinanceReferralReportService $referrals,
         private FinancePromotionReportService $promotions,
     ) {}
@@ -124,7 +125,8 @@ class FinanceReportService
     /**
      * Money in and out through M-Pesa. Cash in comes from incoming payments (what was actually paid),
      * split by what the payment bought; cash out from outgoing payments by disbursement status.
-     * Excise duty withheld from deposits is shown apart; only what was paid to KRA leaves net cash.
+     * Excise duty withheld from deposits is shown apart; only what was paid to KRA leaves net cash. Winnings tax
+     * withheld from house-banked wins (net of reversal credits) is shown the same way.
      * Referral payouts leave from the referral shortcode and are shown apart from main withdrawals.
      * deposit_refunds are unmatched deposits sent back to the payer, by the day the refund was recorded.
      * house_funding is owner money paid into the paybill and credited to the house wallet (capital).
@@ -140,6 +142,7 @@ class FinanceReportService
             'cash_in' => array_fill_keys(self::CASH_IN_KINDS, 0.0) + ['total' => 0.0],
             'cash_out' => ['paid' => 0.0, 'pending' => 0.0, 'failed' => 0.0],
             'excise_duty' => ['withheld' => 0.0, 'remitted' => 0.0],
+            'winnings_tax' => ['withheld' => 0.0, 'remitted' => 0.0],
             'referral_payouts' => ['paid' => 0.0, 'pending' => 0.0, 'failed' => 0.0],
             'deposit_refunds' => ['refunded' => 0.0],
             'shop_float' => ['redeemed' => 0.0],
@@ -180,6 +183,14 @@ class FinanceReportService
             $series[$this->bucket($range, $row->day)]['excise_duty']['remitted'] += (float) $row->amount;
         }
 
+        foreach ($this->winningsTax->chargeRows($range) as $row) {
+            $series[$this->bucket($range, $row->day)]['winnings_tax']['withheld'] += (float) $row->amount;
+        }
+
+        foreach ($this->winningsTax->remittanceRows($range) as $row) {
+            $series[$this->bucket($range, $row->day)]['winnings_tax']['remitted'] += (float) $row->amount;
+        }
+
         foreach ($this->referrals->payoutRows($range) as $row) {
             $series[$this->bucket($range, $row->day)]['referral_payouts'][$row->status] += $row->amount;
         }
@@ -207,7 +218,7 @@ class FinanceReportService
             foreach ($figures['referral_payouts'] as $key => $value) {
                 $totals['referral_payouts'][$key] += $value;
             }
-            foreach (['deposit_refunds', 'shop_float', 'shop_cash'] as $block) {
+            foreach (['winnings_tax', 'deposit_refunds', 'shop_float', 'shop_cash'] as $block) {
                 foreach ($figures[$block] as $key => $value) {
                     $totals[$block][$key] += $value;
                 }
@@ -223,14 +234,14 @@ class FinanceReportService
     }
 
     /**
-     * Cash received less withdrawals paid out, excise duty paid to KRA, referral payouts and unmatched
-     * deposits refunded to the payer.
+     * Cash received less withdrawals paid out, excise duty and winnings tax paid to KRA, referral payouts and
+     * unmatched deposits refunded to the payer.
      *
-     * @param  array{cash_in: array<string, float>, cash_out: array<string, float>, excise_duty: array<string, float>, referral_payouts: array<string, float>, deposit_refunds: array<string, float>}  $figures
+     * @param  array{cash_in: array<string, float>, cash_out: array<string, float>, excise_duty: array<string, float>, winnings_tax: array<string, float>, referral_payouts: array<string, float>, deposit_refunds: array<string, float>}  $figures
      */
     private function netCash(array $figures): float
     {
-        return $figures['cash_in']['total'] - $figures['cash_out']['paid'] - $figures['excise_duty']['remitted']
+        return $figures['cash_in']['total'] - $figures['cash_out']['paid'] - $figures['excise_duty']['remitted'] - $figures['winnings_tax']['remitted']
             - $figures['referral_payouts']['paid'] - $figures['deposit_refunds']['refunded'] - $figures['shop_float']['redeemed'];
     }
 
@@ -416,7 +427,7 @@ class FinanceReportService
 
             $position = $snapshot->only([
                 'customer_wallets_total', 'house_wallet_balance', 'game_escrow_total', 'competition_escrow_total',
-                'stuck_escrow_total', 'coin_liability', 'pending_holds_total', 'unmatched_deposits_total', 'excise_duty_payable', 'disputed_funds_total', 'referral_wallets_total', 'bet_shop_floats_total', 'shop_withdrawals_held_total', 'mpesa_balances',
+                'stuck_escrow_total', 'coin_liability', 'pending_holds_total', 'unmatched_deposits_total', 'excise_duty_payable', 'winnings_tax_payable', 'disputed_funds_total', 'referral_wallets_total', 'bet_shop_floats_total', 'shop_withdrawals_held_total', 'mpesa_balances',
             ]);
             $source = 'snapshot';
             $date = $asOf;
@@ -439,6 +450,7 @@ class FinanceReportService
             'pending_holds' => (float) $position['pending_holds_total'],
             'unmatched_deposits' => (float) $position['unmatched_deposits_total'],
             'excise_duty_payable' => (float) $position['excise_duty_payable'],
+            'winnings_tax_payable' => (float) $position['winnings_tax_payable'],
             'disputed_funds' => (float) $position['disputed_funds_total'],
             'referral_wallets' => (float) $position['referral_wallets_total'],
             'bet_shop_floats' => (float) $position['bet_shop_floats_total'],
@@ -458,6 +470,7 @@ class FinanceReportService
                 'difference is cash minus everything owed to customers minus the house wallet. It is not zero by design: it also holds gift and emoji sales not yet moved to the house wallet, M-Pesa charges, and timing between the hourly balance fetch and wallet movements.',
                 'Test customers are excluded from customer wallets and coin liability.',
                 'excise_duty_payable is duty taken from deposits and owed to KRA until a remittance is recorded. Snapshots taken before it was tracked show 0.',
+                'winnings_tax_payable is tax withheld from house-banked wins, less credits for reversed wins, and owed to KRA until a remittance is recorded. It is negative when credits exceed charges. Snapshots taken before it was tracked show 0.',
                 'disputed_funds is winnings held in dispute escrow while a complaint is pending. It is still owed to a customer, so it is a liability. Snapshots taken before complaints existed show 0.',
                 'referral_wallets is referral bonuses not yet withdrawn. Customers can withdraw them at any time, so they are a liability. Snapshots taken before referrals existed show 0.',
                 'bet_shop_floats is prepaid float bet shop owners paid in and have not yet loaded to players. It is owed to the shops, so it is a liability. Snapshots taken before bet shops existed show 0.',

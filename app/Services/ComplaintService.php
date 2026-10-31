@@ -103,7 +103,7 @@ class ComplaintService
     {
         return DB::transaction(function () use ($complaintId, $note, $actor) {
             $complaint = $this->lockedPendingComplaint($complaintId);
-            $disputes = $complaint->disputedTransactions()->held()->orderBy('id')->lockForUpdate()->get();
+            $disputes = $this->lockedHeldDisputes($complaint);
             $houseCuts = new Collection;
             $houseWallet = null;
 
@@ -190,7 +190,7 @@ class ComplaintService
             $complaint = $this->lockedPendingComplaint($complaintId);
             $released = 0.0;
 
-            foreach ($complaint->disputedTransactions()->held()->orderBy('id')->lockForUpdate()->get() as $dispute) {
+            foreach ($this->lockedHeldDisputes($complaint) as $dispute) {
                 $released += (float) $dispute->balance;
                 $this->ledgerService->recordDisputeRelease($dispute, $this->sourceWallet($dispute));
 
@@ -208,6 +208,20 @@ class ComplaintService
 
             return $complaint->load(['disputedTransactions', 'refunds']);
         });
+    }
+
+    /**
+     * The complaint's held disputes, locked by primary key. Locking them through a complaint_id range would also
+     * take gap locks, which block a complaint being filed at the same time from inserting its own disputes while
+     * it holds the wallet this call needs next: a deadlock. The complaint row lock already serialises every close.
+     *
+     * @return Collection<int, DisputedTransaction>
+     */
+    private function lockedHeldDisputes(Complaint $complaint): Collection
+    {
+        $ids = $complaint->disputedTransactions()->held()->orderBy('id')->pluck('id');
+
+        return DisputedTransaction::whereKey($ids)->orderBy('id')->lockForUpdate()->get();
     }
 
     /**

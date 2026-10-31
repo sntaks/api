@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
  */
 class WagerService
 {
-    public function __construct(private LedgerService $ledger, private PlayerGate $gate) {}
+    public function __construct(private LedgerService $ledger, private PlayerGate $gate, private WinningsTaxService $winningsTax) {}
 
     /**
      * Place a bet for a player.
@@ -292,7 +292,13 @@ class WagerService
         $player = $needsPlayer ? Wallet::whereKey($wager->wallet_id)->lockForUpdate()->firstOrFail() : null;
         $house = $needsHouse ? Wallet::whereKey(config('wallets.house_wallet_id', 1))->lockForUpdate()->firstOrFail() : null;
 
-        $this->ledger->reverseWagerEntries($settlement, $wager, $player, $house);
+        $reversals = $this->ledger->reverseWagerEntries($settlement, $wager, $player, $house);
+
+        foreach ($reversals as $reversal) {
+            if ($reversal->entry_type === 'winnings_tax_reversal') {
+                $this->winningsTax->recordReversal($settlement, $wager, $reversal);
+            }
+        }
 
         $settlement->update([
             'status' => WagerSettlement::STATUS_REVERSED,
@@ -578,7 +584,7 @@ class WagerService
         }
 
         if ($tax > 0) {
-            $this->ledger->recordWinningsTax($settlement, $player, $tax);
+            $this->winningsTax->recordCharge($settlement, $wager, $this->ledger->recordWinningsTax($settlement, $player, $tax));
         }
     }
 

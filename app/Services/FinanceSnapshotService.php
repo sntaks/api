@@ -15,6 +15,7 @@ use App\Models\PendingBalance;
 use App\Models\ReferralWallet;
 use App\Models\ShopWithdrawal;
 use App\Models\Wallet;
+use App\Models\WinningsTaxCharge;
 
 class FinanceSnapshotService
 {
@@ -35,12 +36,13 @@ class FinanceSnapshotService
      * Customer wallets and coins exclude the house wallet and the configured test customers.
      * Stuck escrow is money still sitting in a game or competition wallet that is no longer open.
      * Excise duty payable is duty taken from deposits and not yet in a KRA remittance.
+     * Winnings tax payable is tax withheld from house-banked wins, less reversal credits, not yet in a KRA remittance.
      * Disputed funds are winnings held in dispute escrow while a complaint is pending.
      * Referral wallets are referral bonuses not yet withdrawn (test customers excluded).
      * Bet shop floats are prepaid float shop owners bought and have not yet loaded to players.
      * Shop withdrawals held are cash withdrawals players asked for at a shop and have not collected yet.
      *
-     * @return array{customer_wallets_total: float, house_wallet_balance: float, game_escrow_total: float, competition_escrow_total: float, stuck_escrow_total: float, coin_liability: float, pending_holds_total: float, unmatched_deposits_total: float, excise_duty_payable: float, disputed_funds_total: float, referral_wallets_total: float, bet_shop_floats_total: float, shop_withdrawals_held_total: float, mpesa_balances: array<string, array<string, array{amount: float, as_of: string}>>|null}
+     * @return array{customer_wallets_total: float, house_wallet_balance: float, game_escrow_total: float, competition_escrow_total: float, stuck_escrow_total: float, coin_liability: float, pending_holds_total: float, unmatched_deposits_total: float, excise_duty_payable: float, winnings_tax_payable: float, disputed_funds_total: float, referral_wallets_total: float, bet_shop_floats_total: float, shop_withdrawals_held_total: float, mpesa_balances: array<string, array<string, array{amount: float, as_of: string}>>|null}
      */
     public function currentPosition(): array
     {
@@ -64,6 +66,7 @@ class FinanceSnapshotService
             'pending_holds_total' => $this->money(PendingBalance::where('status', 'holding')->sum('amount')),
             'unmatched_deposits_total' => $this->money(Deposit::where('status', 0)->sum('trans_amount')),
             'excise_duty_payable' => $this->money(ExciseDutyCharge::charged()->whereNull('remittance_id')->sum('excise_amount')),
+            'winnings_tax_payable' => $this->money(WinningsTaxCharge::whereNull('remittance_id')->sum('amount')),
             'disputed_funds_total' => $this->money(DisputedTransaction::held()->sum('balance')),
             'referral_wallets_total' => $this->money(ReferralWallet::whereNotIn('customer_id', $testCustomerIds)->sum('balance')),
             'bet_shop_floats_total' => $this->money(BetShopWallet::sum('balance')),

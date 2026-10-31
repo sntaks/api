@@ -247,6 +247,24 @@ it('returns the money to an open competition wallet and unfreezes it when cancel
         ->assertOk();
 });
 
+it('locks the held disputes by primary key when closing a complaint', function (string $action) {
+    ['game' => $game, 'complainant' => $complainant] = settledGame($this);
+    $complaint = openComplaint($this, ['customer_id' => $complainant->id, 'game_wallet_id' => $game->id]);
+    // A range lock on complaint_id also takes gap locks, which block a complaint being filed at the same time
+    $disputeLocks = [];
+    DB::listen(function (QueryExecuted $query) use (&$disputeLocks) {
+        if (preg_match('/^select .* from [`"]?disputed_transactions[`"]?.* for update$/i', $query->sql)) {
+            $disputeLocks[] = $query->sql;
+        }
+    });
+
+    closeComplaint($this, $complaint, $action)->assertOk();
+
+    expect($disputeLocks)->not->toBeEmpty()
+        ->and($disputeLocks)->each->toContain('`disputed_transactions`.`id` in')
+        ->and($disputeLocks)->each->not->toContain('complaint_id');
+})->with(['resolve', 'reject']);
+
 it('refuses to close a complaint twice', function () {
     ['game' => $game, 'complainant' => $complainant, 'winnerWallet' => $winnerWallet] = settledGame($this);
     $complaint = openComplaint($this, ['customer_id' => $complainant->id, 'game_wallet_id' => $game->id]);
