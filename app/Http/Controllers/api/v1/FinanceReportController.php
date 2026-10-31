@@ -42,6 +42,15 @@ class FinanceReportController extends Controller
         return $this->respond('income-statement', $range, fn () => $this->withMeta($range, $this->reports->incomeStatement($range, $filters)), $filters);
     }
 
+    public function houseBanked(FinanceReportRequest $request): JsonResponse
+    {
+        $range = $request->dateRange();
+
+        $filters = $request->productFilters();
+
+        return $this->respond('house-banked', $range, fn () => $this->withMeta($range, $this->reports->houseBanked($range, $filters)), $filters);
+    }
+
     public function cashFlow(FinanceReportRequest $request): JsonResponse
     {
         $range = $request->dateRange();

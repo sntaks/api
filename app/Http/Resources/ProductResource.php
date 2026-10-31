@@ -20,6 +20,7 @@ class ProductResource extends JsonResource
             'name' => $this->name,
             'revenue_model' => $this->revenue_model,
             'status' => $this->status,
+            'min_stake' => $this->min_stake === null ? null : (float) $this->min_stake,
             'max_stake' => $this->max_stake === null ? null : (float) $this->max_stake,
             'max_payout' => $this->max_payout === null ? null : (float) $this->max_payout,
             'winnings_tax_rate' => (float) $this->winnings_tax_rate,

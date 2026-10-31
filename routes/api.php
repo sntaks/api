@@ -181,6 +181,8 @@ Route::prefix('/v1')->group(function () {
 
             // Place a bet on a house-banked product: idempotent by (product, reference), not by the idempotency middleware
             Route::post('/wagers', [WagerController::class, 'store'])->middleware('throttle:wagers');
+            // Bet and result in one call for games that resolve at once (slots, scratch cards); same natural-key idempotency
+            Route::post('/wagers/instant', [WagerController::class, 'instant'])->middleware('throttle:wagers');
         });
 
         // Settle a bet (game key only: settlements happen after the player left). Idempotent by (product, reference, version), not by the idempotency middleware
@@ -229,6 +231,7 @@ Route::prefix('/v1')->group(function () {
             Route::prefix('/finance')->group(function () {
                 Route::get('/summary', [FinanceReportController::class, 'summary']);
                 Route::get('/income-statement', [FinanceReportController::class, 'incomeStatement']);
+                Route::get('/house-banked', [FinanceReportController::class, 'houseBanked']);
                 Route::get('/cash-flow', [FinanceReportController::class, 'cashFlow']);
                 Route::get('/balance-sheet', [FinanceReportController::class, 'balanceSheet']);
                 Route::get('/trial-balance', [FinanceReportController::class, 'trialBalance']);

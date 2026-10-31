@@ -26,7 +26,7 @@ class FinanceExportController extends Controller
 {
     private const REPORTS = [
         'ledger', 'deposits', 'withdrawals', 'purchases', 'adjustments', 'games', 'competitions',
-        'customers-top', 'cash-flow', 'income-statement', 'income-by-product', 'trial-balance', 'expenses', 'taxes',
+        'customers-top', 'cash-flow', 'income-statement', 'income-by-product', 'house-banked', 'trial-balance', 'expenses', 'taxes',
         'excise-duty', 'excise-duty-charges', 'excise-duty-returns', 'excise-duty-remittances', 'disputes',
         'referral-bonuses', 'referral-withdrawals', 'promotions', 'house-funding', 'open-wallets', 'bet-shops', 'bet-shop-loads', 'bet-shop-withdrawals',
     ];
@@ -74,6 +74,7 @@ class FinanceExportController extends Controller
             'cash-flow' => $this->cashFlowRows($range),
             'income-statement' => $this->incomeStatementRows($range, $filters),
             'income-by-product' => $this->incomeByProductRows($range, $filters),
+            'house-banked' => $this->houseBankedRows($range, $filters),
             'trial-balance' => $this->trialBalanceRows($range, $filters),
             'expenses' => $this->fromListing($this->expenses->listing($range, $filters)),
             'taxes' => $this->taxRows($range),
@@ -163,7 +164,7 @@ class FinanceExportController extends Controller
      */
     private function incomeByProductRows(FinanceDateRange $range, array $filters): array
     {
-        $columns = ['product', 'game', 'revenue_model', 'revenue', 'promotions', 'winnings_tax_withheld', 'net'];
+        $columns = ['product', 'game', 'revenue_model', 'revenue', 'promotions', 'winnings_tax_withheld', 'net', 'turnover', 'payouts', 'rtp'];
 
         $rows = (function () use ($range, $filters) {
             $byProduct = $this->reports->incomeStatement($range, $filters)['by_product'];
@@ -175,6 +176,24 @@ class FinanceExportController extends Controller
                 'promotions' => $byProduct['platform']['promotions'] + $byProduct['platform']['referral_payouts'] + $byProduct['platform']['expenses'],
                 'net' => $byProduct['platform']['net'],
             ];
+        })();
+
+        return [$columns, $rows];
+    }
+
+    /**
+     * One row per house-banked product over the whole range.
+     *
+     * @param  array<string, string>  $filters
+     * @return array{0: list<string>, 1: Generator<int, array<string, mixed>>}
+     */
+    private function houseBankedRows(FinanceDateRange $range, array $filters): array
+    {
+        $columns = ['product', 'game', 'bets', 'players', 'voids', 'turnover', 'payouts', 'ggr', 'rtp', 'hold',
+            'bonuses', 'free_bet_value', 'free_bet_winnings', 'winnings_tax_withheld', 'net'];
+
+        $rows = (function () use ($range, $filters) {
+            yield from $this->reports->houseBanked($range, $filters)['by_product'];
         })();
 
         return [$columns, $rows];

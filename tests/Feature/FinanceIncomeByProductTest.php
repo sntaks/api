@@ -161,7 +161,7 @@ it('exports income by product as CSV', function () {
     $response = $this->get('/api/v1/finance/export/income-by-product', $this->headers)->assertOk();
     $lines = array_map('str_getcsv', array_values(array_filter(explode("\n", trim(ltrim($response->streamedContent(), "\xEF\xBB\xBF"))))));
 
-    expect($lines[0])->toBe(['product', 'game', 'revenue_model', 'revenue', 'promotions', 'winnings_tax_withheld', 'net'])
+    expect($lines[0])->toBe(['product', 'game', 'revenue_model', 'revenue', 'promotions', 'winnings_tax_withheld', 'net', 'turnover', 'payouts', 'rtp'])
         ->and(collect($lines)->pluck(0)->all())->toContain('sportsbook_main', 'crash_classic', 'kadi', 'platform');
 });
 

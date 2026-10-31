@@ -11,6 +11,7 @@ use App\Models\FinancialSnapshotLine;
 use App\Models\GameTransaction;
 use App\Models\LedgerEntry;
 use App\Models\Product;
+use App\Models\Wager;
 use App\Models\WagerSettlement;
 use App\Services\Concerns\BuildsFinanceQueries;
 use Carbon\CarbonImmutable;
@@ -31,6 +32,14 @@ class FinanceReportService
 
     /** House-banked entry types that are a promotion cost: bonuses and free-bet winnings. */
     private const WAGER_PROMOTION_TYPES = ['wager_bonus', 'wager_free_bet_payout'];
+
+    /** The house-banked report figure each house-wallet entry type adds to (its reversal subtracts). */
+    private const HOUSE_BANKED_FIGURE_BY_TYPE = [
+        'wager_stake_settled' => 'turnover',
+        'wager_payout' => 'payouts',
+        'wager_bonus' => 'bonuses',
+        'wager_free_bet_payout' => 'free_bet_winnings',
+    ];
 
     public function __construct(
         private ChartOfAccounts $chart,
@@ -326,7 +335,7 @@ class FinanceReportService
         $giftEmoji = ['gift' => 0.0, 'emoji' => 0.0];
         $byProduct = [];
         $platformRow = ['revenue' => 0.0, 'promotions' => 0.0, 'referral_payouts' => 0.0, 'expenses' => 0.0];
-        $productRow = fn () => ['revenue' => 0.0, 'promotions' => 0.0, 'winnings_tax_withheld' => 0.0];
+        $productRow = fn () => ['revenue' => 0.0, 'promotions' => 0.0, 'winnings_tax_withheld' => 0.0, 'turnover' => 0.0, 'payouts' => 0.0];
 
         foreach ($this->houseCutRows($range, $productIds) as $row) {
             $bucket = $this->bucket($range, $row->day);
@@ -354,15 +363,22 @@ class FinanceReportService
         foreach ($this->houseBankedRows($range, $productIds) as $row) {
             $bucket = $this->bucket($range, $row->day);
             $amount = (float) $row->amount;
+            $type = str_replace('_reversal', '', $row->entry_type);
             $byProduct[(int) $row->product_id] ??= $productRow();
 
-            if (in_array(str_replace('_reversal', '', $row->entry_type), self::WAGER_PROMOTION_TYPES, true)) {
+            if (in_array($type, self::WAGER_PROMOTION_TYPES, true)) {
                 $series[$bucket]['wager_promotions'] -= $amount;
                 $byProduct[(int) $row->product_id]['promotions'] -= $amount;
             } else {
                 $series[$bucket]['house_banked'] += $amount;
                 $series[$bucket]['total'] += $amount;
                 $byProduct[(int) $row->product_id]['revenue'] += $amount;
+
+                if ($type === 'wager_stake_settled') {
+                    $byProduct[(int) $row->product_id]['turnover'] += $amount;
+                } else {
+                    $byProduct[(int) $row->product_id]['payouts'] -= $amount;
+                }
             }
         }
 
@@ -470,6 +486,7 @@ class FinanceReportService
                 'net_income is revenue minus expenses, referral_payouts, promotions and wager_promotions.',
                 'referral_bonuses_earned is shown for information: bonuses credited to referral wallets are only an expense once they are paid out.',
                 'winnings_tax_withheld is tax withheld from house-banked wins, net of reversals. It is owed to KRA, not revenue; see /finance/winnings-tax.',
+                'by_product rows of house-banked products also carry turnover (cash stakes settled), payouts and rtp (payouts as a percentage of turnover); they are null for rake products. See /finance/house-banked.',
                 'by_product has one row per product (net = revenue - promotions) and a platform row for everything with no product (gift and emoji sales, house cuts not tagged with a product, signup promotions, referral payouts, expenses), not allocated to products. The rows add up to net_income.',
                 'With a product or game filter only that product\'s ledger lines count; platform lines are 0 and load_margin is null.',
                 'house cuts cannot always be tied to a player, so exclude_test only removes cuts that are linked to a test customer or game.',
@@ -481,23 +498,206 @@ class FinanceReportService
     /**
      * One row per product in by_product, ordered by game and product code, with its game and revenue model.
      *
-     * @param  array<int, array{revenue: float, promotions: float, winnings_tax_withheld: float}>  $byProduct
+     * @param  array<int, array{revenue: float, promotions: float, winnings_tax_withheld: float, turnover: float, payouts: float}>  $byProduct
      * @return list<array<string, mixed>>
      */
     private function productRows(array $byProduct): array
     {
-        $products = Product::with('game')->whereKey(array_keys($byProduct))->get()
-            ->sortBy(fn (Product $product) => [$product->game?->sort_order ?? PHP_INT_MAX, $product->code]);
+        return $this->productsInOrder(array_keys($byProduct))->map(function (Product $product) use ($byProduct) {
+            $figures = $byProduct[$product->id];
+            $houseBanked = $product->revenue_model === Product::REVENUE_HOUSE_BANKED;
 
-        return $products->map(fn (Product $product) => [
+            return [
+                'product' => $product->code,
+                'game' => $product->game?->code,
+                'revenue_model' => $product->revenue_model,
+                'revenue' => $figures['revenue'],
+                'promotions' => $figures['promotions'],
+                'winnings_tax_withheld' => $figures['winnings_tax_withheld'],
+                'net' => $figures['revenue'] - $figures['promotions'],
+                'turnover' => $houseBanked ? $figures['turnover'] : null,
+                'payouts' => $houseBanked ? $figures['payouts'] : null,
+                'rtp' => $houseBanked ? $this->percentOfTurnover($figures['payouts'], $figures['turnover']) : null,
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * Products by game order, then code, with their game loaded.
+     *
+     * @param  list<int>  $productIds
+     * @return Collection<int, Product>
+     */
+    private function productsInOrder(array $productIds)
+    {
+        return Product::with('game')->whereKey($productIds)->get()
+            ->sortBy(fn (Product $product) => [$product->game?->sort_order ?? PHP_INT_MAX, $product->code]);
+    }
+
+    /**
+     * A share of turnover as a percentage, or null when nothing was staked.
+     */
+    private function percentOfTurnover(float $amount, float $turnover): ?float
+    {
+        return round($turnover, 2) > 0 ? $amount / $turnover * 100 : null;
+    }
+
+    /**
+     * House-banked play (slots, scratch cards, sportsbook, crash) per product and per period: bets settled,
+     * cash turnover, payouts, GGR, RTP and hold, promotions and winnings tax. Money comes from the house
+     * wallet's side of the ledger, as in the income statement, so ggr equals its house_banked line and
+     * net equals a product's by_product net. Counts come from wager settlements. Both are net of reversals:
+     * a reversal is counted, with the opposite sign, in the period it was made.
+     *
+     * Filters: product, game.
+     *
+     * @param  array<string, string>  $filters
+     * @return array<string, mixed>
+     */
+    public function houseBanked(FinanceDateRange $range, array $filters = []): array
+    {
+        $productIds = $this->productIdsFor($filters);
+        $blank = fn () => ['bets' => 0, 'voids' => 0, 'turnover' => 0.0, 'payouts' => 0.0, 'bonuses' => 0.0,
+            'free_bet_value' => 0.0, 'free_bet_winnings' => 0.0, 'winnings_tax_withheld' => 0.0];
+
+        $series = [];
+        foreach ($range->buckets() as $bucket) {
+            $series[$bucket] = $blank();
+        }
+        $totals = $blank();
+        $byProduct = [];
+
+        $add = function (string $day, int $productId, string $figure, int|float $amount) use ($range, $blank, &$series, &$totals, &$byProduct) {
+            $series[$this->bucket($range, $day)][$figure] += $amount;
+            $byProduct[$productId] ??= $blank();
+            $byProduct[$productId][$figure] += $amount;
+            $totals[$figure] += $amount;
+        };
+
+        foreach ($this->houseBankedRows($range, $productIds) as $row) {
+            $figure = self::HOUSE_BANKED_FIGURE_BY_TYPE[str_replace('_reversal', '', $row->entry_type)];
+
+            // amount is credit minus debit on the house wallet: stakes come in, everything else goes out
+            $add($row->day, (int) $row->product_id, $figure, $figure === 'turnover' ? (float) $row->amount : -(float) $row->amount);
+        }
+
+        foreach ($this->winningsTaxRows($range, $productIds) as $row) {
+            $add($row->day, (int) $row->product_id, 'winnings_tax_withheld', (float) $row->amount);
+        }
+
+        foreach ($this->wagerSettlementCountRows($range, $productIds) as $row) {
+            $add($row->day, (int) $row->product_id, $row->outcome === WagerSettlement::OUTCOME_VOID ? 'voids' : 'bets', (int) $row->settled);
+            $add($row->day, (int) $row->product_id, 'free_bet_value', (float) $row->free_bet_value);
+        }
+
+        $players = $this->wagerPlayerCounts($range, $productIds);
+
+        $rows = $this->productsInOrder(array_keys($byProduct))->map(fn (Product $product) => [
             'product' => $product->code,
             'game' => $product->game?->code,
-            'revenue_model' => $product->revenue_model,
-            'revenue' => $byProduct[$product->id]['revenue'],
-            'promotions' => $byProduct[$product->id]['promotions'],
-            'winnings_tax_withheld' => $byProduct[$product->id]['winnings_tax_withheld'],
-            'net' => $byProduct[$product->id]['revenue'] - $byProduct[$product->id]['promotions'],
-        ])->values()->all();
+        ] + $this->houseBankedFigures($byProduct[$product->id], $players['by_product'][$product->id] ?? 0))->values()->all();
+
+        $list = [];
+        foreach ($series as $bucket => $figures) {
+            $list[] = ['period' => $bucket] + $this->houseBankedFigures($figures);
+        }
+
+        return $this->rounded([
+            'totals' => $this->houseBankedFigures($totals, $players['total']),
+            'by_product' => $rows,
+            'notes' => [
+                'bets are wagers settled won or lost; voids are wagers settled void (the stake went back to the player). A free bet is a bet.',
+                'turnover is cash stakes settled to the house; free bets are not turnover. free_bet_value is the face value of the free bets settled.',
+                'payouts are cash winnings paid by the house, before winnings tax. Bonuses and free_bet_winnings are promotion costs, not payouts.',
+                'ggr is turnover - payouts and equals the income statement house_banked line; net is ggr - bonuses - free_bet_winnings and equals the product\'s by_product net.',
+                'rtp is payouts as a percentage of turnover and hold is ggr as a percentage of turnover; both are null when nothing was staked.',
+                'Everything is net of reversals: a reversed settlement is taken off in the period it was reversed, so a period can show a negative figure.',
+                'players is the number of distinct players with a won or lost bet in the range whose settlement still stands today, so unlike the other figures it changes when an old settlement is reversed. It is not in the series.',
+                'winnings_tax_withheld is owed to KRA and is not revenue; see /finance/winnings-tax.',
+            ],
+            'series' => $list,
+        ]);
+    }
+
+    /**
+     * Derived house-banked figures in report order. players is left out when not given (series rows).
+     *
+     * @param  array{bets: int, voids: int, turnover: float, payouts: float, bonuses: float, free_bet_value: float, free_bet_winnings: float, winnings_tax_withheld: float}  $figures
+     * @return array<string, int|float|null>
+     */
+    private function houseBankedFigures(array $figures, ?int $players = null): array
+    {
+        $ggr = $figures['turnover'] - $figures['payouts'];
+
+        return ['bets' => $figures['bets']]
+            + ($players === null ? [] : ['players' => $players])
+            + [
+                'voids' => $figures['voids'],
+                'turnover' => $figures['turnover'],
+                'payouts' => $figures['payouts'],
+                'ggr' => $ggr,
+                'rtp' => $this->percentOfTurnover($figures['payouts'], $figures['turnover']),
+                'hold' => $this->percentOfTurnover($ggr, $figures['turnover']),
+                'bonuses' => $figures['bonuses'],
+                'free_bet_value' => $figures['free_bet_value'],
+                'free_bet_winnings' => $figures['free_bet_winnings'],
+                'winnings_tax_withheld' => $figures['winnings_tax_withheld'],
+                'net' => $ggr - $figures['bonuses'] - $figures['free_bet_winnings'],
+            ];
+    }
+
+    /**
+     * Settlements per day, product and outcome: +1 for each one made in the range and -1 for each one
+     * reversed in the range, with the face value of the free bets among the won and lost ones.
+     *
+     * @param  list<int>|null  $productIds
+     * @return Collection<int, object{day: string, product_id: int, outcome: string, settled: int, free_bet_value: string}>
+     */
+    private function wagerSettlementCountRows(FinanceDateRange $range, ?array $productIds)
+    {
+        $freeBetValue = "CASE WHEN w.funding = '".Wager::FUNDING_FREE_BET."' AND s.outcome <> '".WagerSettlement::OUTCOME_VOID."' THEN w.free_bet_amount ELSE 0 END";
+
+        return collect(['created_at' => 1, 'reversed_at' => -1])->flatMap(fn (int $sign, string $column) => $this->settledWagers($range, $productIds, "s.{$column}")
+            ->selectRaw("DATE(s.{$column}) as day, w.product_id, s.outcome, COUNT(*) * {$sign} as settled, SUM({$freeBetValue}) * {$sign} as free_bet_value")
+            ->groupByRaw("DATE(s.{$column}), w.product_id, s.outcome")
+            ->get());
+    }
+
+    /**
+     * Distinct players with a won or lost settlement in the range that still stands, per product and in all.
+     *
+     * @param  list<int>|null  $productIds
+     * @return array{total: int, by_product: array<int, int>}
+     */
+    private function wagerPlayerCounts(FinanceDateRange $range, ?array $productIds): array
+    {
+        $standing = fn () => $this->settledWagers($range, $productIds, 's.created_at')
+            ->where('s.status', WagerSettlement::STATUS_APPLIED)
+            ->whereIn('s.outcome', [WagerSettlement::OUTCOME_WON, WagerSettlement::OUTCOME_LOST]);
+
+        return [
+            'total' => (int) $standing()->selectRaw('COUNT(DISTINCT w.customer_id) as players')->value('players'),
+            'by_product' => $standing()->selectRaw('w.product_id, COUNT(DISTINCT w.customer_id) as players')->groupBy('w.product_id')
+                ->pluck('players', 'product_id')->map(fn ($players) => (int) $players)->all(),
+        ];
+    }
+
+    /**
+     * Wager settlements joined to their wager, with a timestamp column in the range, filtered by product
+     * and without test customers. Tombstones (a void for a reference that was never placed) are not bets.
+     *
+     * @param  list<int>|null  $productIds
+     */
+    private function settledWagers(FinanceDateRange $range, ?array $productIds, string $column): Builder
+    {
+        $excluded = $this->excludedCustomerIds($range);
+
+        return DB::table('wager_settlements as s')
+            ->join('wagers as w', 'w.id', '=', 's.wager_id')
+            ->where('w.is_tombstone', false)
+            ->whereBetween($column, [$range->from, $range->to])
+            ->when($productIds !== null, fn (Builder $query) => $query->whereIn('w.product_id', $productIds ?: [0]))
+            ->when($excluded !== [], fn (Builder $query) => $query->whereNotIn('w.customer_id', $excluded));
     }
 
     /**

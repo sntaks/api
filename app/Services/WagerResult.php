@@ -33,6 +33,16 @@ final readonly class WagerResult
     }
 
     /**
+     * A bet and its result made in one call: the wager, its version-1 settlement and the player's balance after.
+     *
+     * @param  array{balance: float, wallet_version: int}  $balance
+     */
+    public static function instant(Wager $wager, WagerSettlement $settlement, array $balance, bool $replayed = false): self
+    {
+        return new self($wager, $balance, $replayed, null, $settlement);
+    }
+
+    /**
      * @param  array{balance: float, wallet_version: int}  $balance
      */
     public static function placed(Wager $wager, array $balance, bool $replayed = false): self

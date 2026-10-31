@@ -771,6 +771,8 @@ class FinanceReconciliationService
     {
         $held = DB::table('wagers')
             ->whereIn('status', ['won', 'lost', 'void'])
+            // balance <> 0 adds nothing to the result but lets the (status, balance) index skip the empty escrows
+            ->where('balance', '<>', 0)
             ->whereRaw('ABS(balance) > ?', [$this->tolerance()]);
 
         return $this->result(

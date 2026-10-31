@@ -25,13 +25,14 @@ class FinanceReportRequest extends FormRequest
         'api/v1/finance/customers/top',
         'api/v1/finance/trial-balance',
         'api/v1/finance/income-statement',
+        'api/v1/finance/house-banked',
         'api/v1/finance/winnings-tax/charges',
     ];
 
     /**
      * The CSV exports of those reports.
      */
-    public const PRODUCT_FILTERED_EXPORTS = ['ledger', 'adjustments', 'customers-top', 'trial-balance', 'income-statement', 'income-by-product'];
+    public const PRODUCT_FILTERED_EXPORTS = ['ledger', 'adjustments', 'customers-top', 'trial-balance', 'income-statement', 'income-by-product', 'house-banked'];
 
     public function authorize(): bool
     {
