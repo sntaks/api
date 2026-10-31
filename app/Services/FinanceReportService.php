@@ -7,8 +7,12 @@ use App\Models\Deposit;
 use App\Models\DepositResolution;
 use App\Models\ExciseDutyCharge;
 use App\Models\FinancialSnapshot;
+use App\Models\FinancialSnapshotLine;
 use App\Models\GameTransaction;
 use App\Models\LedgerEntry;
+use App\Models\Product;
+use App\Models\WagerSettlement;
+use App\Services\Concerns\BuildsFinanceQueries;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
@@ -16,9 +20,17 @@ use Illuminate\Support\Facades\DB;
 
 class FinanceReportService
 {
+    use BuildsFinanceQueries;
+
     private const CASH_IN_KINDS = ['wallet_deposit', 'load', 'gift', 'emoji', 'unmatched', 'house_funding', 'shop_float', 'other'];
 
-    private const REVENUE_LINES = ['games', 'tournaments', 'jackpots', 'competitions_unattributed', 'gift_emoji_sales', 'other'];
+    private const REVENUE_LINES = ['games', 'tournaments', 'jackpots', 'competitions_unattributed', 'gift_emoji_sales', 'other', 'house_banked'];
+
+    /** House-banked entry types whose house-wallet side is GGR: stakes settled to the house, payouts from it. */
+    private const WAGER_GGR_TYPES = ['wager_stake_settled', 'wager_payout'];
+
+    /** House-banked entry types that are a promotion cost: bonuses and free-bet winnings. */
+    private const WAGER_PROMOTION_TYPES = ['wager_bonus', 'wager_free_bet_payout'];
 
     public function __construct(
         private ChartOfAccounts $chart,
@@ -101,11 +113,13 @@ class FinanceReportService
                     'tournaments' => $revenue['tournaments']['total'],
                     'jackpots' => $revenue['jackpots']['total'],
                     'gift_emoji_sales' => $revenue['gift_emoji_sales']['total'],
+                    'house_banked' => $revenue['house_banked'],
                     'total' => $revenue['total'],
                 ],
                 'expenses' => $statement['expenses']['total'],
                 'referral_payouts' => $statement['referral_payouts'],
                 'promotions' => $statement['promotions'],
+                'wager_promotions' => $statement['wager_promotions'],
                 'net_income' => $statement['net_income'],
                 'stakes' => $flows['stakes'],
                 'payouts' => $flows['payouts'],
@@ -287,14 +301,20 @@ class FinanceReportService
     }
 
     /**
-     * Revenue by stream, less recorded expenses. House cuts come from the ledger; gift and emoji
-     * sales are cash the house received directly.
+     * Revenue by stream, less recorded expenses. House cuts (rake products) and house-banked GGR come from
+     * the ledger; gift and emoji sales are cash the house received directly. by_product splits it per product,
+     * with everything that has no product (Q9: not allocated) in a platform row.
      *
+     * Filters: product, game. A filter keeps only that product's ledger lines; platform lines are then 0.
+     *
+     * @param  array<string, string>  $filters
      * @return array<string, mixed>
      */
-    public function incomeStatement(FinanceDateRange $range): array
+    public function incomeStatement(FinanceDateRange $range, array $filters = []): array
     {
-        $template = fn () => array_fill_keys(self::REVENUE_LINES, 0.0) + ['total' => 0.0];
+        $productIds = $this->productIdsFor($filters);
+        $platform = $productIds === null;
+        $template = fn () => array_fill_keys(self::REVENUE_LINES, 0.0) + ['total' => 0.0, 'wager_promotions' => 0.0, 'winnings_tax_withheld' => 0.0];
 
         $series = [];
         foreach ($range->buckets() as $bucket) {
@@ -304,14 +324,24 @@ class FinanceReportService
         $gamesBySource = [];
         $roundsBy = ['tournaments' => [], 'jackpots' => []];
         $giftEmoji = ['gift' => 0.0, 'emoji' => 0.0];
+        $byProduct = [];
+        $platformRow = ['revenue' => 0.0, 'promotions' => 0.0, 'referral_payouts' => 0.0, 'expenses' => 0.0];
+        $productRow = fn () => ['revenue' => 0.0, 'promotions' => 0.0, 'winnings_tax_withheld' => 0.0];
 
-        foreach ($this->houseCutRows($range) as $row) {
+        foreach ($this->houseCutRows($range, $productIds) as $row) {
             $bucket = $this->bucket($range, $row->day);
             $line = $this->revenueLine((string) $row->source, $row->game_type === null ? null : (int) $row->game_type);
             $amount = (float) $row->amount;
 
             $series[$bucket][$line] += $amount;
             $series[$bucket]['total'] += $amount;
+
+            if ($row->product_id === null) {
+                $platformRow['revenue'] += $amount;
+            } else {
+                $byProduct[(int) $row->product_id] ??= $productRow();
+                $byProduct[(int) $row->product_id]['revenue'] += $amount;
+            }
 
             if ($line === 'games') {
                 $gamesBySource[$row->source] = ($gamesBySource[$row->source] ?? 0.0) + $amount;
@@ -321,41 +351,69 @@ class FinanceReportService
             }
         }
 
-        foreach ($this->giftEmojiRows($range) as $row) {
+        foreach ($this->houseBankedRows($range, $productIds) as $row) {
             $bucket = $this->bucket($range, $row->day);
             $amount = (float) $row->amount;
+            $byProduct[(int) $row->product_id] ??= $productRow();
 
-            $series[$bucket]['gift_emoji_sales'] += $amount;
-            $series[$bucket]['total'] += $amount;
-            $giftEmoji[$row->purchase_type] += $amount;
-        }
-
-        $referralPayouts = [];
-        foreach ($this->referrals->payoutRows($range) as $row) {
-            if ($row->status === 'paid') {
-                $bucket = $this->bucket($range, $row->day);
-                $referralPayouts[$bucket] = ($referralPayouts[$bucket] ?? 0.0) + $row->amount;
+            if (in_array(str_replace('_reversal', '', $row->entry_type), self::WAGER_PROMOTION_TYPES, true)) {
+                $series[$bucket]['wager_promotions'] -= $amount;
+                $byProduct[(int) $row->product_id]['promotions'] -= $amount;
+            } else {
+                $series[$bucket]['house_banked'] += $amount;
+                $series[$bucket]['total'] += $amount;
+                $byProduct[(int) $row->product_id]['revenue'] += $amount;
             }
         }
 
+        foreach ($this->winningsTaxRows($range, $productIds) as $row) {
+            $series[$this->bucket($range, $row->day)]['winnings_tax_withheld'] += (float) $row->amount;
+            $byProduct[(int) $row->product_id] ??= $productRow();
+            $byProduct[(int) $row->product_id]['winnings_tax_withheld'] += (float) $row->amount;
+        }
+
+        $referralPayouts = [];
         $promotionCosts = [];
-        foreach ($this->promotions->costRows($range) as $row) {
-            $bucket = $this->bucket($range, $row->day);
-            $promotionCosts[$bucket] = ($promotionCosts[$bucket] ?? 0.0) + (float) $row->amount;
-        }
-
         $referralBonuses = ['signup' => 0.0, 'first_deposit' => 0.0, 'total' => 0.0];
-        foreach ($this->referrals->bonusRows($range) as $row) {
-            $referralBonuses[$row->milestone] = ($referralBonuses[$row->milestone] ?? 0.0) + (float) $row->amount;
-            $referralBonuses['total'] += (float) $row->amount;
+        $expenses = ['by_bucket' => [], 'by_category' => []];
+
+        if ($platform) {
+            foreach ($this->giftEmojiRows($range) as $row) {
+                $bucket = $this->bucket($range, $row->day);
+                $amount = (float) $row->amount;
+
+                $series[$bucket]['gift_emoji_sales'] += $amount;
+                $series[$bucket]['total'] += $amount;
+                $giftEmoji[$row->purchase_type] += $amount;
+                $platformRow['revenue'] += $amount;
+            }
+
+            foreach ($this->referrals->payoutRows($range) as $row) {
+                if ($row->status === 'paid') {
+                    $bucket = $this->bucket($range, $row->day);
+                    $referralPayouts[$bucket] = ($referralPayouts[$bucket] ?? 0.0) + $row->amount;
+                }
+            }
+
+            foreach ($this->promotions->costRows($range) as $row) {
+                $bucket = $this->bucket($range, $row->day);
+                $promotionCosts[$bucket] = ($promotionCosts[$bucket] ?? 0.0) + (float) $row->amount;
+            }
+
+            foreach ($this->referrals->bonusRows($range) as $row) {
+                $referralBonuses[$row->milestone] = ($referralBonuses[$row->milestone] ?? 0.0) + (float) $row->amount;
+                $referralBonuses['total'] += (float) $row->amount;
+            }
+
+            $expenses = $this->expenses->totals($range);
         }
 
-        $expenses = $this->expenses->totals($range);
         foreach ($series as $bucket => $figures) {
             $series[$bucket]['expenses'] = $expenses['by_bucket'][$bucket] ?? 0.0;
             $series[$bucket]['referral_payouts'] = $referralPayouts[$bucket] ?? 0.0;
             $series[$bucket]['promotions'] = $promotionCosts[$bucket] ?? 0.0;
-            $series[$bucket]['net_income'] = $figures['total'] - $series[$bucket]['expenses'] - $series[$bucket]['referral_payouts'] - $series[$bucket]['promotions'];
+            $series[$bucket]['net_income'] = $figures['total'] - $series[$bucket]['expenses'] - $series[$bucket]['referral_payouts']
+                - $series[$bucket]['promotions'] - $figures['wager_promotions'];
         }
 
         $totals = $template() + ['expenses' => 0.0, 'referral_payouts' => 0.0, 'promotions' => 0.0, 'net_income' => 0.0];
@@ -367,10 +425,15 @@ class FinanceReportService
             $list[] = ['period' => $bucket] + $figures;
         }
 
+        $platformRow['promotions'] = $totals['promotions'];
+        $platformRow['referral_payouts'] = $totals['referral_payouts'];
+        $platformRow['expenses'] = $totals['expenses'];
+        $platformRow['net'] = $platformRow['revenue'] - $platformRow['promotions'] - $platformRow['referral_payouts'] - $platformRow['expenses'];
+
         ksort($roundsBy['tournaments']);
         ksort($roundsBy['jackpots']);
 
-        $load = $this->loadMargin($range);
+        $load = $platform ? $this->loadMargin($range) : null;
 
         return $this->rounded([
             'revenue' => [
@@ -381,29 +444,111 @@ class FinanceReportService
                 'competitions_unattributed' => $totals['competitions_unattributed'],
                 'gift_emoji_sales' => ['total' => $totals['gift_emoji_sales']] + $giftEmoji,
                 'other' => $totals['other'],
+                'house_banked' => $totals['house_banked'],
                 'total' => $totals['total'],
             ],
             'expenses' => ['tracked' => true, 'total' => $totals['expenses'], 'by_category' => $expenses['by_category']],
             'referral_payouts' => $totals['referral_payouts'],
             'promotions' => $totals['promotions'],
+            'wager_promotions' => $totals['wager_promotions'],
             'net_income' => $totals['net_income'],
+            'by_product' => ['products' => $this->productRows($byProduct), 'platform' => $platformRow],
             'memo' => [
                 'load_margin' => $load,
                 'referral_bonuses_earned' => $referralBonuses,
+                'winnings_tax_withheld' => $totals['winnings_tax_withheld'],
             ],
             'notes' => [
-                'Revenue is house cuts as they are booked in the ledger plus gift and emoji sales at cash received.',
+                'Revenue is house cuts as they are booked in the ledger, house-banked GGR, plus gift and emoji sales at cash received.',
+                'house_banked is the GGR of house-banked products (sportsbook, crash): stakes settled to the house minus payouts, both net of reversals. It is negative when players won more than they lost.',
+                'wager_promotions is the cost of bonuses and free-bet winnings paid by the house on wagers, net of reversals.',
                 'competitions_unattributed are competition cuts booked before they were linked to their transaction, so tournament and jackpot cannot be told apart.',
                 'load_margin is cash received for wallet loads minus the wallet credit given. It is shown for information and is not part of revenue.',
                 'Expenses are the entries recorded through /finance/expenses (voided ones excluded), dated by expense_date. net_income is before tax; see /finance/taxes.',
                 'referral_payouts are referral withdrawals completed in the period (the referral programme expense), dated by completion.',
                 'promotions is the gross cost of promotion credits granted in the period (the signup bonus): what the house wallet paid, including the excise duty owed on it.',
-                'net_income is revenue minus expenses, referral_payouts and promotions.',
+                'net_income is revenue minus expenses, referral_payouts, promotions and wager_promotions.',
                 'referral_bonuses_earned is shown for information: bonuses credited to referral wallets are only an expense once they are paid out.',
+                'winnings_tax_withheld is tax withheld from house-banked wins, net of reversals. It is owed to KRA, not revenue; see /finance/winnings-tax.',
+                'by_product has one row per product (net = revenue - promotions) and a platform row for everything with no product (gift and emoji sales, house cuts not tagged with a product, signup promotions, referral payouts, expenses), not allocated to products. The rows add up to net_income.',
+                'With a product or game filter only that product\'s ledger lines count; platform lines are 0 and load_margin is null.',
                 'house cuts cannot always be tied to a player, so exclude_test only removes cuts that are linked to a test customer or game.',
             ],
             'series' => $list,
         ]);
+    }
+
+    /**
+     * One row per product in by_product, ordered by game and product code, with its game and revenue model.
+     *
+     * @param  array<int, array{revenue: float, promotions: float, winnings_tax_withheld: float}>  $byProduct
+     * @return list<array<string, mixed>>
+     */
+    private function productRows(array $byProduct): array
+    {
+        $products = Product::with('game')->whereKey(array_keys($byProduct))->get()
+            ->sortBy(fn (Product $product) => [$product->game?->sort_order ?? PHP_INT_MAX, $product->code]);
+
+        return $products->map(fn (Product $product) => [
+            'product' => $product->code,
+            'game' => $product->game?->code,
+            'revenue_model' => $product->revenue_model,
+            'revenue' => $byProduct[$product->id]['revenue'],
+            'promotions' => $byProduct[$product->id]['promotions'],
+            'winnings_tax_withheld' => $byProduct[$product->id]['winnings_tax_withheld'],
+            'net' => $byProduct[$product->id]['revenue'] - $byProduct[$product->id]['promotions'],
+        ])->values()->all();
+    }
+
+    /**
+     * The house wallet's side of house-banked settlements per day, product and entry type: stakes settled
+     * and payouts (GGR) and bonuses and free-bet winnings (promotions), with their reversals. amount is
+     * credit minus debit on the house wallet. Test customers' wagers are left out.
+     *
+     * @param  list<int>|null  $productIds
+     * @return Collection<int, object{day: string, product_id: int, entry_type: string, amount: string}>
+     */
+    private function houseBankedRows(FinanceDateRange $range, ?array $productIds)
+    {
+        $types = [...self::WAGER_GGR_TYPES, ...self::WAGER_PROMOTION_TYPES];
+        $excluded = $this->excludedCustomerIds($range);
+
+        return DB::table('ledger_entries as l')
+            ->leftJoin('wager_settlements as s', function ($join) {
+                $join->on('s.id', '=', 'l.referenceable_id')->where('l.referenceable_type', WagerSettlement::class);
+            })
+            ->leftJoin('wagers as w', 'w.id', '=', 's.wager_id')
+            ->where('l.wallet_type', LedgerEntry::WALLET_TYPE_WALLET)
+            ->where('l.wallet_id', (int) config('wallets.house_wallet_id', 1))
+            ->whereIn('l.entry_type', [...$types, ...array_map(fn (string $type) => $type.'_reversal', $types)])
+            ->whereNotNull('l.product_id')
+            ->whereBetween('l.created_at', [$range->from, $range->to])
+            ->when($productIds !== null, fn (Builder $query) => $query->whereIn('l.product_id', $productIds ?: [0]))
+            ->when($excluded !== [], fn (Builder $query) => $query->where(fn (Builder $inner) => $inner->whereNull('w.customer_id')->orWhereNotIn('w.customer_id', $excluded)))
+            ->selectRaw('DATE(l.created_at) as day, l.product_id, l.entry_type, SUM(l.credit - l.debit) as amount')
+            ->groupByRaw('DATE(l.created_at), l.product_id, l.entry_type')
+            ->get();
+    }
+
+    /**
+     * Winnings tax withheld from players per day and product, net of reversals (debit minus credit).
+     *
+     * @param  list<int>|null  $productIds
+     * @return Collection<int, object{day: string, product_id: int, amount: string}>
+     */
+    private function winningsTaxRows(FinanceDateRange $range, ?array $productIds)
+    {
+        $excluded = $this->excludedCustomerIds($range);
+
+        return DB::table('ledger_entries as l')
+            ->whereIn('l.entry_type', ['winnings_tax', 'winnings_tax_reversal'])
+            ->whereNotNull('l.product_id')
+            ->whereBetween('l.created_at', [$range->from, $range->to])
+            ->when($productIds !== null, fn (Builder $query) => $query->whereIn('l.product_id', $productIds ?: [0]))
+            ->when($excluded !== [], fn (Builder $query) => $query->whereNotIn('l.customer_id', $excluded))
+            ->selectRaw('DATE(l.created_at) as day, l.product_id, SUM(l.debit - l.credit) as amount')
+            ->groupByRaw('DATE(l.created_at), l.product_id')
+            ->get();
     }
 
     /**
@@ -427,7 +572,7 @@ class FinanceReportService
 
             $position = $snapshot->only([
                 'customer_wallets_total', 'house_wallet_balance', 'game_escrow_total', 'competition_escrow_total',
-                'stuck_escrow_total', 'coin_liability', 'pending_holds_total', 'unmatched_deposits_total', 'excise_duty_payable', 'winnings_tax_payable', 'disputed_funds_total', 'referral_wallets_total', 'bet_shop_floats_total', 'shop_withdrawals_held_total', 'mpesa_balances',
+                'stuck_escrow_total', 'coin_liability', 'pending_holds_total', 'unmatched_deposits_total', 'excise_duty_payable', 'winnings_tax_payable', 'open_wagers_total', 'disputed_funds_total', 'referral_wallets_total', 'bet_shop_floats_total', 'shop_withdrawals_held_total', 'mpesa_balances',
             ]);
             $source = 'snapshot';
             $date = $asOf;
@@ -451,6 +596,7 @@ class FinanceReportService
             'unmatched_deposits' => (float) $position['unmatched_deposits_total'],
             'excise_duty_payable' => (float) $position['excise_duty_payable'],
             'winnings_tax_payable' => (float) $position['winnings_tax_payable'],
+            'open_wagers' => (float) $position['open_wagers_total'],
             'disputed_funds' => (float) $position['disputed_funds_total'],
             'referral_wallets' => (float) $position['referral_wallets_total'],
             'bet_shop_floats' => (float) $position['bet_shop_floats_total'],
@@ -466,6 +612,7 @@ class FinanceReportService
             'liabilities' => $liabilities + ['total' => $totalLiabilities],
             'house_wallet' => $house,
             'difference' => $cash - $totalLiabilities - $house,
+            'by_product' => $this->balanceByProduct($asOf, $position),
             'notes' => [
                 'difference is cash minus everything owed to customers minus the house wallet. It is not zero by design: it also holds gift and emoji sales not yet moved to the house wallet, M-Pesa charges, and timing between the hourly balance fetch and wallet movements.',
                 'Test customers are excluded from customer wallets and coin liability.',
@@ -475,8 +622,42 @@ class FinanceReportService
                 'referral_wallets is referral bonuses not yet withdrawn. Customers can withdraw them at any time, so they are a liability. Snapshots taken before referrals existed show 0.',
                 'bet_shop_floats is prepaid float bet shop owners paid in and have not yet loaded to players. It is owed to the shops, so it is a liability. Snapshots taken before bet shops existed show 0.',
                 'shop_withdrawals is cash players asked to collect at a bet shop and have not collected yet. It has left their wallets but is still owed to them, so it is a liability. Snapshots taken before shop withdrawals existed show 0.',
+                'open_wagers is the stake held in the escrow of house-banked bets not yet settled. It is still the players\' money, so it is a liability. Snapshots taken before it was tracked show 0.',
+                'by_product splits the liabilities that belong to a product (open wagers, game and competition escrow, winnings tax payable) and lists the rest as platform; customer wallets are one platform line because one wallet serves every game. For a past date it is read from that day\'s snapshot lines and is empty for snapshots taken before they existed.',
             ],
         ]);
+    }
+
+    /**
+     * The balance sheet split by product: live (from the same position as the totals), or from the snapshot
+     * lines of a past date.
+     *
+     * @param  array<string, mixed>  $position
+     * @return array{products: list<array<string, mixed>>, platform: array<string, float>}
+     */
+    private function balanceByProduct(?string $asOf, array $position): array
+    {
+        $lines = $asOf === null
+            ? collect($this->snapshots->positionByProduct($position))
+            : FinancialSnapshotLine::whereDate('snapshot_date', $asOf)->get(['product_id', 'account', 'amount'])
+                ->map(fn (FinancialSnapshotLine $line) => ['product_id' => $line->product_id, 'account' => $line->account, 'amount' => (float) $line->amount]);
+
+        $platform = $lines->whereNull('product_id')->mapWithKeys(fn (array $line) => [$line['account'] => (float) $line['amount']])->all();
+        $byProduct = $lines->whereNotNull('product_id')->groupBy('product_id');
+        $products = Product::with('game')->whereKey($byProduct->keys())->get()
+            ->sortBy(fn (Product $product) => [$product->game?->sort_order ?? PHP_INT_MAX, $product->code]);
+
+        return [
+            'products' => $products->map(function (Product $product) use ($byProduct) {
+                $accounts = array_fill_keys(['open_wagers', 'game_escrow', 'competition_escrow', 'winnings_tax_payable'], 0.0);
+                foreach ($byProduct[$product->id] as $line) {
+                    $accounts[$line['account']] = (float) $line['amount'];
+                }
+
+                return ['product' => $product->code, 'game' => $product->game?->code] + $accounts + ['total' => array_sum($accounts)];
+            })->values()->all(),
+            'platform' => $platform + ['total' => array_sum($platform)],
+        ];
     }
 
     /**
@@ -485,12 +666,14 @@ class FinanceReportService
      *
      * @return array<string, mixed>
      */
-    public function trialBalance(FinanceDateRange $range): array
+    public function trialBalance(FinanceDateRange $range, array $filters = []): array
     {
         $houseWalletId = (int) config('wallets.house_wallet_id', 1);
+        $productIds = $this->productIdsFor($filters);
 
         $rows = DB::table('ledger_entries')
             ->whereBetween('created_at', [$range->from, $range->to])
+            ->when($productIds !== null, fn (Builder $query) => $query->whereIn('product_id', $productIds ?: [0]))
             ->selectRaw('wallet_type, entry_type, (wallet_type = ? AND wallet_id = ?) as is_house, SUM(debit) as debit, SUM(credit) as credit, COUNT(*) as entries', [
                 LedgerEntry::WALLET_TYPE_WALLET, $houseWalletId,
             ])
@@ -541,7 +724,7 @@ class FinanceReportService
             'lines' => $lines,
             'totals' => ['debit' => $totalDebit, 'credit' => $totalCredit],
             'check' => [
-                'balanced' => abs($internalNet) <= $tolerance,
+                'balanced' => $productIds === null ? abs($internalNet) <= $tolerance : null,
                 'imbalance' => $internalNet,
                 'imbalance_by_category' => array_filter($internalByCategory, fn (float $net) => abs($net) > $tolerance),
             ],
@@ -549,6 +732,7 @@ class FinanceReportService
                 'Deposits, withdrawals, adjustments, excise duty, referral bonuses, referral payouts, house funding (capital) and shop float purchases (shop_float) are single-sided in the ledger (the cash side is M-Pesa, excise duty is owed to KRA, and referral bonuses cost the house nothing until they are paid out from the referral shortcode). All other entries are paired and must net to zero, which is what check.imbalance measures. Promotion credits (promo_credit) are paired: the house wallet pays what the customer wallet receives.',
                 'Coin entries are in coins, not KES, and are left out of the totals and the check.',
                 'exclude_test does not apply here: the check only holds over the whole ledger.',
+                'With a product or game filter only that product\'s entries are listed, and check.balanced is null: a product slice leaves out the platform side (deposits, withdrawals) of the money, so it does not have to net to zero.',
             ],
         ]);
     }
@@ -640,7 +824,7 @@ class FinanceReportService
     /**
      * @return Collection<int, object{day: string, source: ?string, game_type: ?int, jp_rounds: ?int, amount: string}>
      */
-    private function houseCutRows(FinanceDateRange $range)
+    private function houseCutRows(FinanceDateRange $range, ?array $productIds = null)
     {
         $excluded = $this->excludedCustomerIds($range);
         $source = "JSON_UNQUOTE(JSON_EXTRACT(l.metadata, '$.source'))";
@@ -657,6 +841,7 @@ class FinanceReportService
             ->leftJoin('competition_wallets as cw', 'cw.id', '=', 'ct.competition_wallet_id')
             ->whereIn('l.entry_type', ['house_cut', 'house_cut_reversal'])
             ->whereBetween('l.created_at', [$range->from, $range->to])
+            ->when($productIds !== null, fn (Builder $query) => $query->whereIn('l.product_id', $productIds ?: [0]))
             ->when($excluded !== [], function (Builder $query) use ($excluded, $source, $player, $marks) {
                 $query->whereRaw("({$player} IS NULL OR {$player} NOT IN ({$marks}))", $excluded)
                     ->whereRaw(
@@ -666,8 +851,8 @@ class FinanceReportService
                         $excluded
                     );
             })
-            ->selectRaw("DATE(l.created_at) as day, {$source} as source, cw.game_type as game_type, cw.jp_rounds as jp_rounds, SUM(l.credit - l.debit) as amount")
-            ->groupByRaw("DATE(l.created_at), {$source}, cw.game_type, cw.jp_rounds")
+            ->selectRaw("DATE(l.created_at) as day, {$source} as source, cw.game_type as game_type, cw.jp_rounds as jp_rounds, l.product_id, SUM(l.credit - l.debit) as amount")
+            ->groupByRaw("DATE(l.created_at), {$source}, cw.game_type, cw.jp_rounds, l.product_id")
             ->get();
     }
 

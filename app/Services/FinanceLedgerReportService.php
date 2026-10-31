@@ -242,7 +242,9 @@ class FinanceLedgerReportService
     {
         $houseWalletId = (int) config('wallets.house_wallet_id', 1);
         $excluded = $this->excludedCustomerIds($range);
-        $sort = $filters['sort'] ?? 'deposited';
+        $productIds = $this->productIdsFor($filters);
+        // Deposits have no product, so a product slice ranks by stakes unless a sort is asked for
+        $sort = $filters['sort'] ?? ($productIds === null ? 'deposited' : 'staked');
         $limit = (int) ($filters['limit'] ?? 10);
 
         $sum = function (string $category, string $direction) {
@@ -269,6 +271,7 @@ class FinanceLedgerReportService
             ->where('l.wallet_id', '!=', $houseWalletId)
             ->whereNotNull('l.customer_id')
             ->whereBetween('l.created_at', [$range->from, $range->to])
+            ->when($productIds !== null, fn (Builder $query) => $query->whereIn('l.product_id', $productIds ?: [0]))
             ->when($excluded !== [], fn (Builder $query) => $query->whereNotIn('l.customer_id', $excluded))
             ->selectRaw("l.customer_id, c.name as customer_name, w.balance as balance, {$deposited} as deposited, {$shopLoaded} as shop_loaded, {$excisePaid} as excise_paid, {$withdrawn} as withdrawn, {$shopWithdrawn} as shop_withdrawn, {$staked} as staked, {$won} as won, {$refunded} as refunded, ({$won} + {$refunded} - {$staked}) as net_gaming")
             ->groupBy('l.customer_id', 'c.name', 'w.balance')
@@ -323,8 +326,10 @@ class FinanceLedgerReportService
         // The house customer (id 1) is in the test list but its entries are real money, so keep them.
         $excluded = array_values(array_diff($this->excludedCustomerIds($range), [1]));
         $categoryTypes = isset($filters['category']) ? $this->chart->entryTypesFor($filters['category']) : null;
+        $productIds = $this->productIdsFor($filters);
 
         return DB::table('ledger_entries as l')
+            ->when($productIds !== null, fn (Builder $query) => $query->whereIn('l.product_id', $productIds ?: [0]))
             ->whereBetween('l.created_at', [$range->from, $range->to])
             ->when($excluded !== [], fn (Builder $query) => $query->where(
                 fn (Builder $inner) => $inner->whereNull('l.customer_id')->orWhereNotIn('l.customer_id', $excluded)

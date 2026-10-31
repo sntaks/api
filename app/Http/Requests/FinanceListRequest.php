@@ -27,7 +27,6 @@ class FinanceListRequest extends FinanceReportRequest
             'wallet_id' => ['nullable', 'integer', 'min:1'],
             'customer_id' => ['nullable', 'integer', 'min:1'],
             'bet_shop_id' => ['nullable', 'integer', 'min:1'],
-            'product' => ['nullable', 'string', 'max:50'],
             'game_type' => ['nullable', 'in:1,2'],
             'jp_rounds' => ['nullable', 'integer', 'min:0'],
             'outcome' => ['nullable', 'in:open,completed,dropped,refunded,closed_empty'],
@@ -57,7 +56,7 @@ class FinanceListRequest extends FinanceReportRequest
     {
         return array_filter(
             $this->only([
-                'status', 'kind', 'type', 'entry_type', 'category', 'wallet_type', 'wallet_id', 'customer_id', 'bet_shop_id', 'product',
+                'status', 'kind', 'type', 'entry_type', 'category', 'wallet_type', 'wallet_id', 'customer_id', 'bet_shop_id', 'product', 'game',
                 'game_type', 'jp_rounds', 'outcome', 'players', 'limit', 'sort', 'idle_minutes',
             ]),
             fn ($value) => $value !== null && $value !== ''

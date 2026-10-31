@@ -37,7 +37,9 @@ class FinanceReportController extends Controller
     {
         $range = $request->dateRange();
 
-        return $this->respond('income-statement', $range, fn () => $this->withMeta($range, $this->reports->incomeStatement($range)));
+        $filters = $request->productFilters();
+
+        return $this->respond('income-statement', $range, fn () => $this->withMeta($range, $this->reports->incomeStatement($range, $filters)), $filters);
     }
 
     public function cashFlow(FinanceReportRequest $request): JsonResponse
@@ -64,7 +66,9 @@ class FinanceReportController extends Controller
     {
         $range = $request->dateRange();
 
-        return $this->respond('trial-balance', $range, fn () => $this->withMeta($range, $this->reports->trialBalance($range)));
+        $filters = $request->productFilters();
+
+        return $this->respond('trial-balance', $range, fn () => $this->withMeta($range, $this->reports->trialBalance($range, $filters)), $filters);
     }
 
     public function taxes(FinanceReportRequest $request): JsonResponse

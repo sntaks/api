@@ -247,6 +247,9 @@ return [
         'approval_warn_hours' => 24,
         'stale_mpesa_balance_hours' => 3,
         'aged_dispute_days' => (int) env('FINANCE_AGED_DISPUTE_DAYS', 3),
+        // D31: a house-banked wager open longer than this is warned about; override per product code
+        'open_wager_days' => (int) env('FINANCE_OPEN_WAGER_DAYS', 30),
+        'open_wager_days_by_product' => [],
     ],
 
     /*
