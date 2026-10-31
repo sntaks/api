@@ -340,6 +340,7 @@
             <li><a href="#" data-section="finance-reports"><span class="nav-icon">&#128269;</span> <span>Drill-downs</span></a></li>
             <li><a href="#" data-section="finance-expenses"><span class="nav-icon">&#129534;</span> <span>Expenses</span></a></li>
             <li><a href="#" data-section="finance-excise"><span class="nav-icon">&#127963;</span> <span>Excise Duty</span></a></li>
+            <li><a href="#" data-section="finance-winnings-tax"><span class="nav-icon">&#129534;</span> <span>Winnings Tax</span></a></li>
             <li><a href="#" data-section="finance-export"><span class="nav-icon">&#128229;</span> <span>CSV Export</span></a></li>
         </ul>
         <div class="nav-section">Reference</div>
@@ -4727,7 +4728,7 @@ Accept: application/json</pre></div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span></div>
 <div class="response-list" style="margin-top:10px"><span class="status-code status-200">200 OK</span> <span class="status-code status-404">404 Not Found</span> <span class="status-code status-422">422 Unprocessable</span></div>
-<p class="endpoint-note"><strong>Writes the values as given, including <code>balance</code>, without a ledger entry</strong>; reconciliation will flag the drift. Use only to repair data.</p>
+<p class="endpoint-note"><strong>Writes <code>customer_id</code> and <code>level</code> as given. A <code>balance</code> different from the stored one is recorded as an <code>adjustment</code> ledger entry for the difference</strong> (reason <code>competition_wallet_correction</code>, with the API key as actor), so the wallet and its ledger keep agreeing. Sending the stored balance changes nothing. Use only to repair data.</p>
 <div class="endpoint-section"><h4>Path Parameters</h4>
 <table class="params-table">
 <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -4738,7 +4739,7 @@ Accept: application/json</pre></div>
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
 <tr><td>customer_id</td><td>integer</td><td><span class="required">Required</span></td><td>Plain customer id; not the house account</td></tr>
 <tr><td>level</td><td>integer</td><td><span class="required">Required</span></td><td>Level</td></tr>
-<tr><td>balance</td><td>number</td><td><span class="required">Required</span></td><td>Balance to store</td></tr>
+<tr><td>balance</td><td>number</td><td><span class="required">Required</span></td><td>Corrected balance; the difference from the stored balance is posted as an adjustment</td></tr>
 </table></div>
 <div class="endpoint-section"><h4>Example Request</h4>
 <pre>PUT /api/v1/competition/wallets/{encryptedIdentifier} HTTP/1.1
@@ -5127,6 +5128,10 @@ Content-Type: application/json
 <div class="endpoint-section"><h4>Response (400: not enough balance)</h4>
 <pre>{
   "status": "Insufficient balance or Wallet not found."
+}</pre></div>
+<div class="endpoint-section"><h4>Response (400: competition wallet closed)</h4>
+<pre>{
+  "status": "Competition Wallet is not open"
 }</pre></div>
 <div class="endpoint-section"><h4>Response (422: validation failed)</h4>
 <pre>{
@@ -6701,6 +6706,7 @@ Accept: application/json</pre></div>
 <tr><td><a href="#" data-section="finance-reports" style="color:var(--accent-blue)">Drill-downs</a></td><td>deposits, withdrawals, purchases, games, competitions, ledger, adjustments, disputes, referrals (summary, bonuses, withdrawals), customers/top, customer statement</td></tr>
 <tr><td><a href="#" data-section="finance-expenses" style="color:var(--accent-blue)">Expenses</a></td><td>record, void and list expenses</td></tr>
 <tr><td><a href="#" data-section="finance-excise" style="color:var(--accent-blue)">Excise Duty</a></td><td>excise-duty, excise-duty/charges, excise-duty/returns, excise-duty/remittances (list, record, void)</td></tr>
+<tr><td><a href="#" data-section="finance-winnings-tax" style="color:var(--accent-blue)">Winnings Tax</a></td><td>winnings-tax, winnings-tax/charges, winnings-tax/returns, winnings-tax/remittances (list, record, void)</td></tr>
 <tr><td><a href="#" data-section="finance-export" style="color:var(--accent-blue)">CSV Export</a></td><td>any report as a CSV download</td></tr>
 </table>
 </div>
@@ -6880,6 +6886,7 @@ Accept: application/json</pre></div>
       "cash_in": {"wallet_deposit": 500.00, "load": 300.00, "gift": 100.00, "emoji": 0.00, "unmatched": 200.00, "house_funding": 0.00, "shop_float": 0.00, "other": 0.00, "total": 1100.00},
       "cash_out": {"paid": 150.00, "pending": 40.00, "failed": 60.00},
       "excise_duty": {"withheld": 25.00, "remitted": 0.00},
+      "winnings_tax": {"withheld": 0.00, "remitted": 0.00},
       "referral_payouts": {"paid": 0.00, "pending": 0.00, "failed": 0.00},
       "deposit_refunds": {"refunded": 0.00},
       "shop_float": {"redeemed": 0.00},
@@ -6887,7 +6894,7 @@ Accept: application/json</pre></div>
       "net_cash": 950.00
     },
     "series": [
-      {"period": "2026-09-20", "cash_in": {"wallet_deposit": 500.00, "load": 300.00, "gift": 100.00, "emoji": 0.00, "unmatched": 200.00, "house_funding": 0.00, "shop_float": 0.00, "other": 0.00, "total": 1100.00}, "cash_out": {"paid": 150.00, "pending": 40.00, "failed": 60.00}, "excise_duty": {"withheld": 25.00, "remitted": 0.00}, "referral_payouts": {"paid": 0.00, "pending": 0.00, "failed": 0.00}, "deposit_refunds": {"refunded": 0.00}, "shop_float": {"redeemed": 0.00}, "shop_cash": {"loaded": 0.00, "paid_out": 0.00}, "net_cash": 950.00}
+      {"period": "2026-09-20", "cash_in": {"wallet_deposit": 500.00, "load": 300.00, "gift": 100.00, "emoji": 0.00, "unmatched": 200.00, "house_funding": 0.00, "shop_float": 0.00, "other": 0.00, "total": 1100.00}, "cash_out": {"paid": 150.00, "pending": 40.00, "failed": 60.00}, "excise_duty": {"withheld": 25.00, "remitted": 0.00}, "winnings_tax": {"withheld": 0.00, "remitted": 0.00}, "referral_payouts": {"paid": 0.00, "pending": 0.00, "failed": 0.00}, "deposit_refunds": {"refunded": 0.00}, "shop_float": {"redeemed": 0.00}, "shop_cash": {"loaded": 0.00, "paid_out": 0.00}, "net_cash": 950.00}
     ]
   }
 }</pre></div>
@@ -6898,7 +6905,7 @@ Accept: application/json</pre></div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">20/min</span></div>
 <div class="endpoint-section"><h4>Description</h4>
-<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Assets are the latest balance of every M-Pesa account (from the hourly balance fetch), listed individually. Liabilities are what is owed: customer wallets (test customers and the house wallet excluded), open game and competition wallets, <code>stuck_escrow</code> (money left in finished wallets), coin liability, pending holds, <code>unmatched_deposits</code> and <code>excise_duty_payable</code> (excise duty taken from deposits and not yet in a recorded <a href="#" data-section="finance-excise" style="color:var(--accent-blue)">KRA remittance</a>; snapshots from before it was tracked show 0) and <code>disputed_funds</code> (winnings held while a <a href="#" data-section="complaints" style="color:var(--accent-blue)">complaint</a> is pending; still owed to a customer, snapshots from before complaints existed show 0) and <code>referral_wallets</code> (referral bonuses not yet withdrawn; customers can withdraw them at any time, snapshots from before referrals existed show 0) and <code>bet_shop_floats</code> (float bet shop owners have bought and not spent; owed back to them if redeemed) and <code>shop_withdrawals</code> (cash withdrawals at bet shops waiting to be collected; still owed to the player). Snapshots from before bet shops existed show 0 for both. The referral shortcode's balance is listed among the M-Pesa accounts as type <code>referral_b2c</code> once its balance URLs are set. <code>house_wallet</code> is shown separately. <code>difference</code> is cash minus liabilities minus the house wallet. It is not expected to be zero: it also holds gift and emoji sales not yet moved to the house wallet, M-Pesa charges, and timing between the hourly balance fetch and wallet movements. A daily snapshot is taken at 23:59 Nairobi time; <code>as_of</code> reads that day's snapshot.</p></div>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Assets are the latest balance of every M-Pesa account (from the hourly balance fetch), listed individually. Liabilities are what is owed: customer wallets (test customers and the house wallet excluded), open game and competition wallets, <code>stuck_escrow</code> (money left in finished wallets), coin liability, pending holds, <code>unmatched_deposits</code> and <code>excise_duty_payable</code> (excise duty taken from deposits and not yet in a recorded <a href="#" data-section="finance-excise" style="color:var(--accent-blue)">KRA remittance</a>; snapshots from before it was tracked show 0) and <code>winnings_tax_payable</code> (tax withheld from house-banked wins less credits for reversed wins, not yet in a recorded <a href="#" data-section="finance-winnings-tax" style="color:var(--accent-blue)">KRA remittance</a>; negative while credits exceed charges; snapshots from before it was tracked show 0) and <code>disputed_funds</code> (winnings held while a <a href="#" data-section="complaints" style="color:var(--accent-blue)">complaint</a> is pending; still owed to a customer, snapshots from before complaints existed show 0) and <code>referral_wallets</code> (referral bonuses not yet withdrawn; customers can withdraw them at any time, snapshots from before referrals existed show 0) and <code>bet_shop_floats</code> (float bet shop owners have bought and not spent; owed back to them if redeemed) and <code>shop_withdrawals</code> (cash withdrawals at bet shops waiting to be collected; still owed to the player). Snapshots from before bet shops existed show 0 for both. The referral shortcode's balance is listed among the M-Pesa accounts as type <code>referral_b2c</code> once its balance URLs are set. <code>house_wallet</code> is shown separately. <code>difference</code> is cash minus liabilities minus the house wallet. It is not expected to be zero: it also holds gift and emoji sales not yet moved to the house wallet, M-Pesa charges, and timing between the hourly balance fetch and wallet movements. A daily snapshot is taken at 23:59 Nairobi time; <code>as_of</code> reads that day's snapshot.</p></div>
 <div class="endpoint-section"><h4>Query Parameters</h4>
 <table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
 <tr><td>as_of</td><td>date (Y-m-d)</td><td><span class="optional">Optional</span></td><td>Not in the future. Returns that day's snapshot. <code>404</code> if there is none. Omit for the live position</td></tr></table></div>
@@ -6987,6 +6994,10 @@ Accept: application/json</pre></div>
 <tr><td>excise_duty_amounts</td><td>fail</td><td>Each charge is 5% of the gross rounded to the cent, and gross = excise + net</td></tr>
 <tr><td>excise_duty_ledger</td><td>fail</td><td>Each charge matches its <code>excise_duty</code> ledger entry: same amount, and reversed only when the charge was reversed</td></tr>
 <tr><td>overdue_excise_duty</td><td>warn</td><td>Months whose excise duty is still unpaid after the 20th of the next month</td></tr>
+<tr><td>winnings_tax_amounts</td><td>fail</td><td>Winnings tax rows that differ from their settlement's tax or from round(base x rate), or carry the wrong sign for their kind</td></tr>
+<tr><td>winnings_tax_ledger</td><td>fail</td><td>Winnings tax rows whose ledger entry is missing, of the wrong type, or for a different amount</td></tr>
+<tr><td>settlements_without_winnings_tax</td><td>fail</td><td>Settlements that withheld tax with no charge row, or reversed ones with no credit row</td></tr>
+<tr><td>overdue_winnings_tax</td><td>warn</td><td>Months whose winnings tax is still unpaid after the filing day of the next month</td></tr>
 <tr><td>stuck_withdrawals</td><td>warn</td><td>Withdrawals pending longer than 24 hours</td></tr>
 <tr><td>failed_withdrawals_not_reversed</td><td>fail</td><td>A payout failed but the customer was not refunded</td></tr>
 <tr><td>stuck_escrow</td><td>warn</td><td>Money left in game or competition wallets that are no longer open</td></tr>
@@ -7363,7 +7374,7 @@ Accept: application/json</pre></div>
       "by_actor": [{"actor": "api_key:4", "entries": 3, "net": 35.00}]
     },
     "items": [
-      {"id": 612, "created_at": "2026-09-20T10:15:00+03:00", "entry_type": "adjustment", "customer_id": 900, "customer_name": "Alice Wanjiru", "direction": "credit", "amount": 50.00, "balance_before": 1000.00, "balance_after": 1050.00, "reason": "promo bonus", "actor": "api_key:4", "operation": "add_balance", "status": "settled"}
+      {"id": 612, "created_at": "2026-09-20T10:15:00+03:00", "entry_type": "adjustment", "customer_id": 900, "customer_name": "Alice Wanjiru", "direction": "credit", "amount": 50.00, "balance_before": 1000.00, "balance_after": 1050.00, "reason": "promo bonus", "actor": "api_key:4", "operation": "add_balance", "status": "settled", "wallet_type": "wallet", "wallet_id": 900}
     ],
     "pagination": {"page": 1, "per_page": 50, "total": 3, "last_page": 1}
   }
@@ -7983,6 +7994,184 @@ Idempotency-Key: excise-2026-08
 </div></div>
 </div>
 
+<!-- FINANCE WINNINGS TAX SECTION -->
+<div class="doc-section" data-section="finance-winnings-tax">
+<button class="expand-all" onclick="toggleAll('finance-winnings-tax')">Expand / Collapse All</button>
+<div class="callback-note">Winnings tax is withheld when a house-banked game (sportsbook, crash) settles a <a href="#" data-section="launch" style="color:var(--accent-blue)">wager</a> as won. The rate is set per product (<code>winnings_tax_rate</code> on <a href="#" data-section="games" style="color:var(--accent-blue)">PUT /products/{code}</a>, 0 until the accountant sets it) and the base is the profit: payout plus bonus less the cash stake, or the whole payout and bonus for a free bet. Every taxed settlement writes a <code>charge</code> row in the same transaction as its <code>winnings_tax</code> ledger entry. The tax is <strong>not revenue</strong>: it is held as <code>winnings_tax_payable</code> on the balance sheet until you pay KRA and record a remittance. Returns and payment are due by the <strong>20th of the following month</strong> (<code>FINANCE_WINNINGS_TAX_FILING_DAY</code>; confirm with your accountant).</div>
+<div class="callback-note">A wager reversal is never refused, so tax can be given back after it was paid to KRA. A reversal writes a <code>reversal</code> row with a <strong>negative</strong> amount (a credit). Credits are never attached to a remittance that was already filed: the next remittance takes every unremitted row in its period plus every earlier unremitted credit, so the over-payment comes off the next return. What is owed is the plain sum of every row not yet remitted, and can be negative while credits exceed charges. The summary and charges list follow <code>exclude_test</code>; the payable amount, monthly returns and remittances always cover every customer. All <code>GET</code> endpoints are rate-limited to 20 requests/minute.</div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/finance/winnings-tax</span><span class="endpoint-desc">Winnings tax charged, reversed and remitted, with what is still owed</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">20/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;"><code>tax_charged</code> is the tax withheld in the period, <code>tax_reversed</code> the tax given back because a taxed settlement was reversed in the period, and <code>tax_net</code> what the period adds to what is owed. <code>tax_remitted</code> is what was paid to KRA in the period, by payment date. <code>payable.outstanding</code> is every charge and credit not yet in a remittance, from all time.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>from, to, group_by, exclude_test</td><td>&nbsp;</td><td><span class="optional">Optional</span></td><td>See common parameters</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "generated_at": "2026-09-20T12:00:00+03:00",
+    "meta": {},
+    "totals": {"charges": 2, "tax_charged": 56.00, "tax_reversed": 36.00, "tax_net": 20.00, "tax_remitted": 0.00},
+    "payable": {"outstanding": 20.00, "oldest_unremitted_at": "2026-09-20T09:00:00+03:00"},
+    "series": [
+      {"period": "2026-09-20", "charges": 2, "tax_charged": 56.00, "tax_reversed": 36.00, "tax_net": 20.00, "tax_remitted": 0.00}
+    ],
+    "notes": []
+  }
+}</pre></div>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/finance/winnings-tax/charges</span><span class="endpoint-desc">Winnings tax per settlement, and the credits of reversals</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">20/min</span></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>from, to, exclude_test</td><td>&nbsp;</td><td><span class="optional">Optional</span></td><td>Matched against when the row was written (<code>charged_at</code>)</td></tr>
+<tr><td>kind</td><td>string</td><td><span class="optional">Optional</span></td><td><code>charge</code> or <code>reversal</code>. Default: both</td></tr>
+<tr><td>status</td><td>string</td><td><span class="optional">Optional</span></td><td><code>remitted</code> (in a KRA payment) or <code>unremitted</code>. Default: all</td></tr>
+<tr><td>customer_id</td><td>integer</td><td><span class="optional">Optional</span></td><td>One customer</td></tr>
+<tr><td>product</td><td>string</td><td><span class="optional">Optional</span></td><td>One product code, e.g. <code>crash_classic</code></td></tr>
+<tr><td>page, per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 50, maximum 200</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "generated_at": "2026-09-20T12:00:00+03:00",
+    "meta": {},
+    "summary": {
+      "rows": 2, "tax_net": 0.00,
+      "by_kind": {"charge": {"rows": 1, "tax_base": 180.00, "tax": 36.00}, "reversal": {"rows": 1, "tax_base": 180.00, "tax": -36.00}},
+      "unremitted": {"rows": 2, "tax": 0.00}
+    },
+    "items": [
+      {"id": 8, "charged_at": "2026-09-20T11:00:00+03:00", "kind": "reversal", "wager_id": 41, "wager_reference": "bet-9001", "settlement_version": 1, "product": "crash_classic", "customer_id": 900, "customer_name": "Alice Wanjiru", "tax_base": 180.00, "rate": 0.2, "amount": -36.00, "remittance_id": null, "kra_reference": null},
+      {"id": 7, "charged_at": "2026-09-20T09:00:00+03:00", "kind": "charge", "wager_id": 41, "wager_reference": "bet-9001", "settlement_version": 1, "product": "crash_classic", "customer_id": 900, "customer_name": "Alice Wanjiru", "tax_base": 180.00, "rate": 0.2, "amount": 36.00, "remittance_id": null, "kra_reference": null}
+    ],
+    "pagination": {"page": 1, "per_page": 50, "total": 2, "last_page": 1}
+  }
+}</pre></div>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/finance/winnings-tax/returns</span><span class="endpoint-desc">Monthly returns: due, paid, outstanding and due date</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">20/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">One row per calendar month the range touches, covering the whole month and every customer. <code>tax_due</code> is charged minus reversed in the month, <code>tax_remitted</code> the part of the month's rows already in a recorded remittance (a credit taken by a later remittance counts there too), and <code>outstanding</code> what is left; it is negative for a credit not yet used. <code>amount_to_remit</code> is what a remittance for the whole month would record now: the month's unremitted rows plus every earlier unremitted credit, or 0 when credits cover it (such a remittance is refused). <code>overdue</code> is true once the due date has passed with <code>amount_to_remit</code> above 0, so a month the credits cover is never overdue.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>from, to</td><td>date</td><td><span class="optional">Optional</span></td><td>Any day in the first and last month. Default: this month</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "generated_at": "2026-09-20T12:00:00+03:00",
+    "meta": {},
+    "filing_day": 20,
+    "payable": 15.00,
+    "items": [
+      {"period": "2026-09", "period_start": "2026-09-01", "period_end": "2026-09-30", "due_date": "2026-10-20", "charges": 1, "tax_charged": 25.00, "tax_reversed": 10.00, "tax_due": 15.00, "tax_remitted": 0.00, "outstanding": 15.00, "amount_to_remit": 15.00, "overdue": false}
+    ]
+  }
+}</pre></div>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/finance/winnings-tax/remittances</span><span class="endpoint-desc">Record a payment to KRA</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Record it after paying KRA. Every row in the period not yet in a remittance is attached to this one, plus every earlier credit not yet used, and <code>amount_due</code> is their net. A period whose net is zero or less is refused (422) and its credits wait for a later return. <code>difference</code> is paid minus due. A remittance is never edited or deleted: void a wrong one and record it again.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>period_start</td><td>date (Y-m-d)</td><td><span class="required">Required</span></td><td>First day covered, today or earlier</td></tr>
+<tr><td>period_end</td><td>date (Y-m-d)</td><td><span class="required">Required</span></td><td>Last day covered, not before <code>period_start</code> and not in the future</td></tr>
+<tr><td>amount_paid</td><td>numeric</td><td><span class="required">Required</span></td><td>KES paid to KRA, greater than 0</td></tr>
+<tr><td>kra_reference</td><td>string</td><td><span class="required">Required</span></td><td>Up to 100 characters. Can be used by only one active remittance; reusable once that one is voided</td></tr>
+<tr><td>paid_at</td><td>date (Y-m-d)</td><td><span class="optional">Optional</span></td><td>When it was paid, today or earlier. Default: now</td></tr></table></div>
+<div class="endpoint-section"><h4>Request</h4>
+<pre>POST /api/v1/finance/winnings-tax/remittances HTTP/1.1
+Host: api.kadi-kings.co.ke
+X-API-KEY: your-api-key-here
+Content-Type: application/json
+Idempotency-Key: wht-2026-09
+
+{
+  "period_start": "2026-09-01",
+  "period_end": "2026-09-30",
+  "amount_paid": 15.00,
+  "kra_reference": "PRN2026090001",
+  "paid_at": "2026-10-18"
+}</pre></div>
+<div class="endpoint-section"><h4>Response (201)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "id": 2, "period_start": "2026-09-01", "period_end": "2026-09-30", "charges": 2,
+    "amount_due": 15.00, "amount_paid": 15.00, "difference": 0.00, "kra_reference": "PRN2026090001",
+    "paid_at": "2026-10-18T00:00:00+03:00", "status": "active", "recorded_by": "api_key:4",
+    "voided_at": null, "voided_by": null, "void_reason": null
+  }
+}</pre></div>
+<div class="endpoint-section"><h4>Error Responses</h4>
+<pre>// 422 - nothing owed in the period
+{"success": false, "message": "There is no winnings tax owed in that period."}
+
+// 422 - e.g. future period, amount 0, or KRA reference already used
+{"message": "The kra reference has already been taken.", "errors": {"kra_reference": ["The kra reference has already been taken."]}}</pre></div>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/finance/winnings-tax/remittances/{encryptedIdentifier}/void</span><span class="endpoint-desc">Void a remittance with a reason</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-encrypted">Encrypted ID</span><span class="tag tag-idempotent">Idempotent</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">The remittance stays on record, flagged as voided with who and when. Its rows, charges and credits, are detached and count as owed again.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>reason</td><td>string</td><td><span class="required">Required</span></td><td>3 to 255 characters</td></tr></table></div>
+<div class="endpoint-section"><h4>Error Responses</h4>
+<pre>// 404
+{"success": false, "message": "Remittance not found"}
+
+// 409 - already voided
+{"success": false, "message": "Remittance is already voided"}</pre></div>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/finance/winnings-tax/remittances</span><span class="endpoint-desc">List payments to KRA</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">20/min</span></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>from, to</td><td>date</td><td><span class="optional">Optional</span></td><td>Remittances whose period overlaps the range</td></tr>
+<tr><td>status</td><td>string</td><td><span class="optional">Optional</span></td><td><code>active</code> (default), <code>voided</code> or <code>all</code></td></tr>
+<tr><td>page, per_page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 50, maximum 200</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "generated_at": "2026-10-18T13:10:00+03:00",
+    "meta": {},
+    "summary": {
+      "active": {"remittances": 1, "amount_due": 15.00, "amount_paid": 15.00},
+      "voided": {"remittances": 0, "amount_due": 0.00, "amount_paid": 0.00},
+      "payable": 0.00
+    },
+    "items": [
+      {"id": 2, "period_start": "2026-09-01", "period_end": "2026-09-30", "charges": 2, "amount_due": 15.00, "amount_paid": 15.00, "difference": 0.00, "kra_reference": "PRN2026090001", "paid_at": "2026-10-18T00:00:00+03:00", "status": "active", "recorded_by": "api_key:4", "created_at": "2026-10-18T09:00:00+03:00", "voided_at": null, "voided_by": null, "void_reason": null}
+    ],
+    "pagination": {"page": 1, "per_page": 50, "total": 1, "last_page": 1}
+  }
+}</pre></div>
+</div></div>
+</div>
+
 <!-- FINANCE EXPORT SECTION -->
 <div class="doc-section" data-section="finance-export">
 <div class="endpoint">
@@ -8019,7 +8208,7 @@ Idempotency-Key: excise-2026-08
 <tr><td>bet-shop-loads</td><td>/finance/bet-shops/loads</td><td>One per cash load</td></tr>
 <tr><td>bet-shop-withdrawals</td><td>/finance/bet-shops/withdrawals</td><td>One per shop cash withdrawal</td></tr>
 <tr><td>open-wallets</td><td>/finance/open-wallets</td><td>One per untouched open wallet, as of now (<code>participants</code> as JSON)</td></tr></table>
-<p style="color:var(--text-secondary);font-size:13px;margin-top:8px;">The <code>cash-flow</code> export has <code>house_funding</code> and <code>shop_float</code> columns after <code>unmatched</code>, <code>excise_withheld</code> and <code>excise_remitted</code> columns before <code>net_cash</code>, and <code>referral_paid</code>, <code>referral_pending</code>, <code>referral_failed</code>, <code>deposit_refunded</code>, <code>shop_float_redeemed</code>, <code>shop_cash_loaded</code> and <code>shop_cash_paid_out</code> after it. The <code>income-statement</code> export has <code>referral_payouts</code> and <code>promotions</code> as its last columns.</p>
+<p style="color:var(--text-secondary);font-size:13px;margin-top:8px;">The <code>cash-flow</code> export has <code>house_funding</code> and <code>shop_float</code> columns after <code>unmatched</code>, <code>excise_withheld</code> and <code>excise_remitted</code> columns before <code>net_cash</code>, and <code>referral_paid</code>, <code>referral_pending</code>, <code>referral_failed</code>, <code>deposit_refunded</code>, <code>shop_float_redeemed</code>, <code>shop_cash_loaded</code>, <code>shop_cash_paid_out</code>, <code>winnings_tax_withheld</code> and <code>winnings_tax_remitted</code> after it. The <code>income-statement</code> export has <code>referral_payouts</code> and <code>promotions</code> as its last columns.</p>
 <p style="color:var(--text-secondary);font-size:13px;margin-top:8px;">The customer statement cannot be exported yet.</p></div>
 <div class="endpoint-section"><h4>Request</h4>
 <pre>GET /api/v1/finance/export/deposits?from=2026-09-01&amp;to=2026-09-20&amp;status=2 HTTP/1.1
@@ -8180,6 +8369,7 @@ var sectionTitles = {
     'finance-reports': { title: 'Finance Drill-downs', desc: 'Deposits, withdrawals, purchases, games, competitions, ledger, adjustments, disputes, referrals, promotions and customer reports' },
     'finance-expenses': { title: 'Expenses', desc: 'Record, void and list operating expenses' },
     'finance-excise': { title: 'Excise Duty', desc: 'Excise duty taken from deposits, monthly returns and payments to KRA' },
+    'finance-winnings-tax': { title: 'Winnings Tax', desc: 'Tax withheld from house-banked wins, monthly returns and payments to KRA' },
     'finance-export': { title: 'CSV Export', desc: 'Download any finance report as a CSV file' },
     'errors': { title: 'Error Responses', desc: 'Status codes and error bodies' }
 };

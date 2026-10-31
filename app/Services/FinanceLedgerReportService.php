@@ -87,7 +87,8 @@ class FinanceLedgerReportService
     }
 
     /**
-     * Manual balance changes (and their reversals), with who made them and why.
+     * Manual balance changes (and their reversals), with who made them and why. wallet_type says whose balance
+     * moved: a customer wallet, or a competition wallet corrected through PUT /competition/wallets/{id}.
      *
      * Filters: customer_id.
      *
@@ -102,7 +103,7 @@ class FinanceLedgerReportService
         $actor = self::JSON_ACTOR;
 
         $query = $base()
-            ->selectRaw("l.id, l.created_at, l.entry_type, l.customer_id, c.name as customer_name, l.debit, l.credit, l.balance_before, l.balance_after, l.status, {$reason} as reason, {$actor} as actor, ".self::JSON_OPERATION.' as operation')
+            ->selectRaw("l.id, l.created_at, l.entry_type, l.customer_id, c.name as customer_name, l.wallet_type, l.wallet_id, l.debit, l.credit, l.balance_before, l.balance_after, l.status, {$reason} as reason, {$actor} as actor, ".self::JSON_OPERATION.' as operation')
             ->orderByDesc('l.id');
 
         $summary = function () use ($base, $reason, $actor) {
@@ -151,9 +152,11 @@ class FinanceLedgerReportService
                 'actor' => $row->actor,
                 'operation' => $row->operation,
                 'status' => $row->status,
+                'wallet_type' => $row->wallet_type,
+                'wallet_id' => $row->wallet_id === null ? null : (int) $row->wallet_id,
             ],
             $summary,
-            ['id', 'created_at', 'entry_type', 'customer_id', 'customer_name', 'direction', 'amount', 'balance_before', 'balance_after', 'reason', 'actor', 'operation', 'status'],
+            ['id', 'created_at', 'entry_type', 'customer_id', 'customer_name', 'direction', 'amount', 'balance_before', 'balance_after', 'reason', 'actor', 'operation', 'status', 'wallet_type', 'wallet_id'],
         );
     }
 

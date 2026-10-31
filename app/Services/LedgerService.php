@@ -857,12 +857,13 @@ class LedgerService
     }
 
     /**
-     * Record a manual balance change. A positive amount credits the wallet, a negative one debits it.
-     * The reason and actor are kept in the entry metadata so manual movements can be audited.
+     * Record a manual balance change on a customer or competition wallet. A positive amount credits the
+     * wallet, a negative one debits it. The reason and actor are kept in the entry metadata so manual
+     * movements can be audited.
      *
      * @param  array<string, mixed>  $context
      */
-    public function recordAdjustment(Wallet $wallet, float $signedAmount, string $reason, ?string $actor = null, array $context = []): ?LedgerEntry
+    public function recordAdjustment(Wallet|CompetitionWallet $wallet, float $signedAmount, string $reason, ?string $actor = null, array $context = []): ?LedgerEntry
     {
         if (round($signedAmount, 2) == 0.0) {
             return null;

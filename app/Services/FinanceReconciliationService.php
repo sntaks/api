@@ -12,6 +12,7 @@ use App\Models\LedgerEntry;
 use App\Models\MpesaBalance;
 use App\Models\ReferralWithdrawal;
 use App\Models\ShopWithdrawal;
+use App\Models\WagerSettlement;
 use App\Models\Withdraw;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,7 @@ class FinanceReconciliationService
         private FinanceReportService $reports,
         private FinanceSnapshotService $snapshots,
         private ExciseDutyReportService $exciseDuty,
+        private WinningsTaxReportService $winningsTax,
     ) {}
 
     /**
@@ -52,6 +54,10 @@ class FinanceReconciliationService
             $this->exciseDutyAmounts($range),
             $this->exciseDutyLedger($range),
             $this->overdueExciseDuty(),
+            $this->winningsTaxAmounts($range),
+            $this->winningsTaxLedger($range),
+            $this->settlementsWithoutWinningsTax($range),
+            $this->overdueWinningsTax(),
             $this->stuckWithdrawals(),
             $this->withdrawalsAwaitingApproval(),
             $this->failedWithdrawalsNotReversed(),
@@ -385,6 +391,106 @@ class FinanceReconciliationService
             (clone $mismatched)->count(),
             (float) (clone $mismatched)->sum('x.excise_amount'),
             (clone $mismatched)->limit(self::SAMPLE_SIZE)->get(['x.id', 'x.deposit_id', 'x.excise_amount', 'x.status', 'l.id as ledger_entry_id', 'l.debit', 'l.status as ledger_status'])->map(fn ($row) => (array) $row)->all()
+        );
+    }
+
+    /**
+     * Each winnings tax row matches its settlement: the tax the settlement withheld, and round(base x rate)
+     * half up, positive for a charge and negative for its reversal credit.
+     *
+     * @return array<string, mixed>
+     */
+    private function winningsTaxAmounts(FinanceDateRange $range): array
+    {
+        $wrong = DB::table('winnings_tax_charges as x')
+            ->join('wager_settlements as s', 's.id', '=', 'x.wager_settlement_id')
+            ->whereBetween('x.charged_at', [$range->from, $range->to])
+            ->where(fn ($query) => $query
+                ->whereRaw('ABS(ABS(x.amount) - s.tax) > ?', [$this->tolerance()])
+                ->orWhereRaw('ABS(ABS(x.amount) - ROUND(x.tax_base * x.rate, 2)) > ?', [$this->tolerance()])
+                ->orWhereRaw("(x.kind = 'charge' AND x.amount <= 0)")
+                ->orWhereRaw("(x.kind = 'reversal' AND x.amount >= 0)"));
+
+        return $this->result(
+            'winnings_tax_amounts',
+            'Winnings tax charges are worked out correctly',
+            'fail',
+            (clone $wrong)->count(),
+            (float) (clone $wrong)->selectRaw('COALESCE(SUM(ABS(x.amount)), 0) as amount')->value('amount'),
+            (clone $wrong)->limit(self::SAMPLE_SIZE)->get(['x.id', 'x.wager_settlement_id', 'x.kind', 'x.tax_base', 'x.rate', 'x.amount', 's.tax'])->map(fn ($row) => (array) $row)->all()
+        );
+    }
+
+    /**
+     * Each winnings tax row points at its own settlement's ledger entry: winnings_tax for a charge (debited by
+     * the amount), winnings_tax_reversal for a credit (credited by it).
+     *
+     * @return array<string, mixed>
+     */
+    private function winningsTaxLedger(FinanceDateRange $range): array
+    {
+        $mismatched = DB::table('winnings_tax_charges as x')
+            ->leftJoin('ledger_entries as l', 'l.id', '=', 'x.ledger_entry_id')
+            ->whereBetween('x.charged_at', [$range->from, $range->to])
+            ->where(fn ($query) => $query
+                ->whereNull('l.id')
+                ->orWhereRaw('(l.referenceable_type != ? OR l.referenceable_id != x.wager_settlement_id)', [WagerSettlement::class])
+                ->orWhereRaw("(x.kind = 'charge' AND (l.entry_type != 'winnings_tax' OR ABS(l.debit - x.amount) > ?))", [$this->tolerance()])
+                ->orWhereRaw("(x.kind = 'reversal' AND (l.entry_type != 'winnings_tax_reversal' OR ABS(l.credit + x.amount) > ?))", [$this->tolerance()]));
+
+        return $this->result(
+            'winnings_tax_ledger',
+            'Winnings tax charges match the ledger',
+            'fail',
+            (clone $mismatched)->count(),
+            (float) (clone $mismatched)->selectRaw('COALESCE(SUM(ABS(x.amount)), 0) as amount')->value('amount'),
+            (clone $mismatched)->limit(self::SAMPLE_SIZE)->get(['x.id', 'x.wager_settlement_id', 'x.kind', 'x.amount', 'l.id as ledger_entry_id', 'l.entry_type', 'l.debit', 'l.credit'])->map(fn ($row) => (array) $row)->all()
+        );
+    }
+
+    /**
+     * Every settlement that withheld tax has its charge row, and every reversed one its credit row. Covers the
+     * settlements made in the range and those reversed in it, whenever they were made.
+     *
+     * @return array<string, mixed>
+     */
+    private function settlementsWithoutWinningsTax(FinanceDateRange $range): array
+    {
+        $missing = DB::table('wager_settlements as s')
+            ->where('s.tax', '>', 0)
+            ->where(fn ($query) => $query->whereBetween('s.created_at', [$range->from, $range->to])->orWhereBetween('s.reversed_at', [$range->from, $range->to]))
+            ->where(fn ($query) => $query
+                ->whereNotExists(fn ($charge) => $charge->from('winnings_tax_charges as x')->whereColumn('x.wager_settlement_id', 's.id')->where('x.kind', 'charge'))
+                ->orWhere(fn ($reversed) => $reversed->where('s.status', 'reversed')
+                    ->whereNotExists(fn ($credit) => $credit->from('winnings_tax_charges as x')->whereColumn('x.wager_settlement_id', 's.id')->where('x.kind', 'reversal'))));
+
+        return $this->result(
+            'settlements_without_winnings_tax',
+            'Settlements that withheld winnings tax have their tax rows',
+            'fail',
+            (clone $missing)->count(),
+            (float) (clone $missing)->sum('s.tax'),
+            (clone $missing)->limit(self::SAMPLE_SIZE)->get(['s.id', 's.wager_id', 's.version', 's.tax', 's.status'])->map(fn ($row) => (array) $row)->all()
+        );
+    }
+
+    /**
+     * Months whose winnings tax is still unpaid after the filing day of the next month.
+     *
+     * @return array<string, mixed>
+     */
+    private function overdueWinningsTax(): array
+    {
+        $overdue = $this->winningsTax->overdueReturns();
+
+        return $this->result(
+            'overdue_winnings_tax',
+            'Winnings tax is paid to KRA by the due date',
+            'warn',
+            count($overdue),
+            array_sum(array_column($overdue, 'outstanding')),
+            array_slice($overdue, 0, self::SAMPLE_SIZE),
+            'Pay KRA, then record it with POST /finance/winnings-tax/remittances.'
         );
     }
 
@@ -945,7 +1051,7 @@ class FinanceReconciliationService
 
         $owed = $position['customer_wallets_total'] + $position['game_escrow_total'] + $position['competition_escrow_total']
             + $position['stuck_escrow_total'] + $position['coin_liability'] + $position['pending_holds_total']
-            + $position['unmatched_deposits_total'] + $position['excise_duty_payable'] + $position['disputed_funds_total']
+            + $position['unmatched_deposits_total'] + $position['excise_duty_payable'] + max(0.0, (float) $position['winnings_tax_payable']) + $position['disputed_funds_total']
             + $position['referral_wallets_total'] + $position['bet_shop_floats_total'] + $position['shop_withdrawals_held_total'];
 
         $shortfall = round($owed - $cash, 2);

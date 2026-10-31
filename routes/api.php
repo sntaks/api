@@ -71,6 +71,7 @@ use App\Http\Controllers\api\v1\WagerRoundController;
 use App\Http\Controllers\api\v1\WalletController;
 use App\Http\Controllers\api\v1\WalletTransactionController;
 use App\Http\Controllers\api\v1\WalletTransferController;
+use App\Http\Controllers\api\v1\WinningsTaxController;
 use App\Http\Controllers\api\v1\WithdrawalApprovalController;
 use App\Http\Controllers\api\v1\WithdrawalController;
 use App\Http\Controllers\api\v1\WithdrawController;
@@ -241,6 +242,12 @@ Route::prefix('/v1')->group(function () {
                 Route::get('/excise-duty/returns', [ExciseDutyController::class, 'returns']);
                 Route::get('/excise-duty/remittances', [ExciseDutyController::class, 'remittances']);
 
+                // Winnings tax on house-banked wins
+                Route::get('/winnings-tax', [WinningsTaxController::class, 'summary']);
+                Route::get('/winnings-tax/charges', [WinningsTaxController::class, 'charges']);
+                Route::get('/winnings-tax/returns', [WinningsTaxController::class, 'returns']);
+                Route::get('/winnings-tax/remittances', [WinningsTaxController::class, 'remittances']);
+
                 // Drill-downs and CSV export
                 Route::get('/deposits', [FinanceDrilldownController::class, 'deposits']);
                 Route::get('/withdrawals', [FinanceDrilldownController::class, 'withdrawals']);
@@ -267,6 +274,7 @@ Route::prefix('/v1')->group(function () {
         // Finance: record an expense
         Route::post('/finance/expenses', [FinanceExpenseController::class, 'store'])->middleware(['idempotency', 'throttle:write']);
         Route::post('/finance/excise-duty/remittances', [ExciseDutyController::class, 'store'])->middleware(['idempotency', 'throttle:write']);
+        Route::post('/finance/winnings-tax/remittances', [WinningsTaxController::class, 'store'])->middleware(['idempotency', 'throttle:write']);
 
         Route::get('/playground', [PlaygroundController::class, 'index']);
         Route::post('/playground', [PlaygroundController::class, 'store']);
@@ -317,6 +325,8 @@ Route::prefix('/v1')->group(function () {
             Route::post('/finance/expenses/{encryptedIdentifier}/void', [FinanceExpenseController::class, 'void'])->middleware(['idempotency', 'throttle:write']);
             // Finance: void an excise duty remittance
             Route::post('/finance/excise-duty/remittances/{encryptedIdentifier}/void', [ExciseDutyController::class, 'void'])->middleware(['idempotency', 'throttle:write']);
+            // Finance: void a winnings tax remittance
+            Route::post('/finance/winnings-tax/remittances/{encryptedIdentifier}/void', [WinningsTaxController::class, 'void'])->middleware(['idempotency', 'throttle:write']);
 
             // Wallet Routes
             Route::get('/wallets/{encryptedIdentifier}', [WalletController::class, 'show']);

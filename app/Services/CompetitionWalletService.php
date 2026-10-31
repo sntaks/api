@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -127,16 +128,38 @@ class CompetitionWalletService
             ->toArray();
     }
 
-    public function updateCompetitionWallet($id, array $data): ?CompetitionWallet
+    /**
+     * An admin correction of a competition wallet. The row is locked, and a balance that differs from the
+     * stored one is posted as an adjustment ledger entry for the difference, so the wallet and its ledger
+     * keep agreeing.
+     *
+     * @param  array{customer_id: int, level: int, balance: numeric-string|float|int}  $data
+     */
+    public function updateCompetitionWallet($id, array $data, ?string $actor = null): ?CompetitionWallet
     {
-        $competitionWallet = CompetitionWallet::find($id);
-        if (! $competitionWallet) {
+        if (! CompetitionWallet::whereKey($id)->exists()) {
             return null;
         }
 
-        $competitionWallet->update($data);
+        return DB::transaction(function () use ($id, $data, $actor) {
+            $competitionWallet = CompetitionWallet::lockForUpdate()->find($id);
 
-        return $competitionWallet;
+            if (! $competitionWallet) {
+                return null;
+            }
+
+            $competitionWallet->update(Arr::except($data, ['balance']));
+
+            $this->ledgerService->recordAdjustment(
+                $competitionWallet,
+                round((float) $data['balance'] - (float) $competitionWallet->balance, 2),
+                'competition_wallet_correction',
+                $actor,
+                ['competition_wallet_id' => $competitionWallet->id]
+            );
+
+            return $competitionWallet->fresh();
+        });
     }
 
     public function deleteCompetitionWallet($id): bool
@@ -259,6 +282,10 @@ class CompetitionWalletService
             // the same money nor overwrite each other's balances.
             $competitionWallet = CompetitionWallet::lockForUpdate()->find($competitionWallet->id);
             $wallet = Wallet::where('customer_id', $customer->id)->lockForUpdate()->first();
+
+            if ($competitionWallet->status !== 1) {
+                throw new \InvalidArgumentException('Competition Wallet is not open');
+            }
 
             if ($wallet->balance < $data['amount']) {
                 throw new \InvalidArgumentException('Insufficient balance or Wallet not found.');

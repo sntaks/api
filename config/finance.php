@@ -159,6 +159,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Winnings Tax
+    |--------------------------------------------------------------------------
+    |
+    | Tax withheld from house-banked wins (sportsbook, crash). The rate is per
+    | product (products.winnings_tax_rate) and the base is the profit (D19).
+    | The return and payment for a month are due on filing_day of the next
+    | month (D26: the 20th, to be confirmed with the accountant).
+    |
+    */
+
+    'winnings_tax' => [
+        'filing_day' => (int) env('FINANCE_WINNINGS_TAX_FILING_DAY', 20),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | List Reports
     |--------------------------------------------------------------------------
     |
