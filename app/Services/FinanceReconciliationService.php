@@ -44,6 +44,7 @@ class FinanceReconciliationService
             $this->ledgerDrift('referral_wallet_drift', 'Referral wallet balances match the ledger', 'referral_wallets', LedgerEntry::WALLET_TYPE_REFERRAL, false),
             $this->ledgerDrift('bet_shop_float_drift', 'Bet shop float balances match the ledger', 'bet_shop_wallets', LedgerEntry::WALLET_TYPE_BET_SHOP, false),
             $this->ledgerDrift('shop_withdrawal_drift', 'Shop cash withdrawal balances match the ledger', 'shop_withdrawals', LedgerEntry::WALLET_TYPE_SHOP_WITHDRAWAL, false),
+            $this->ledgerDrift('wager_escrow_drift', 'Wager escrow balances match the ledger', 'wagers', LedgerEntry::WALLET_TYPE_WAGER, false),
             $this->ledgerChain($range),
             $this->ledgerIdentity($range),
             $this->unclassifiedEntries(),
@@ -63,7 +64,9 @@ class FinanceReconciliationService
             $this->failedWithdrawalsNotReversed(),
             $this->stuckEscrow(),
             $this->agedEscrow(),
-            $this->negativeBalances(),
+            $this->agedOpenWagers(),
+            $this->settledWagersWithBalance(),
+            ...$this->negativeBalances(),
             $this->heldOnClosedComplaints(),
             $this->agedDisputes(),
             $this->stuckReferralWithdrawals(),
@@ -639,23 +642,144 @@ class FinanceReconciliationService
     }
 
     /**
-     * @return array<string, mixed>
+     * Negative balances, in three checks. A player made negative by a wager settlement reversal (D3) is an
+     * expected debt to recover (warn); a negative house wallet is owner capital spent on wins (warn); any
+     * other negative wallet is a fault (fail). A player counts as "from reversal" when the latest entry that
+     * took the wallet below zero is a reversal of a wager settlement leg.
+     *
+     * @return list<array<string, mixed>>
      */
     private function negativeBalances(): array
     {
+        $houseWalletId = (int) config('wallets.house_wallet_id', 1);
         $rows = collect(['wallets' => 'customer', 'game_wallets' => 'game', 'competition_wallets' => 'competition', 'referral_wallets' => 'referral', 'bet_shop_wallets' => 'bet_shop', 'shop_withdrawals' => 'shop_withdrawal'])
             ->flatMap(fn (string $kind, string $table) => DB::table($table)
                 ->where('balance', '<', 0)
                 ->get(['id', 'balance'])
                 ->map(fn ($row) => ['kind' => $kind, 'id' => (int) $row->id, 'balance' => (float) $row->balance]));
 
+        $isHouse = fn (array $row) => $row['kind'] === 'customer' && $row['id'] === $houseWalletId;
+        $house = $rows->filter($isHouse);
+        $players = $rows->reject($isHouse);
+        $fromReversal = $players->filter(fn (array $row) => $row['kind'] === 'customer' && $this->wentNegativeThroughReversal($row['id']));
+        $other = $players->reject(fn (array $row) => $fromReversal->contains(fn (array $reversed) => $reversed['id'] === $row['id'] && $reversed['kind'] === $row['kind']));
+
+        return [
+            $this->result(
+                'negative_balances',
+                'No wallet has a negative balance',
+                'fail',
+                $other->count(),
+                abs((float) $other->sum('balance')),
+                $other->sortBy('balance')->take(self::SAMPLE_SIZE)->values()->all(),
+                'Players made negative by a wager reversal and the house wallet are listed in their own checks.'
+            ),
+            $this->result(
+                'negative_balances_from_reversal',
+                'Players made negative by a wager reversal',
+                'warn',
+                $fromReversal->count(),
+                abs((float) $fromReversal->sum('balance')),
+                $fromReversal->sortBy('balance')->take(self::SAMPLE_SIZE)->values()->all(),
+                'Expected after a settlement reversal (D3): the player owes this, the next credits repay it, and stakes and withdrawals are blocked until then.'
+            ),
+            $this->result(
+                'negative_house_balance',
+                'The house wallet is not negative',
+                'warn',
+                $house->count(),
+                abs((float) $house->sum('balance')),
+                $house->values()->all(),
+                'The house wallet is owner capital: house-banked wins can take it below zero. Top it up with house funding.'
+            ),
+        ];
+    }
+
+    /**
+     * Whether this customer wallet's debt comes from a wager reversal: the latest entry that took it from zero or
+     * more to below zero reverses a wager settlement leg, and every debit since then is another such reversal or
+     * excise duty. Excise never starts a debt (it follows the deposit it is taken from), so a deposit of exactly
+     * the debt, whose excise takes the wallet from 0 to below zero again, stays a reversal debt.
+     */
+    private function wentNegativeThroughReversal(int $walletId): bool
+    {
+        $entries = fn () => DB::table('ledger_entries')
+            ->where('wallet_type', LedgerEntry::WALLET_TYPE_WALLET)
+            ->where('wallet_id', $walletId);
+        $isReversal = fn ($query) => $query->where('entry_type', 'like', '%\\_reversal')->where('referenceable_type', WagerSettlement::class);
+
+        $crossing = $entries()
+            ->where('balance_before', '>=', 0)
+            ->where('balance_after', '<', 0)
+            ->where('entry_type', '!=', 'excise_duty')
+            ->orderByDesc('id')
+            ->first(['id', 'entry_type', 'referenceable_type']);
+
+        if ($crossing === null || ! str_ends_with($crossing->entry_type, '_reversal') || $crossing->referenceable_type !== WagerSettlement::class) {
+            return false;
+        }
+
+        return ! $entries()
+            ->where('id', '>', $crossing->id)
+            ->where('debit', '>', 0)
+            ->where('entry_type', '!=', 'excise_duty')
+            ->whereNot(fn ($query) => $isReversal($query))
+            ->exists();
+    }
+
+    /**
+     * House-banked wagers still open after their product's threshold (finance.reconciliation.open_wager_days,
+     * overridden per product code in open_wager_days_by_product): a game that never settled them.
+     *
+     * @return array<string, mixed>
+     */
+    private function agedOpenWagers(): array
+    {
+        $defaultDays = (int) config('finance.reconciliation.open_wager_days', 30);
+        $byProduct = config('finance.reconciliation.open_wager_days_by_product', []);
+        $now = CarbonImmutable::now(config('app.timezone'));
+
+        $days = 'CASE p.code '.implode(' ', array_fill(0, count($byProduct), 'WHEN ? THEN ?')).' ELSE ? END';
+        $bindings = [];
+        foreach ($byProduct as $code => $limit) {
+            array_push($bindings, $code, (int) $limit);
+        }
+        $bindings[] = $defaultDays;
+
+        $aged = DB::table('wagers as w')
+            ->join('products as p', 'p.id', '=', 'w.product_id')
+            ->where('w.status', 'open')
+            ->whereRaw($byProduct === [] ? 'w.placed_at < DATE_SUB(?, INTERVAL ? DAY)' : "w.placed_at < DATE_SUB(?, INTERVAL ({$days}) DAY)", [$now->toDateTimeString(), ...$bindings]);
+
         return $this->result(
-            'negative_balances',
-            'No wallet has a negative balance',
+            'aged_open_wagers',
+            'House-banked wagers are settled in time',
+            'warn',
+            (clone $aged)->count(),
+            (float) (clone $aged)->sum('w.balance'),
+            (clone $aged)->orderBy('w.placed_at')->limit(self::SAMPLE_SIZE)->get(['w.id', 'p.code as product', 'w.reference', 'w.balance', 'w.placed_at'])->map(fn ($row) => (array) $row)->all(),
+            'Ask the game to settle them, or void a stuck one with POST /wagers/{id}/void.'
+        );
+    }
+
+    /**
+     * Settled wagers (won, lost or void) whose escrow is not empty: a settlement left money behind.
+     *
+     * @return array<string, mixed>
+     */
+    private function settledWagersWithBalance(): array
+    {
+        $held = DB::table('wagers')
+            ->whereIn('status', ['won', 'lost', 'void'])
+            ->whereRaw('ABS(balance) > ?', [$this->tolerance()]);
+
+        return $this->result(
+            'settled_wagers_with_balance',
+            'Settled wagers hold no money',
             'fail',
-            $rows->count(),
-            abs((float) $rows->sum('balance')),
-            $rows->sortBy('balance')->take(self::SAMPLE_SIZE)->values()->all()
+            (clone $held)->count(),
+            (float) (clone $held)->selectRaw('COALESCE(SUM(ABS(balance)), 0) as amount')->value('amount'),
+            (clone $held)->limit(self::SAMPLE_SIZE)->get(['id', 'product_id', 'reference', 'status', 'balance'])->map(fn ($row) => (array) $row)->all()
         );
     }
 
@@ -1051,7 +1175,7 @@ class FinanceReconciliationService
 
         $owed = $position['customer_wallets_total'] + $position['game_escrow_total'] + $position['competition_escrow_total']
             + $position['stuck_escrow_total'] + $position['coin_liability'] + $position['pending_holds_total']
-            + $position['unmatched_deposits_total'] + $position['excise_duty_payable'] + max(0.0, (float) $position['winnings_tax_payable']) + $position['disputed_funds_total']
+            + $position['unmatched_deposits_total'] + $position['excise_duty_payable'] + max(0.0, (float) $position['winnings_tax_payable']) + $position['open_wagers_total'] + $position['disputed_funds_total']
             + $position['referral_wallets_total'] + $position['bet_shop_floats_total'] + $position['shop_withdrawals_held_total'];
 
         $shortfall = round($owed - $cash, 2);

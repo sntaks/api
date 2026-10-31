@@ -6721,6 +6721,7 @@ Accept: application/json</pre></div>
 <tr><td>group_by</td><td>string</td><td><code>day</code> (default), <code>week</code> (weeks start Monday) or <code>month</code>. Used by reports that return a series</td></tr>
 <tr><td>exclude_test</td><td>boolean</td><td>Default <code>true</code>. Leaves out test customers. Accepts <code>1</code>, <code>0</code>, <code>true</code>, <code>false</code></td></tr>
 <tr><td>page, per_page</td><td>integer</td><td>Lists only. Page 1, 50 per page by default, at most 200 per page</td></tr>
+<tr><td>product, game</td><td>string</td><td>Only reports built from ledger entries take them: <code>ledger</code>, <code>adjustments</code>, <code>customers/top</code>, <code>trial-balance</code>, <code>income-statement</code>, <code>winnings-tax/charges</code> and their CSV exports (plus <code>income-by-product</code>). <code>product</code> is a product code (e.g. <code>kadi</code>, <code>crash_classic</code>), <code>game</code> a game code meaning every product of that game. An unknown code, or a product of another game, is a <code>422</code> validation error. Every other finance report covers the whole platform (cash, deposits, withdrawals, excise duty, referrals, bet shops, expenses, balances, the customer statement and the summary) and answers <code>422</code> <code>{"success": false, "code": "product_filter_not_supported"}</code></td></tr>
 </table>
 </div>
 
@@ -6831,10 +6832,11 @@ Accept: application/json</pre></div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">20/min</span></div>
 <div class="endpoint-section"><h4>Description</h4>
-<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Revenue is house cuts as they are booked in the ledger, plus gift and emoji sales at the cash received. Tournament and jackpot cuts are split by rounds where the cut is linked to its competition entry; older cuts appear as <code>competitions_unattributed</code>. <code>expenses</code> are the active entries recorded through <a href="#" data-section="finance-expenses" style="color:var(--accent-blue)">/finance/expenses</a>, dated by their expense date. <code>referral_payouts</code> are referral withdrawals completed in the period: the referral programme expense (earned bonuses cost nothing until they are paid out; they are shown in <code>memo.referral_bonuses_earned</code>). <code>promotions</code> is the gross cost of <a href="#" data-section="promotions" style="color:var(--accent-blue)">signup bonuses</a> granted in the period: what the house wallet paid, including the excise duty owed on it. <code>net_income</code> is revenue minus expenses, referral payouts and promotions, before tax (see <a href="#" data-section="finance-statements" style="color:var(--accent-blue)">/finance/taxes</a>). <code>memo.load_margin</code> is cash received for wallet loads minus the wallet credit given; it is shown for information and is not part of revenue. House cuts reversed when a <a href="#" data-section="complaints" style="color:var(--accent-blue)">complaint</a> is resolved reduce the same revenue line on the day they are reversed.</p></div>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Revenue is house cuts as they are booked in the ledger, plus gift and emoji sales at the cash received. Tournament and jackpot cuts are split by rounds where the cut is linked to its competition entry; older cuts appear as <code>competitions_unattributed</code>. <code>expenses</code> are the active entries recorded through <a href="#" data-section="finance-expenses" style="color:var(--accent-blue)">/finance/expenses</a>, dated by their expense date. <code>referral_payouts</code> are referral withdrawals completed in the period: the referral programme expense (earned bonuses cost nothing until they are paid out; they are shown in <code>memo.referral_bonuses_earned</code>). <code>promotions</code> is the gross cost of <a href="#" data-section="promotions" style="color:var(--accent-blue)">signup bonuses</a> granted in the period: what the house wallet paid, including the excise duty owed on it. <code>revenue.house_banked</code> is the GGR of house-banked products (sportsbook, crash): stakes settled to the house minus payouts, both net of reversals, negative when players won more than they lost. <code>wager_promotions</code> is what bonuses and free-bet winnings on wagers cost the house. <code>net_income</code> is revenue minus expenses, referral payouts, promotions and wager promotions, before tax (see <a href="#" data-section="finance-statements" style="color:var(--accent-blue)">/finance/taxes</a>). <code>memo.winnings_tax_withheld</code> is tax withheld from house-banked wins: owed to KRA, not revenue. <code>by_product</code> has one row per product (<code>net</code> = revenue minus promotions) and a <code>platform</code> row for everything with no product (gift and emoji sales, house cuts not tagged with a product, signup promotions, referral payouts, expenses), which is not allocated; the rows add up to <code>net_income</code>. With <code>product</code> or <code>game</code>, only that product's ledger lines count, platform lines are 0 and <code>memo.load_margin</code> is null. <code>memo.load_margin</code> is cash received for wallet loads minus the wallet credit given; it is shown for information and is not part of revenue. House cuts reversed when a <a href="#" data-section="complaints" style="color:var(--accent-blue)">complaint</a> is resolved reduce the same revenue line on the day they are reversed.</p></div>
 <div class="endpoint-section"><h4>Query Parameters</h4>
 <table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
-<tr><td>from, to, group_by, exclude_test</td><td>&nbsp;</td><td><span class="optional">Optional</span></td><td>See common parameters</td></tr></table></div>
+<tr><td>from, to, group_by, exclude_test</td><td>&nbsp;</td><td><span class="optional">Optional</span></td><td>See common parameters</td></tr>
+<tr><td>product, game</td><td>string</td><td><span class="optional">Optional</span></td><td>One product code, or every product of one game code. See common parameters</td></tr></table></div>
 <div class="endpoint-section"><h4>Response (200)</h4>
 <pre>{
   "success": true,
@@ -6849,19 +6851,31 @@ Accept: application/json</pre></div>
       "competitions_unattributed": 0.00,
       "gift_emoji_sales": {"total": 100.00, "gift": 100.00, "emoji": 0.00},
       "other": 0.00,
-      "total": 135.00
+      "house_banked": -50.00,
+      "total": 85.00
     },
     "expenses": {"tracked": true, "total": 40.00, "by_category": {"hosting": 40.00}},
     "referral_payouts": 0.00,
     "promotions": 21.05,
-    "net_income": 73.95,
+    "wager_promotions": 50.00,
+    "net_income": -26.05,
+    "by_product": {
+      "products": [
+        {"product": "kadi", "game": "kadi", "revenue_model": "rake", "revenue": 10.00, "promotions": 0.00, "winnings_tax_withheld": 0.00, "net": 10.00},
+        {"product": "kadi_tournament", "game": "kadi", "revenue_model": "rake", "revenue": 5.00, "promotions": 0.00, "winnings_tax_withheld": 0.00, "net": 5.00},
+        {"product": "kadi_jackpot", "game": "kadi", "revenue_model": "rake", "revenue": 20.00, "promotions": 0.00, "winnings_tax_withheld": 0.00, "net": 20.00},
+        {"product": "sportsbook_main", "game": "sportsbook", "revenue_model": "house_banked", "revenue": -50.00, "promotions": 50.00, "winnings_tax_withheld": 30.00, "net": -100.00}
+      ],
+      "platform": {"revenue": 100.00, "promotions": 21.05, "referral_payouts": 0.00, "expenses": 40.00, "net": 38.95}
+    },
     "memo": {
       "load_margin": {"cash_received": 300.00, "wallet_credited": 280.00, "margin": 20.00},
-      "referral_bonuses_earned": {"signup": 10.00, "first_deposit": 0.00, "total": 10.00}
+      "referral_bonuses_earned": {"signup": 10.00, "first_deposit": 0.00, "total": 10.00},
+      "winnings_tax_withheld": 30.00
     },
     "notes": ["Revenue is house cuts as they are booked in the ledger plus gift and emoji sales at cash received."],
     "series": [
-      {"period": "2026-09-20", "games": 10.00, "tournaments": 5.00, "jackpots": 20.00, "competitions_unattributed": 0.00, "gift_emoji_sales": 100.00, "other": 0.00, "total": 135.00, "expenses": 40.00, "referral_payouts": 0.00, "promotions": 21.05, "net_income": 73.95}
+      {"period": "2026-09-20", "games": 10.00, "tournaments": 5.00, "jackpots": 20.00, "competitions_unattributed": 0.00, "gift_emoji_sales": 100.00, "other": 0.00, "house_banked": -50.00, "total": 85.00, "wager_promotions": 50.00, "winnings_tax_withheld": 30.00, "expenses": 40.00, "referral_payouts": 0.00, "promotions": 21.05, "net_income": -26.05}
     ]
   }
 }</pre></div>
@@ -6905,7 +6919,7 @@ Accept: application/json</pre></div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">20/min</span></div>
 <div class="endpoint-section"><h4>Description</h4>
-<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Assets are the latest balance of every M-Pesa account (from the hourly balance fetch), listed individually. Liabilities are what is owed: customer wallets (test customers and the house wallet excluded), open game and competition wallets, <code>stuck_escrow</code> (money left in finished wallets), coin liability, pending holds, <code>unmatched_deposits</code> and <code>excise_duty_payable</code> (excise duty taken from deposits and not yet in a recorded <a href="#" data-section="finance-excise" style="color:var(--accent-blue)">KRA remittance</a>; snapshots from before it was tracked show 0) and <code>winnings_tax_payable</code> (tax withheld from house-banked wins less credits for reversed wins, not yet in a recorded <a href="#" data-section="finance-winnings-tax" style="color:var(--accent-blue)">KRA remittance</a>; negative while credits exceed charges; snapshots from before it was tracked show 0) and <code>disputed_funds</code> (winnings held while a <a href="#" data-section="complaints" style="color:var(--accent-blue)">complaint</a> is pending; still owed to a customer, snapshots from before complaints existed show 0) and <code>referral_wallets</code> (referral bonuses not yet withdrawn; customers can withdraw them at any time, snapshots from before referrals existed show 0) and <code>bet_shop_floats</code> (float bet shop owners have bought and not spent; owed back to them if redeemed) and <code>shop_withdrawals</code> (cash withdrawals at bet shops waiting to be collected; still owed to the player). Snapshots from before bet shops existed show 0 for both. The referral shortcode's balance is listed among the M-Pesa accounts as type <code>referral_b2c</code> once its balance URLs are set. <code>house_wallet</code> is shown separately. <code>difference</code> is cash minus liabilities minus the house wallet. It is not expected to be zero: it also holds gift and emoji sales not yet moved to the house wallet, M-Pesa charges, and timing between the hourly balance fetch and wallet movements. A daily snapshot is taken at 23:59 Nairobi time; <code>as_of</code> reads that day's snapshot.</p></div>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Assets are the latest balance of every M-Pesa account (from the hourly balance fetch), listed individually. Liabilities are what is owed: customer wallets (test customers and the house wallet excluded), open game and competition wallets, <code>stuck_escrow</code> (money left in finished wallets), coin liability, pending holds, <code>unmatched_deposits</code> and <code>excise_duty_payable</code> (excise duty taken from deposits and not yet in a recorded <a href="#" data-section="finance-excise" style="color:var(--accent-blue)">KRA remittance</a>; snapshots from before it was tracked show 0) and <code>winnings_tax_payable</code> (tax withheld from house-banked wins less credits for reversed wins, not yet in a recorded <a href="#" data-section="finance-winnings-tax" style="color:var(--accent-blue)">KRA remittance</a>; negative while credits exceed charges; snapshots from before it was tracked show 0) and <code>disputed_funds</code> (winnings held while a <a href="#" data-section="complaints" style="color:var(--accent-blue)">complaint</a> is pending; still owed to a customer, snapshots from before complaints existed show 0) and <code>referral_wallets</code> (referral bonuses not yet withdrawn; customers can withdraw them at any time, snapshots from before referrals existed show 0) and <code>bet_shop_floats</code> (float bet shop owners have bought and not spent; owed back to them if redeemed) and <code>shop_withdrawals</code> (cash withdrawals at bet shops waiting to be collected; still owed to the player) and <code>open_wagers</code> (stakes held in the escrow of house-banked bets not yet settled; snapshots from before it was tracked show 0). <code>by_product</code> splits what belongs to a product (open wagers, game and competition escrow, winnings tax payable) and lists the rest under <code>platform</code>; customer wallets are one platform line, since one wallet serves every game. For a past <code>as_of</code> it is read from that day's snapshot lines and is empty for snapshots taken before they existed. Snapshots from before bet shops existed show 0 for both. The referral shortcode's balance is listed among the M-Pesa accounts as type <code>referral_b2c</code> once its balance URLs are set. <code>house_wallet</code> is shown separately. <code>difference</code> is cash minus liabilities minus the house wallet. It is not expected to be zero: it also holds gift and emoji sales not yet moved to the house wallet, M-Pesa charges, and timing between the hourly balance fetch and wallet movements. A daily snapshot is taken at 23:59 Nairobi time; <code>as_of</code> reads that day's snapshot.</p></div>
 <div class="endpoint-section"><h4>Query Parameters</h4>
 <table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
 <tr><td>as_of</td><td>date (Y-m-d)</td><td><span class="optional">Optional</span></td><td>Not in the future. Returns that day's snapshot. <code>404</code> if there is none. Omit for the live position</td></tr></table></div>
@@ -6948,7 +6962,8 @@ Accept: application/json</pre></div>
 <p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Debits and credits per account and entry type. Deposits, withdrawals, manual adjustments, excise duty (category <code>tax_withheld</code>, owed to KRA), referral bonuses, referral payouts, house funding and bet shop float purchases and redemptions (<code>shop_float_purchase</code>, <code>shop_float_redemption</code>, category <code>shop_float</code>) are single-sided in the ledger (the cash side is M-Pesa or the referral shortcode); every other entry is paired and must net to zero. A bet shop cash load (<code>shop_load</code>) is paired: the shop float pays what the player's wallet receives. So are shop cash withdrawals: held out of the wallet (<code>shop_withdrawal_hold</code>), given back (<code>shop_withdrawal_release</code>) or paid into the shop float (<code>shop_cash_out</code>). Signup bonuses (<code>promo_credit</code>, category <code>promotion</code>) are paired: the house wallet pays what the customer wallet receives. <code>check.balanced</code> says whether it does, <code>check.imbalance</code> is the amount left over, and <code>imbalance_by_category</code> shows where it comes from. Coin entries are in coins, not KES, and are left out. <code>exclude_test</code> does not apply, because the check only holds over the whole ledger.</p></div>
 <div class="endpoint-section"><h4>Query Parameters</h4>
 <table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
-<tr><td>from, to</td><td>date</td><td><span class="optional">Optional</span></td><td>See common parameters</td></tr></table></div>
+<tr><td>from, to</td><td>date</td><td><span class="optional">Optional</span></td><td>See common parameters</td></tr>
+<tr><td>product, game</td><td>string</td><td><span class="optional">Optional</span></td><td>Only that product's entries. <code>check.balanced</code> is then <code>null</code>: a product slice leaves out the platform side of the money (deposits, withdrawals), so it does not have to net to zero</td></tr></table></div>
 <div class="endpoint-section"><h4>Response (200)</h4>
 <pre>{
   "success": true,
@@ -7002,7 +7017,12 @@ Accept: application/json</pre></div>
 <tr><td>failed_withdrawals_not_reversed</td><td>fail</td><td>A payout failed but the customer was not refunded</td></tr>
 <tr><td>stuck_escrow</td><td>warn</td><td>Money left in game or competition wallets that are no longer open</td></tr>
 <tr><td>aged_escrow</td><td>warn</td><td>Open game or competition wallets holding money, untouched for over 24 hours</td></tr>
-<tr><td>negative_balances</td><td>fail</td><td>Any wallet (customer, game, competition, referral, bet shop float or shop withdrawal) with a negative balance</td></tr>
+<tr><td>negative_balances</td><td>fail</td><td>Any wallet (customer, game, competition, referral, bet shop float or shop withdrawal) with a negative balance, except a player made negative by a wager reversal and the house wallet, which have their own checks</td></tr>
+<tr><td>negative_balances_from_reversal</td><td>warn</td><td>Players whose wallet went below zero through a wager settlement reversal (expected: the player owes it, the next credits repay it, stakes and withdrawals are blocked until then)</td></tr>
+<tr><td>negative_house_balance</td><td>warn</td><td>The house wallet is below zero (house-banked wins can do this; top it up with house funding)</td></tr>
+<tr><td>wager_escrow_drift</td><td>fail</td><td>House-banked wagers whose escrow balance does not match their ledger entries</td></tr>
+<tr><td>aged_open_wagers</td><td>warn</td><td>Wagers still open after their product's threshold (30 days by default, <code>FINANCE_OPEN_WAGER_DAYS</code>, overridable per product in config)</td></tr>
+<tr><td>settled_wagers_with_balance</td><td>fail</td><td>Won, lost or void wagers whose escrow is not empty</td></tr>
 <tr><td>held_on_closed_complaints</td><td>fail</td><td>Money still in dispute escrow for a complaint that is resolved, rejected or cancelled</td></tr>
 <tr><td>aged_disputes</td><td>warn</td><td>Complaints still pending after 3 days (<code>FINANCE_AGED_DISPUTE_DAYS</code>), with the money they hold</td></tr>
 <tr><td>stuck_referral_withdrawals</td><td>warn</td><td>Referral withdrawals still pending or processing after 24 hours. Check the payout on the referral shortcode before doing anything: a missing result does not mean it was not paid</td></tr>
@@ -7220,7 +7240,7 @@ Accept: application/json</pre></div>
 </div></div>
 
 <div class="endpoint">
-<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/finance/open-wallets</span><span class="endpoint-desc">Open game and competition wallets left untouched: money that may be stranded</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/finance/open-wallets</span><span class="endpoint-desc">Kadi: open game and competition wallets left untouched, money that may be stranded</span><span class="chevron">&#9654;</span></div>
 <div class="endpoint-body">
 <div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">20/min</span></div>
 <div class="endpoint-section"><h4>Description</h4>
@@ -7331,7 +7351,7 @@ Accept: application/json</pre></div>
 <tr><td>wallet_type</td><td>string</td><td><span class="optional">Optional</span></td><td><code>wallet</code>, <code>game_wallet</code>, <code>competition_wallet</code>, <code>coin_wallet</code>, <code>dispute</code> (money held by a complaint; the wallet id is the disputed transaction id), <code>referral</code>, <code>bet_shop</code> (a bet shop float), <code>shop_withdrawal</code> (a shop cash withdrawal waiting to be collected)</td></tr>
 <tr><td>wallet_id</td><td>integer</td><td><span class="optional">Optional</span></td><td>Use together with <code>wallet_type</code>, because ids repeat across wallet types</td></tr>
 <tr><td>customer_id</td><td>integer</td><td><span class="optional">Optional</span></td><td>Only this customer's entries</td></tr>
-<tr><td>status</td><td>string</td><td><span class="optional">Optional</span></td><td><code>settled</code> or <code>reversed</code></td></tr></table></div>
+<tr><td>status</td><td>string</td><td><span class="optional">Optional</span></td><td><code>settled</code> or <code>reversed</code></td></tr><tr><td>product, game</td><td>string</td><td><span class="optional">Optional</span></td><td>One product code, or every product of one game code. See common parameters</td></tr></table></div>
 <div class="endpoint-section"><h4>Response (200)</h4>
 <pre>{
   "success": true,
@@ -7363,7 +7383,7 @@ Accept: application/json</pre></div>
 <p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Every change made through the wallet balance endpoints, the customer wallet update and the wallet update. <code>reason</code> is what the caller sent, or <code>unspecified</code>; <code>actor</code> is the API key that made the change (<code>api_key:&lt;id&gt;</code>). <code>summary.without_reason</code> counts adjustments made without a reason.</p></div>
 <div class="endpoint-section"><h4>Query Parameters</h4>
 <table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
-<tr><td>customer_id</td><td>integer</td><td><span class="optional">Optional</span></td><td>Only this customer's adjustments</td></tr></table></div>
+<tr><td>customer_id</td><td>integer</td><td><span class="optional">Optional</span></td><td>Only this customer's adjustments</td></tr><tr><td>product, game</td><td>string</td><td><span class="optional">Optional</span></td><td>One product code, or every product of one game code. See common parameters</td></tr></table></div>
 <div class="endpoint-section"><h4>Response (200)</h4>
 <pre>{
   "success": true,
@@ -7651,7 +7671,7 @@ Content-Type: application/json
 <div class="endpoint-section"><h4>Query Parameters</h4>
 <table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
 <tr><td>sort</td><td>string</td><td><span class="optional">Optional</span></td><td><code>deposited</code> (default), <code>staked</code>, <code>won</code>, <code>withdrawn</code>, <code>net_gaming</code>, <code>balance</code>, <code>shop_loaded</code>, <code>shop_withdrawn</code></td></tr>
-<tr><td>limit</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 100, default 10</td></tr></table></div>
+<tr><td>limit</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 100, default 10</td></tr><tr><td>product, game</td><td>string</td><td><span class="optional">Optional</span></td><td>One product code, or every product of one game code. See common parameters. With a product or game filter only that product's ledger lines count: platform columns (<code>deposited</code>, <code>withdrawn</code>, <code>excise_paid</code>, shop columns) are 0 and the default sort is <code>staked</code></td></tr></table></div>
 <div class="endpoint-section"><h4>Response (200)</h4>
 <pre>{
   "success": true,
@@ -8192,6 +8212,7 @@ Idempotency-Key: wht-2026-09
 <tr><td>customers-top</td><td>/finance/customers/top</td><td>One per customer (default range: last 30 days)</td></tr>
 <tr><td>cash-flow</td><td>/finance/cash-flow</td><td>One per period</td></tr>
 <tr><td>income-statement</td><td>/finance/income-statement</td><td>One per period (includes expenses and net income)</td></tr>
+<tr><td>income-by-product</td><td>/finance/income-statement (by_product)</td><td>One per product, then a platform row</td></tr>
 <tr><td>trial-balance</td><td>/finance/trial-balance</td><td>One per account and entry type</td></tr>
 <tr><td>expenses</td><td>/finance/expenses</td><td>One per expense</td></tr>
 <tr><td>taxes</td><td>/finance/taxes</td><td>One per tax</td></tr>
@@ -8208,7 +8229,7 @@ Idempotency-Key: wht-2026-09
 <tr><td>bet-shop-loads</td><td>/finance/bet-shops/loads</td><td>One per cash load</td></tr>
 <tr><td>bet-shop-withdrawals</td><td>/finance/bet-shops/withdrawals</td><td>One per shop cash withdrawal</td></tr>
 <tr><td>open-wallets</td><td>/finance/open-wallets</td><td>One per untouched open wallet, as of now (<code>participants</code> as JSON)</td></tr></table>
-<p style="color:var(--text-secondary);font-size:13px;margin-top:8px;">The <code>cash-flow</code> export has <code>house_funding</code> and <code>shop_float</code> columns after <code>unmatched</code>, <code>excise_withheld</code> and <code>excise_remitted</code> columns before <code>net_cash</code>, and <code>referral_paid</code>, <code>referral_pending</code>, <code>referral_failed</code>, <code>deposit_refunded</code>, <code>shop_float_redeemed</code>, <code>shop_cash_loaded</code>, <code>shop_cash_paid_out</code>, <code>winnings_tax_withheld</code> and <code>winnings_tax_remitted</code> after it. The <code>income-statement</code> export has <code>referral_payouts</code> and <code>promotions</code> as its last columns.</p>
+<p style="color:var(--text-secondary);font-size:13px;margin-top:8px;">The <code>cash-flow</code> export has <code>house_funding</code> and <code>shop_float</code> columns after <code>unmatched</code>, <code>excise_withheld</code> and <code>excise_remitted</code> columns before <code>net_cash</code>, and <code>referral_paid</code>, <code>referral_pending</code>, <code>referral_failed</code>, <code>deposit_refunded</code>, <code>shop_float_redeemed</code>, <code>shop_cash_loaded</code>, <code>shop_cash_paid_out</code>, <code>winnings_tax_withheld</code> and <code>winnings_tax_remitted</code> after it. The <code>income-statement</code> export ends with <code>referral_payouts</code>, <code>promotions</code>, <code>house_banked</code>, <code>wager_promotions</code> and <code>winnings_tax_withheld</code>. <code>income-by-product</code> has one row per product (<code>product</code>, <code>game</code>, <code>revenue_model</code>, <code>revenue</code>, <code>promotions</code>, <code>winnings_tax_withheld</code>, <code>net</code>) and a last <code>platform</code> row whose <code>promotions</code> also holds referral payouts and expenses. The <code>ledger</code>, <code>adjustments</code>, <code>customers-top</code>, <code>trial-balance</code>, <code>income-statement</code> and <code>income-by-product</code> exports take <code>product</code> and <code>game</code>.</p>
 <p style="color:var(--text-secondary);font-size:13px;margin-top:8px;">The customer statement cannot be exported yet.</p></div>
 <div class="endpoint-section"><h4>Request</h4>
 <pre>GET /api/v1/finance/export/deposits?from=2026-09-01&amp;to=2026-09-20&amp;status=2 HTTP/1.1

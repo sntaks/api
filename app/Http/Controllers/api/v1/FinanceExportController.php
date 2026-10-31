@@ -26,7 +26,7 @@ class FinanceExportController extends Controller
 {
     private const REPORTS = [
         'ledger', 'deposits', 'withdrawals', 'purchases', 'adjustments', 'games', 'competitions',
-        'customers-top', 'cash-flow', 'income-statement', 'trial-balance', 'expenses', 'taxes',
+        'customers-top', 'cash-flow', 'income-statement', 'income-by-product', 'trial-balance', 'expenses', 'taxes',
         'excise-duty', 'excise-duty-charges', 'excise-duty-returns', 'excise-duty-remittances', 'disputes',
         'referral-bonuses', 'referral-withdrawals', 'promotions', 'house-funding', 'open-wallets', 'bet-shops', 'bet-shop-loads', 'bet-shop-withdrawals',
     ];
@@ -72,8 +72,9 @@ class FinanceExportController extends Controller
             'competitions' => $this->fromListing($this->games->competitions($range, $filters)),
             'customers-top' => $this->fromListing($this->ledger->topCustomers($range, $filters)),
             'cash-flow' => $this->cashFlowRows($range),
-            'income-statement' => $this->incomeStatementRows($range),
-            'trial-balance' => $this->trialBalanceRows($range),
+            'income-statement' => $this->incomeStatementRows($range, $filters),
+            'income-by-product' => $this->incomeByProductRows($range, $filters),
+            'trial-balance' => $this->trialBalanceRows($range, $filters),
             'expenses' => $this->fromListing($this->expenses->listing($range, $filters)),
             'taxes' => $this->taxRows($range),
             'excise-duty' => $this->exciseDutyRows($range),
@@ -140,14 +141,40 @@ class FinanceExportController extends Controller
     }
 
     /**
+     * @param  array<string, string>  $filters
      * @return array{0: list<string>, 1: Generator<int, array<string, mixed>>}
      */
-    private function incomeStatementRows(FinanceDateRange $range): array
+    private function incomeStatementRows(FinanceDateRange $range, array $filters = []): array
     {
-        $columns = ['period', 'games', 'tournaments', 'jackpots', 'competitions_unattributed', 'gift_emoji_sales', 'other', 'total', 'expenses', 'net_income', 'referral_payouts', 'promotions'];
+        $columns = ['period', 'games', 'tournaments', 'jackpots', 'competitions_unattributed', 'gift_emoji_sales', 'other', 'total', 'expenses', 'net_income', 'referral_payouts', 'promotions', 'house_banked', 'wager_promotions', 'winnings_tax_withheld'];
 
-        $rows = (function () use ($range) {
-            yield from $this->reports->incomeStatement($range)['series'];
+        $rows = (function () use ($range, $filters) {
+            yield from $this->reports->incomeStatement($range, $filters)['series'];
+        })();
+
+        return [$columns, $rows];
+    }
+
+    /**
+     * One row per product, then the platform row, over the whole range.
+     *
+     * @param  array<string, string>  $filters
+     * @return array{0: list<string>, 1: Generator<int, array<string, mixed>>}
+     */
+    private function incomeByProductRows(FinanceDateRange $range, array $filters): array
+    {
+        $columns = ['product', 'game', 'revenue_model', 'revenue', 'promotions', 'winnings_tax_withheld', 'net'];
+
+        $rows = (function () use ($range, $filters) {
+            $byProduct = $this->reports->incomeStatement($range, $filters)['by_product'];
+
+            yield from $byProduct['products'];
+            yield [
+                'product' => 'platform',
+                'revenue' => $byProduct['platform']['revenue'],
+                'promotions' => $byProduct['platform']['promotions'] + $byProduct['platform']['referral_payouts'] + $byProduct['platform']['expenses'],
+                'net' => $byProduct['platform']['net'],
+            ];
         })();
 
         return [$columns, $rows];
@@ -198,14 +225,15 @@ class FinanceExportController extends Controller
     }
 
     /**
+     * @param  array<string, string>  $filters
      * @return array{0: list<string>, 1: Generator<int, array<string, mixed>>}
      */
-    private function trialBalanceRows(FinanceDateRange $range): array
+    private function trialBalanceRows(FinanceDateRange $range, array $filters = []): array
     {
         $columns = ['account', 'entry_type', 'category', 'unit', 'debit', 'credit', 'entries'];
 
-        $rows = (function () use ($range) {
-            yield from $this->reports->trialBalance($range)['lines'];
+        $rows = (function () use ($range, $filters) {
+            yield from $this->reports->trialBalance($range, $filters)['lines'];
         })();
 
         return [$columns, $rows];

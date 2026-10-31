@@ -477,6 +477,7 @@ class WinningsTaxReportService
         $excluded = $this->excludedCustomerIds($range);
         $kind = $filters['kind'] ?? null;
         $status = $filters['status'] ?? null;
+        $productIds = $this->productIdsFor($filters);
 
         return DB::table('winnings_tax_charges as x')
             ->whereBetween('x.charged_at', [$range->from, $range->to])
@@ -485,7 +486,7 @@ class WinningsTaxReportService
             ->when($status === 'remitted', fn (Builder $query) => $query->whereNotNull('x.remittance_id'))
             ->when($status === 'unremitted', fn (Builder $query) => $query->whereNull('x.remittance_id'))
             ->when(isset($filters['customer_id']), fn (Builder $query) => $query->where('x.customer_id', (int) $filters['customer_id']))
-            ->when(isset($filters['product']), fn (Builder $query) => $query->whereIn('x.product_id', DB::table('products')->where('code', $filters['product'])->select('id')));
+            ->when($productIds !== null, fn (Builder $query) => $query->whereIn('x.product_id', $productIds ?: [0]));
     }
 
     /**
