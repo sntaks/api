@@ -88,5 +88,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('launch-tokens:prune')->daily();
         $schedule->command('sanctum:prune-expired --hours=24')->daily();
         $schedule->command('stk-pushes:prune')->daily();
+        // Prediction markets stop taking bets at their close time
+        $schedule->command('predict:close-due')->everyMinute()->withoutOverlapping();
     })
     ->create();
