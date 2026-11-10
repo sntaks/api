@@ -1,0 +1,321 @@
+<?php
+
+namespace App\Services\Predict;
+
+use App\Models\PredictMarket;
+use App\Models\PredictMarketBlock;
+use App\Models\PredictPool;
+use App\Models\WagerRound;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+/**
+ * Market lifecycle and admin actions. Every transition locks the market row, checks the state it comes from
+ * and writes the audit log in the same transaction.
+ *
+ * DRAFT → OPEN (publish) · OPEN → SUSPENDED (suspend) · SUSPENDED → OPEN (resume) · OPEN|SUSPENDED → CLOSED
+ * (close, or the close time) · CLOSED → RESOLVED (resolve, starts settlement) · RESOLVED → SETTLED (settlement
+ * job) · DRAFT|OPEN|SUSPENDED|CLOSED → VOIDED (void, refunds). A resolved market is never voided: its payouts
+ * may have started.
+ */
+class MarketService
+{
+    /** Fields an admin may still change once the market is open; the pool terms are frozen at publish */
+    private const EDITABLE_WHEN_LIVE = ['question', 'description', 'resolution_source', 'image_url', 'category', 'countries', 'close_at', 'resolution_deadline_at'];
+
+    public function __construct(
+        private PredictContext $context,
+        private AuditLogger $audit,
+        private SettlementService $settlements,
+    ) {}
+
+    /**
+     * A custom pool market as a draft. Amounts arrive in KES and rates as fractions; they are stored in minor
+     * units and basis points; omitted pool terms take the config defaults.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function createCustom(array $data, string $adminUser): PredictMarket
+    {
+        return DB::transaction(function () use ($data, $adminUser) {
+            $market = PredictMarket::create([
+                'source' => PredictMarket::SOURCE_CUSTOM,
+                'engine' => PredictMarket::ENGINE_POOL,
+                'product_id' => $this->context->productFor(PredictMarket::ENGINE_POOL)->id,
+                'round_reference' => 'predict-'.Str::lower((string) Str::ulid()),
+                'status' => PredictMarket::STATUS_DRAFT,
+                'created_by' => $adminUser,
+                ...$this->attributes($data, withDefaults: true),
+            ]);
+
+            $this->audit->record('create', $market, $adminUser, null, null, $this->snapshot($market));
+
+            return $market;
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(PredictMarket $market, array $data, string $adminUser, ?string $reason): PredictResult
+    {
+        return DB::transaction(function () use ($market, $data, $adminUser, $reason) {
+            $locked = PredictMarket::whereKey($market->id)->lockForUpdate()->firstOrFail();
+
+            if (! in_array($locked->status, [PredictMarket::STATUS_DRAFT, PredictMarket::STATUS_OPEN, PredictMarket::STATUS_SUSPENDED], true)) {
+                return PredictResult::refused('market_not_editable', 'This market can no longer be edited', 409, ['status' => $locked->status]);
+            }
+
+            $attributes = $this->attributes($data);
+
+            if ($locked->status !== PredictMarket::STATUS_DRAFT) {
+                $frozen = array_keys(Arr::except($attributes, self::EDITABLE_WHEN_LIVE));
+
+                if ($frozen !== []) {
+                    return PredictResult::refused('market_terms_frozen', 'The pool terms cannot change once the market is published', 409, ['fields' => $frozen]);
+                }
+            }
+
+            $before = $this->snapshot($locked);
+            $locked->update($attributes);
+            $this->audit->record('update', $locked, $adminUser, $reason, $before, $this->snapshot($locked));
+
+            return PredictResult::ok(['market' => $locked]);
+        });
+    }
+
+    public function publish(PredictMarket $market, string $adminUser, ?string $reason): PredictResult
+    {
+        return $this->transition($market, 'publish', [PredictMarket::STATUS_DRAFT], $adminUser, $reason, function (PredictMarket $locked) {
+            if ($locked->close_at->isPast()) {
+                return PredictResult::refused('close_time_passed', 'The close time has passed; edit it before publishing', 409);
+            }
+
+            $seed = PoolMath::seedSplit($locked->seed_minor, $locked->start_probability_bp);
+
+            PredictPool::create([
+                'predict_market_id' => $locked->id,
+                'yes_minor' => $seed['yes'],
+                'no_minor' => $seed['no'],
+                'seed_yes_minor' => $seed['yes'],
+                'seed_no_minor' => $seed['no'],
+            ]);
+
+            // Created here, never on the first bet: a bet must not insert the round under its locks
+            WagerRound::create(['product_id' => $locked->product_id, 'reference' => $locked->round_reference, 'status' => WagerRound::STATUS_OPEN]);
+
+            $locked->update(['status' => PredictMarket::STATUS_OPEN, 'opened_at' => now()]);
+
+            return null;
+        });
+    }
+
+    public function suspend(PredictMarket $market, string $adminUser, ?string $reason): PredictResult
+    {
+        return $this->transition($market, 'suspend', [PredictMarket::STATUS_OPEN], $adminUser, $reason, function (PredictMarket $locked) {
+            $locked->update(['status' => PredictMarket::STATUS_SUSPENDED]);
+
+            return null;
+        });
+    }
+
+    public function resume(PredictMarket $market, string $adminUser, ?string $reason): PredictResult
+    {
+        return $this->transition($market, 'resume', [PredictMarket::STATUS_SUSPENDED], $adminUser, $reason, function (PredictMarket $locked) {
+            if ($locked->close_at->isPast()) {
+                return PredictResult::refused('close_time_passed', 'The close time has passed; the market can only be closed', 409);
+            }
+
+            $locked->update(['status' => PredictMarket::STATUS_OPEN]);
+
+            return null;
+        });
+    }
+
+    public function close(PredictMarket $market, string $adminUser, ?string $reason): PredictResult
+    {
+        return $this->transition($market, 'close', [PredictMarket::STATUS_OPEN, PredictMarket::STATUS_SUSPENDED], $adminUser, $reason, function (PredictMarket $locked) {
+            $locked->update(['status' => PredictMarket::STATUS_CLOSED, 'closed_at' => now()]);
+
+            return null;
+        });
+    }
+
+    /**
+     * Resolve a closed market and start paying it out at once (no dispute window).
+     */
+    public function resolve(PredictMarket $market, string $result, string $adminUser, ?string $reason): PredictResult
+    {
+        return $this->transition($market, 'resolve', [PredictMarket::STATUS_CLOSED], $adminUser, $reason, function (PredictMarket $locked) use ($result, $adminUser) {
+            $locked->update([
+                'status' => PredictMarket::STATUS_RESOLVED,
+                'result' => $result,
+                'resolved_at' => now(),
+                'resolved_by' => $adminUser,
+            ]);
+
+            $this->settlements->start($locked, $adminUser);
+
+            return null;
+        });
+    }
+
+    /**
+     * Void the market and refund every stake. A market that never opened has nothing to refund.
+     */
+    public function void(PredictMarket $market, string $adminUser, string $reason): PredictResult
+    {
+        $from = [PredictMarket::STATUS_DRAFT, PredictMarket::STATUS_OPEN, PredictMarket::STATUS_SUSPENDED, PredictMarket::STATUS_CLOSED];
+
+        return $this->transition($market, 'void', $from, $adminUser, $reason, function (PredictMarket $locked) use ($adminUser, $reason) {
+            $wasOpened = $locked->opened_at !== null;
+
+            $locked->update(['status' => PredictMarket::STATUS_VOIDED, 'voided_at' => now(), 'void_reason' => $reason]);
+
+            if ($wasOpened) {
+                $this->settlements->startVoid($locked, $adminUser, $reason);
+            }
+
+            return null;
+        });
+    }
+
+    /**
+     * Close every open or suspended market whose close time has passed (the scheduler).
+     */
+    public function closeDue(): int
+    {
+        $closed = 0;
+
+        PredictMarket::whereIn('status', [PredictMarket::STATUS_OPEN, PredictMarket::STATUS_SUSPENDED])
+            ->where('close_at', '<=', now())
+            ->pluck('id')
+            ->each(function (int $id) use (&$closed) {
+                $result = $this->close(PredictMarket::findOrFail($id), 'system', 'Close time reached');
+                $closed += $result->isRefused() ? 0 : 1;
+            });
+
+        return $closed;
+    }
+
+    public function block(PredictMarket $market, int $customerId, string $adminUser, string $reason): PredictResult
+    {
+        return DB::transaction(function () use ($market, $customerId, $adminUser, $reason) {
+            $block = PredictMarketBlock::firstOrCreate(
+                ['predict_market_id' => $market->id, 'customer_id' => $customerId],
+                ['reason' => $reason, 'admin_user' => $adminUser]
+            );
+
+            if ($block->wasRecentlyCreated) {
+                $this->audit->record('block', $market, $adminUser, $reason, null, ['customer_id' => $customerId]);
+            }
+
+            return PredictResult::ok(['block' => $block], $block->wasRecentlyCreated);
+        });
+    }
+
+    public function unblock(PredictMarket $market, int $customerId, string $adminUser, ?string $reason): PredictResult
+    {
+        return DB::transaction(function () use ($market, $customerId, $adminUser, $reason) {
+            $deleted = PredictMarketBlock::where('predict_market_id', $market->id)->where('customer_id', $customerId)->delete();
+
+            if ($deleted === 0) {
+                return PredictResult::refused('block_not_found', 'That customer is not blocked on this market', 404);
+            }
+
+            $this->audit->record('unblock', $market, $adminUser, $reason, ['customer_id' => $customerId], null);
+
+            return PredictResult::ok([]);
+        });
+    }
+
+    /**
+     * Lock the market, check it is in one of $from, run the change and log it.
+     *
+     * @param  list<string>  $from
+     * @param  callable(PredictMarket): ?PredictResult  $change  returns a refusal, or null when applied
+     */
+    private function transition(PredictMarket $market, string $action, array $from, string $adminUser, ?string $reason, callable $change): PredictResult
+    {
+        return DB::transaction(function () use ($market, $action, $from, $adminUser, $reason, $change) {
+            $locked = PredictMarket::whereKey($market->id)->lockForUpdate()->firstOrFail();
+
+            if (! in_array($locked->status, $from, true)) {
+                return PredictResult::refused('invalid_transition', "A {$locked->status} market cannot {$action}", 409, ['status' => $locked->status]);
+            }
+
+            $before = $this->snapshot($locked);
+            $refusal = $change($locked);
+
+            if ($refusal instanceof PredictResult) {
+                return $refusal;
+            }
+
+            $this->audit->record($action, $locked, $adminUser, $reason, $before, $this->snapshot($locked));
+
+            return PredictResult::ok(['market' => $locked->fresh()]);
+        }, 3);
+    }
+
+    /**
+     * Request fields (KES, fractions) as columns (minor units, basis points, hundredths). Only the keys present
+     * are returned, so an update changes only what it sends; a create fills omitted pool terms from config.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function attributes(array $data, bool $withDefaults = false): array
+    {
+        $minor = fn ($kes) => (int) round(((float) $kes) * 100);
+        $bp = fn ($fraction) => (int) round(((float) $fraction) * 10000);
+
+        $map = [
+            'question' => fn ($v) => $v,
+            'description' => fn ($v) => $v,
+            'resolution_criteria' => fn ($v) => $v,
+            'resolution_source' => fn ($v) => $v,
+            'category' => fn ($v) => $v,
+            'image_url' => fn ($v) => $v,
+            'countries' => fn ($v) => array_values($v),
+            'close_at' => fn ($v) => $v,
+            'resolution_deadline_at' => fn ($v) => $v,
+        ];
+
+        $attributes = [];
+
+        foreach ($map as $field => $convert) {
+            if (array_key_exists($field, $data)) {
+                $attributes[$field] = $convert($data[$field]);
+            }
+        }
+
+        $defaults = [
+            'cut' => ['cut_bp', $bp, config('predict.pool.cut')],
+            'seed' => ['seed_minor', $minor, config('predict.pool.seed')],
+            'start_probability' => ['start_probability_bp', $bp, null],
+            'min_stake' => ['min_stake_minor', $minor, config('predict.limits.min_stake')],
+            'max_stake' => ['max_stake_minor', $minor, config('predict.limits.max_stake')],
+            'max_payout' => ['max_payout_minor', $minor, config('predict.limits.max_payout')],
+            'min_multiplier' => ['min_multiplier_x100', fn ($v) => (int) round(((float) $v) * 100), config('predict.pool.min_multiplier')],
+        ];
+
+        foreach ($defaults as $field => [$column, $convert, $default]) {
+            if (array_key_exists($field, $data) && $data[$field] !== null) {
+                $attributes[$column] = $convert($data[$field]);
+            } elseif ($withDefaults && $default !== null) {
+                $attributes[$column] = $convert($default);
+            }
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function snapshot(PredictMarket $market): array
+    {
+        return Arr::except($market->attributesToArray(), ['created_at', 'updated_at']);
+    }
+}

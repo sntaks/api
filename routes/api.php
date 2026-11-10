@@ -45,6 +45,9 @@ use App\Http\Controllers\api\v1\HouseFundingController;
 use App\Http\Controllers\api\v1\LaunchTokenController;
 use App\Http\Controllers\api\v1\PlayerSessionController;
 use App\Http\Controllers\api\v1\PlaygroundController;
+use App\Http\Controllers\api\v1\PredictAdminController;
+use App\Http\Controllers\api\v1\PredictBetController;
+use App\Http\Controllers\api\v1\PredictMarketController;
 use App\Http\Controllers\api\v1\ProductController;
 use App\Http\Controllers\api\v1\PromoCodeController;
 use App\Http\Controllers\api\v1\PurchaseController;
@@ -202,6 +205,32 @@ Route::prefix('/v1')->group(function () {
         Route::get('/wagers', [WagerAdminController::class, 'index']);
         Route::get('/wagers/{id}/detail', [WagerAdminController::class, 'detail']);
         Route::post('/wagers/{id}/void', [WagerController::class, 'adminVoid'])->middleware('throttle:write');
+
+        // Prediction markets as players see them (site key, GMS); drafts are never listed
+        Route::prefix('/predict')->group(function () {
+            Route::get('/markets', [PredictMarketController::class, 'index']);
+            Route::get('/markets/{id}', [PredictMarketController::class, 'show']);
+            Route::get('/markets/{id}/history', [PredictMarketController::class, 'history']);
+            Route::get('/markets/{id}/estimate', [PredictMarketController::class, 'estimate']);
+            Route::get('/updates', [PredictMarketController::class, 'updates']);
+
+            // GMS (full key): create, run, resolve and void markets. Every write is audit-logged
+            Route::prefix('/admin')->group(function () {
+                Route::get('/markets', [PredictAdminController::class, 'index']);
+                Route::post('/markets', [PredictAdminController::class, 'store'])->middleware('throttle:write');
+                Route::get('/markets/{id}', [PredictAdminController::class, 'show']);
+                Route::put('/markets/{id}', [PredictAdminController::class, 'update'])->middleware('throttle:write');
+                foreach (['publish', 'suspend', 'resume', 'close', 'resolve', 'void'] as $action) {
+                    Route::post("/markets/{id}/{$action}", [PredictAdminController::class, $action])->middleware('throttle:write');
+                }
+                Route::get('/markets/{id}/blocks', [PredictAdminController::class, 'blocks']);
+                Route::post('/markets/{id}/blocks', [PredictAdminController::class, 'block'])->middleware('throttle:write');
+                Route::delete('/markets/{id}/blocks/{customerId}', [PredictAdminController::class, 'unblock'])->middleware('throttle:write');
+                Route::post('/settlements/{settlementId}/retry', [PredictAdminController::class, 'retrySettlement'])->middleware('throttle:write');
+                Route::get('/audit', [PredictAdminController::class, 'audit']);
+                Route::get('/reports/markets', [PredictAdminController::class, 'report']);
+            });
+        });
 
         // Shop system: shop API keys only, always acting for the key's own shop
         Route::prefix('/shop')->middleware(['shop.key', 'throttle:shop'])->group(function () {
@@ -392,6 +421,10 @@ Route::prefix('/v1')->group(function () {
 
             // A player's bet history (site key)
             Route::get('/customers/{encryptedIdentifier}/wagers', [WagerAdminController::class, 'customerIndex']);
+
+            // Prediction market bets for a kadi player (site key). Idempotent by the site's own reference, not the idempotency middleware
+            Route::post('/customers/{encryptedIdentifier}/predict/bets', [PredictBetController::class, 'store'])->middleware('throttle:wagers');
+            Route::get('/customers/{encryptedIdentifier}/predict/bets', [PredictBetController::class, 'index']);
 
             // Launch a game for a logged-in kadi player (site key; never idempotent: a stored response would replay a live token)
             Route::post('/customers/{encryptedIdentifier}/launch-tokens', [LaunchTokenController::class, 'store'])->middleware('throttle:write');

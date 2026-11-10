@@ -67,6 +67,15 @@ return [
 
         // A player's bet history
         'GET api/v1/customers/{encryptedIdentifier}/wagers',
+
+        // Prediction markets: the market pages and a player's bets
+        'GET api/v1/predict/markets',
+        'GET api/v1/predict/markets/{id}',
+        'GET api/v1/predict/markets/{id}/history',
+        'GET api/v1/predict/markets/{id}/estimate',
+        'GET api/v1/predict/updates',
+        'POST api/v1/customers/{encryptedIdentifier}/predict/bets',
+        'GET api/v1/customers/{encryptedIdentifier}/predict/bets',
     ],
 
     /*

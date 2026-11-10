@@ -4,10 +4,13 @@ use App\Models\ApiKey;
 use App\Models\BetShop;
 use App\Models\CompetitionWallet;
 use App\Models\Customer;
+use App\Models\Game;
 use App\Models\GameTransaction;
 use App\Models\GameWallet;
+use App\Models\Product;
 use App\Models\Wallet;
 use App\Services\LedgerService;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -215,4 +218,46 @@ function payPaybill(string $billRef, string $msisdn, string $transId, float $amo
         'MSISDN' => $msisdn,
         'FirstName' => 'Payer',
     ]);
+}
+
+/**
+ * Prediction markets wiring: the `predict` game with its game key (used in-process to post wagers), the
+ * `predict_pool` product, the house wallet (#1), a full GMS key and the Kadi site key. Sets $test->predictKey,
+ * ->product, ->house, ->adminHeaders and ->siteHeaders.
+ */
+function setUpPredict(object $test): void
+{
+    $game = Game::factory()->create(['code' => 'predict']);
+    $test->predictKey = ApiKey::create(['key' => 'game_predict_key', 'name' => 'predict', 'scope' => ApiKey::SCOPE_GAME, 'game_id' => $game->id, 'is_active' => true]);
+    $test->product = Product::factory()->create(['game_id' => $game->id, 'code' => 'predict_pool']);
+    $houseCustomer = Customer::factory()->create(['id' => 1]);
+    $test->house = Wallet::forceCreate(['id' => 1, 'customer_id' => $houseCustomer->id, 'balance' => 100000]);
+    ApiKey::create(['key' => 'gms_full_key', 'name' => 'GMS', 'scope' => ApiKey::SCOPE_FULL, 'is_active' => true]);
+    ApiKey::create(['key' => 'kadi_site_key', 'name' => 'kadi', 'scope' => ApiKey::SCOPE_SITE, 'is_active' => true]);
+    $test->adminHeaders = apiHeaders('gms_full_key');
+    $test->siteHeaders = apiHeaders('kadi_site_key');
+}
+
+/**
+ * An active player with a funded wallet.
+ */
+function predictPlayer(float $balance = 10000): Customer
+{
+    $player = Customer::factory()->create(['status' => 1]);
+    Wallet::forceCreate(['customer_id' => $player->id, 'balance' => $balance]);
+
+    return $player;
+}
+
+/**
+ * The Kadi site places a prediction bet for $player.
+ */
+function placePredictBet(object $test, Customer $player, int $marketId, string $side, float|int|string $stake, ?string $reference = null): TestResponse
+{
+    return $test->postJson('/api/v1/customers/'.encryptId($player->id).'/predict/bets', [
+        'market_id' => $marketId,
+        'side' => $side,
+        'stake' => $stake,
+        'reference' => $reference ?? (string) Str::uuid(),
+    ], $test->siteHeaders);
 }
