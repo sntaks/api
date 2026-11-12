@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Predict;
 
 use App\Models\PredictMarket;
+use App\Services\Predict\LmsrMath;
 use Illuminate\Http\Request;
 
 /**
@@ -48,9 +49,13 @@ class PredictMarketAdminResource extends PredictMarketResource
             'start_probability' => $this->start_probability_bp / 10000,
             'min_multiplier' => $this->min_multiplier_x100 / 100,
             'margin' => $this->margin_bp / 10000,
+            'liquidity' => $this->liquidity_minor !== null ? $this->liquidity_minor / 100 : null,
+            'worst_case_loss' => $this->engine === PredictMarket::ENGINE_LMSR && $this->liquidity_minor
+                ? (float) LmsrMath::worstCaseLoss(bcdiv((string) $this->start_probability_bp, '10000', 4), bcdiv((string) $this->liquidity_minor, '100', 2))
+                : null,
             'max_liability' => $this->max_liability_minor / 100,
             'max_customer_stake' => $this->max_customer_stake_minor / 100,
-            'exposure' => $this->engine === PredictMarket::ENGINE_REFERENCE ? self::exposure($this->resource) : null,
+            'exposure' => $this->needsQuote() ? self::exposure($this->resource) : null,
             'pool' => $this->pool ? [
                 'yes' => $this->pool->yes_minor / 100,
                 'no' => $this->pool->no_minor / 100,

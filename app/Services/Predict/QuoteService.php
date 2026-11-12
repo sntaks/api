@@ -8,7 +8,7 @@ use App\Models\PredictQuote;
 use App\Services\Predict\Engines\EngineRegistry;
 
 /**
- * Fixed-odds quotes: a multiplier held for one customer, side and stake for `predict.fixed.quote_seconds`.
+ * Quotes for fixed-odds and LMSR markets: a multiplier (and, for LMSR, a payout) held for one customer, side and stake for `predict.fixed.quote_seconds`.
  * The bet must send the quote's id; the engine checks it again under the market's locks.
  */
 class QuoteService
@@ -17,7 +17,7 @@ class QuoteService
 
     public function create(Customer $customer, PredictMarket $market, string $side, float|int|string $stake): PredictResult
     {
-        if ($market->engine !== PredictMarket::ENGINE_REFERENCE) {
+        if (! $market->needsQuote()) {
             return PredictResult::refused('quote_not_needed', 'Pool markets take bets without a quote; use the estimate', 409);
         }
 
@@ -42,6 +42,7 @@ class QuoteService
             'p_fair' => $terms->extra['p_fair'],
             'p_offer' => $terms->extra['p_offer'],
             'multiplier_x100' => $terms->multiplierX100,
+            'payout_minor' => $terms->extra['payout_minor'] ?? null,
             'expires_at' => now()->addSeconds((int) config('predict.fixed.quote_seconds')),
         ]);
 

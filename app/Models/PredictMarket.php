@@ -27,6 +27,12 @@ class PredictMarket extends Model
     /** Imported markets: fixed odds priced from Polymarket's reference price */
     public const ENGINE_REFERENCE = 'reference';
 
+    /** Custom markets priced by an LMSR market maker */
+    public const ENGINE_LMSR = 'lmsr';
+
+    /** Engines whose bets need a quote (a locked price) */
+    public const QUOTED_ENGINES = [self::ENGINE_REFERENCE, self::ENGINE_LMSR];
+
     public const SUSPENDED_BY_ADMIN = 'admin';
 
     /** Suspended by the price sync (stale, unreliable or unreachable prices); lifted automatically */
@@ -102,6 +108,7 @@ class PredictMarket extends Model
         'cut_bp',
         'margin_bp',
         'seed_minor',
+        'liquidity_minor',
         'start_probability_bp',
         'min_stake_minor',
         'max_stake_minor',
@@ -147,6 +154,7 @@ class PredictMarket extends Model
             'voided_at' => 'datetime',
             'cut_bp' => 'integer',
             'seed_minor' => 'integer',
+            'liquidity_minor' => 'integer',
             'start_probability_bp' => 'integer',
             'min_stake_minor' => 'integer',
             'max_stake_minor' => 'integer',
@@ -199,6 +207,16 @@ class PredictMarket extends Model
     public function takesBets(): bool
     {
         return $this->status === self::STATUS_OPEN && $this->bettingClosesAt()->isFuture();
+    }
+
+    public function lmsrState(): HasOne
+    {
+        return $this->hasOne(PredictLmsrState::class);
+    }
+
+    public function needsQuote(): bool
+    {
+        return in_array($this->engine, self::QUOTED_ENGINES, true);
     }
 
     public function proposals(): HasMany

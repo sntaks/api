@@ -2,9 +2,12 @@
 
 namespace App\Http\Resources\Predict;
 
+use App\Models\PredictLmsrState;
 use App\Models\PredictMarket;
 use App\Models\PredictOutcome;
+use App\Services\Predict\Engines\FixedOddsEngine;
 use App\Services\Predict\FixedOddsMath;
+use App\Services\Predict\LmsrMath;
 use App\Services\Predict\PoolMath;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -64,6 +67,12 @@ class PredictMarketResource extends JsonResource
             return $market->relationLoaded('outcomes') ? self::referenceOdds($market) : null;
         }
 
+        if ($market->engine === PredictMarket::ENGINE_LMSR) {
+            $state = $market->relationLoaded('lmsrState') ? $market->lmsrState : $market->lmsrState()->first();
+
+            return $state ? self::lmsrOdds($market, $state) : null;
+        }
+
         return $market->relationLoaded('pool') && $market->pool ? self::odds($market) : null;
     }
 
@@ -103,10 +112,39 @@ class PredictMarketResource extends JsonResource
             return null;
         }
 
-        $offer = FixedOddsMath::offerPrice(bcadd((string) $outcome->midpoint, '0', 6), $market->margin_bp, (string) config('predict.fixed.max_offer'));
+        $exposures = ($market->relationLoaded('exposures') ? $market->exposures : $market->exposures()->get())->keyBy('side');
+        $margin = FixedOddsEngine::marginBp($market, $exposures, $outcome->side);
+        $offer = FixedOddsMath::offerPrice(bcadd((string) $outcome->midpoint, '0', 6), $margin, (string) config('predict.fixed.max_offer'));
         $multiplier = FixedOddsMath::multiplierX100($offer);
 
         return $multiplier > 100 ? $multiplier / 100 : null;
+    }
+
+    /**
+     * An LMSR market's current prices, and the multiplier the next KES 1 would get after the fee (indicative:
+     * larger stakes move the price, and a bet needs a quote).
+     *
+     * @return array<string, mixed>
+     */
+    public static function lmsrOdds(PredictMarket $market, PredictLmsrState $state): array
+    {
+        $liquidity = (string) $state->liquidity;
+        $yes = LmsrMath::price((string) $state->q_yes, (string) $state->q_no, $liquidity);
+        $no = LmsrMath::price((string) $state->q_no, (string) $state->q_yes, $liquidity);
+        $keep = bcdiv((string) (10000 - $market->cut_bp), '10000', 4);
+        $multiplier = fn (string $price) => bccomp($price, '0', 6) > 0 ? (int) bcdiv(bcmul($keep, '100', 4), $price, 0) / 100 : null;
+
+        return [
+            'yes_label' => 'Yes',
+            'no_label' => 'No',
+            'yes_probability' => (float) $yes,
+            'no_probability' => (float) $no,
+            'yes_multiplier' => $multiplier($yes),
+            'no_multiplier' => $multiplier($no),
+            'is_estimate' => true,
+            'is_reference' => false,
+            'updated_at' => $state->updated_at?->toIso8601String(),
+        ];
     }
 
     /**

@@ -37,6 +37,29 @@ class ReferencePriceRecorder
     }
 
     /**
+     * Record books changed on the market stream (with history), and refresh the capture time of every other
+     * token whose book the stream holds: an unchanged book is still the current price.
+     *
+     * @param  array<string, BookSummary>  $changed  by token id
+     * @param  list<string>  $known  every token with a book on the stream
+     */
+    public function recordStream(array $changed, array $known): void
+    {
+        $now = now();
+
+        if ($changed !== []) {
+            PredictOutcome::with('market')->whereIn('external_token_id', array_keys($changed))->get()
+                ->each(fn (PredictOutcome $outcome) => $this->record($outcome->market, $outcome, $changed[$outcome->external_token_id]->midpoint, $now, true, $changed[$outcome->external_token_id]));
+        }
+
+        $unchanged = array_values(array_diff($known, array_keys($changed)));
+
+        foreach (array_chunk($unchanged, 500) as $chunk) {
+            PredictOutcome::whereIn('external_token_id', $chunk)->where('price_reliable', true)->update(['price_captured_at' => $now]);
+        }
+    }
+
+    /**
      * Record a draft's prices from the Gamma market it was imported from (no extra call, no history).
      */
     public function recordFromGamma(PredictMarket $market, ImportedMarket $imported): void

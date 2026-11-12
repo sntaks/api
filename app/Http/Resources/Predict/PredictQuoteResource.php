@@ -27,7 +27,8 @@ class PredictQuoteResource extends JsonResource
             'side' => $this->side,
             'stake' => $this->stake_minor / 100,
             'multiplier' => $this->multiplier_x100 / 100,
-            'potential_payout' => PoolMath::payoutMinor($this->stake_minor, $this->multiplier_x100, $market->max_payout_minor) / 100,
+            // LMSR locks the payout (the shares bought); fixed odds derive it from the multiplier
+            'potential_payout' => ($this->payout_minor ?? PoolMath::payoutMinor($this->stake_minor, $this->multiplier_x100, $market->max_payout_minor)) / 100,
             'price' => (float) $this->p_offer,
             'expires_at' => $this->expires_at->toIso8601String(),
         ];

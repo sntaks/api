@@ -25,7 +25,8 @@ class PredictMarketTerms
             $validator->errors()->add('max_stake', 'The max stake must be at least the min stake.');
         }
 
-        if (! array_key_exists('start_probability', $terms)) {
+        // The minimum multiplier only applies to pool markets
+        if (! array_key_exists('start_probability', $terms) || ($terms['engine'] ?? 'pool') !== 'pool') {
             return;
         }
 

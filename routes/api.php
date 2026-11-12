@@ -238,6 +238,8 @@ Route::prefix('/v1')->group(function () {
                 Route::post('/corrections/{correctionId}/approve', [PredictAdminController::class, 'approveCorrection'])->middleware('throttle:write');
                 Route::post('/corrections/{correctionId}/cancel', [PredictAdminController::class, 'cancelCorrection'])->middleware('throttle:write');
                 Route::post('/corrections/{correctionId}/retry', [PredictAdminController::class, 'retryCorrection'])->middleware('throttle:write');
+                Route::get('/risk-events', [PredictAdminController::class, 'riskEvents']);
+                Route::post('/risk-events/{riskEventId}/resolve', [PredictAdminController::class, 'resolveRiskEvent'])->middleware('throttle:write');
                 Route::get('/audit', [PredictAdminController::class, 'audit']);
                 Route::get('/reports/markets', [PredictAdminController::class, 'report']);
             });

@@ -29,7 +29,7 @@ class MarketQuery
             : [PredictMarket::STATUS_OPEN, PredictMarket::STATUS_SUSPENDED];
 
         $query = PredictMarket::query()
-            ->with(['pool', 'outcomes', 'event'])
+            ->with(['pool', 'outcomes', 'event', 'exposures', 'lmsrState'])
             ->whereIn('status', $statuses)
             ->whereJsonContains('countries', $country)
             ->when($filters['category'] ?? null, fn (Builder $q, string $category) => $q->where('category', $category));
@@ -76,6 +76,10 @@ class MarketQuery
     {
         if ($market->isImported()) {
             return $this->referenceHistory($market);
+        }
+
+        if ($market->engine === PredictMarket::ENGINE_LMSR) {
+            return $this->lmsrHistory($market);
         }
 
         $pool = $market->pool;
@@ -128,6 +132,39 @@ class MarketQuery
     }
 
     /**
+     * An LMSR market's YES price after opening and after each bet, replayed from the shares each bet bought.
+     *
+     * @return list<array{at: string, yes_probability: float, no_probability: float}>
+     */
+    private function lmsrHistory(PredictMarket $market): array
+    {
+        if (! $market->liquidity_minor || ! $market->opened_at) {
+            return [];
+        }
+
+        $liquidity = bcdiv((string) $market->liquidity_minor, '100', 2);
+        $q = LmsrMath::opening(bcdiv((string) $market->start_probability_bp, '10000', 4), $liquidity);
+        $point = function ($at) use (&$q, $liquidity) {
+            $yes = LmsrMath::price($q['yes'], $q['no'], $liquidity);
+
+            return ['at' => $at->toIso8601String(), 'yes_probability' => (float) $yes, 'no_probability' => (float) bcsub('1', $yes, 6)];
+        };
+        $points = [$point($market->opened_at)];
+
+        PredictBet::where('predict_market_id', $market->id)
+            ->where('status', '!=', PredictBet::STATUS_VOID)
+            ->orderBy('id')
+            ->select(['id', 'side', 'shares_minor', 'placed_at'])
+            ->lazyById(1000)
+            ->each(function (PredictBet $bet) use (&$q, &$points, $point) {
+                $q[$bet->side] = bcadd($q[$bet->side], bcdiv((string) (int) $bet->shares_minor, '100', 6), 6);
+                $points[] = $point($bet->placed_at);
+            });
+
+        return $this->thinned($points);
+    }
+
+    /**
      * At most `predict.history_points` points, the last one always kept.
      *
      * @param  list<array<string, mixed>>  $points
@@ -156,7 +193,7 @@ class MarketQuery
     public function changedSince(Carbon $since): Collection
     {
         return PredictMarket::query()
-            ->with(['pool', 'outcomes', 'event'])
+            ->with(['pool', 'outcomes', 'event', 'exposures', 'lmsrState'])
             ->whereIn('status', PredictMarket::PUBLIC_STATUSES)
             ->whereJsonContains('countries', config('predict.default_country'))
             ->where(fn (Builder $q) => $q->where('updated_at', '>', $since)
@@ -240,7 +277,7 @@ class MarketQuery
             return $line;
         }
 
-        if ($market->engine === PredictMarket::ENGINE_REFERENCE) {
+        if ($market->needsQuote()) {
             $exposure = PredictMarketAdminResource::exposure($market);
 
             return $line + [

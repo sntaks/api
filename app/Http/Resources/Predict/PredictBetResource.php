@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Predict;
 
 use App\Models\PredictBet;
+use App\Models\PredictMarket;
 use App\Services\Predict\PoolMath;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -22,7 +23,9 @@ class PredictBetResource extends JsonResource
     {
         $market = $this->market;
         $isOpen = $this->status === PredictBet::STATUS_OPEN;
-        $multiplier = $isOpen ? $this->currentMultiplierX100() : $this->final_multiplier_x100;
+        // A pool bet's multiplier moves until the market closes; fixed-odds and LMSR bets keep the one they got
+        $isPool = $market?->engine === PredictMarket::ENGINE_POOL;
+        $multiplier = $isOpen ? ($isPool ? $this->currentMultiplierX100() : $this->estimated_multiplier_x100) : $this->final_multiplier_x100;
 
         return [
             'id' => $this->id,
@@ -37,10 +40,10 @@ class PredictBetResource extends JsonResource
             'multiplier' => $multiplier !== null ? $multiplier / 100 : null,
             'multiplier_at_placement' => $this->estimated_multiplier_x100 / 100,
             'potential_payout' => $isOpen && $multiplier !== null && $market
-                ? PoolMath::payoutMinor($this->stake_minor, $multiplier, $market->max_payout_minor) / 100
+                ? ($this->shares_minor ?? PoolMath::payoutMinor($this->stake_minor, $multiplier, $market->max_payout_minor)) / 100
                 : null,
             'payout' => $this->payout_minor !== null ? $this->payout_minor / 100 : null,
-            'is_estimate' => $isOpen,
+            'is_estimate' => $isOpen && $isPool,
             'placed_at' => $this->placed_at?->toIso8601String(),
             'settled_at' => $this->settled_at?->toIso8601String(),
         ];
