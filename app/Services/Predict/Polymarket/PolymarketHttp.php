@@ -25,7 +25,9 @@ class PolymarketHttp
      */
     public function get(string $baseUrl, string $path, array $query = []): array
     {
-        return $this->call($path, fn (PendingRequest $request) => $request->baseUrl($baseUrl)->get($path, $query));
+        // No query option when empty: an empty one replaces a query string already in $path (marketsById builds
+        // its repeated id= by hand)
+        return $this->call($path, fn (PendingRequest $request) => $request->baseUrl($baseUrl)->get($path, $query === [] ? null : $query));
     }
 
     /**

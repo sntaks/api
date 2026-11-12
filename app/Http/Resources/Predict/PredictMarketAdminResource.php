@@ -13,6 +13,29 @@ use Illuminate\Http\Request;
 class PredictMarketAdminResource extends PredictMarketResource
 {
     /**
+     * A fixed-odds market's stakes and owed payouts per side, and the house result if each side wins (KES).
+     *
+     * @return array<string, mixed>
+     */
+    public static function exposure(PredictMarket $market): array
+    {
+        $rows = ($market->relationLoaded('exposures') ? $market->exposures : $market->exposures()->get())->keyBy('side');
+        $stakes = (int) $rows->sum('stakes_minor');
+        $line = [];
+
+        foreach (PredictMarket::SIDES as $side) {
+            $row = $rows[$side] ?? null;
+            $line[$side] = [
+                'stakes' => ($row?->stakes_minor ?? 0) / 100,
+                'payouts_if_wins' => ($row?->payouts_minor ?? 0) / 100,
+                'house_result_if_wins' => ($stakes - ($row?->payouts_minor ?? 0)) / 100,
+            ];
+        }
+
+        return $line + ['worst_case' => min($line['yes']['house_result_if_wins'], $line['no']['house_result_if_wins'])];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -24,6 +47,10 @@ class PredictMarketAdminResource extends PredictMarketResource
             'seed' => $this->seed_minor / 100,
             'start_probability' => $this->start_probability_bp / 10000,
             'min_multiplier' => $this->min_multiplier_x100 / 100,
+            'margin' => $this->margin_bp / 10000,
+            'max_liability' => $this->max_liability_minor / 100,
+            'max_customer_stake' => $this->max_customer_stake_minor / 100,
+            'exposure' => $this->engine === PredictMarket::ENGINE_REFERENCE ? self::exposure($this->resource) : null,
             'pool' => $this->pool ? [
                 'yes' => $this->pool->yes_minor / 100,
                 'no' => $this->pool->no_minor / 100,
@@ -39,6 +66,7 @@ class PredictMarketAdminResource extends PredictMarketResource
                 'slug' => $this->external_slug,
                 'question' => $this->external_question,
                 'end_at' => $this->external_end_at?->toIso8601String(),
+                'game_start_at' => $this->external_game_start_at?->toIso8601String(),
                 'closed' => $this->external_closed,
                 'volume' => $this->external_volume !== null ? (float) $this->external_volume : null,
                 'liquidity' => $this->external_liquidity !== null ? (float) $this->external_liquidity : null,

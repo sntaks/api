@@ -10,12 +10,16 @@ use App\Http\Requests\Predict\StorePredictMarketRequest;
 use App\Http\Requests\Predict\UpdatePredictMarketRequest;
 use App\Http\Resources\Predict\PredictMarketAdminResource;
 use App\Models\PredictAuditLog;
+use App\Models\PredictCorrection;
 use App\Models\PredictMarket;
 use App\Models\PredictMarketBlock;
+use App\Models\PredictResolutionProposal;
 use App\Models\PredictSettlement;
+use App\Services\Predict\CorrectionService;
 use App\Services\Predict\MarketQuery;
 use App\Services\Predict\MarketService;
 use App\Services\Predict\PredictResult;
+use App\Services\Predict\ResolutionService;
 use App\Services\Predict\SettlementService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -31,6 +35,8 @@ class PredictAdminController extends PredictController
         private MarketService $markets,
         private MarketQuery $query,
         private SettlementService $settlements,
+        private ResolutionService $resolutions,
+        private CorrectionService $corrections,
     ) {}
 
     public function index(ListPredictMarketsRequest $request): JsonResponse
@@ -183,6 +189,151 @@ class PredictAdminController extends PredictController
         }
 
         return $this->respond($this->settlements->retry($run), fn (array $result) => ['settlement' => $this->presentRun($result['settlement']->fresh())]);
+    }
+
+    /**
+     * Polymarket results waiting for an admin (or all, with ?status=).
+     */
+    public function proposals(PagedListRequest $request): JsonResponse
+    {
+        $page = PredictResolutionProposal::with('market')
+            ->where('status', $request->query('status', PredictResolutionProposal::STATUS_PENDING))
+            ->orderBy('id')
+            ->paginate((int) ($request->validated()['per_page'] ?? 50))
+            ->withQueryString();
+
+        return $this->pagedResponse($page, fn (PredictResolutionProposal $proposal) => $this->presentProposal($proposal));
+    }
+
+    public function confirmProposal(PredictAdminActionRequest $request, string $proposalId): JsonResponse
+    {
+        $proposal = PredictResolutionProposal::find($this->routeId($proposalId) ?? 0);
+
+        if (! $proposal) {
+            return $this->refusal('proposal_not_found', 'No proposal has that id', 404);
+        }
+
+        $data = $request->validated();
+
+        return $this->respond($this->resolutions->confirm($proposal, $data['admin_user'], $data['reason'] ?? null), fn (array $result) => [
+            'proposal' => $this->presentProposal($result['proposal']),
+        ]);
+    }
+
+    public function rejectProposal(PredictAdminActionRequest $request, string $proposalId): JsonResponse
+    {
+        $proposal = PredictResolutionProposal::find($this->routeId($proposalId) ?? 0);
+
+        if (! $proposal) {
+            return $this->refusal('proposal_not_found', 'No proposal has that id', 404);
+        }
+
+        $data = $request->validated();
+
+        return $this->respond($this->resolutions->reject($proposal, $data['admin_user'], $data['reason']), fn (array $result) => [
+            'proposal' => $this->presentProposal($result['proposal']),
+        ]);
+    }
+
+    /**
+     * Ask for a settled market's result to be corrected; a different admin must approve it.
+     */
+    public function requestCorrection(PredictAdminActionRequest $request, string $id): JsonResponse
+    {
+        $market = $this->findMarket($id);
+
+        if (! $market) {
+            return $this->refusal('market_not_found', 'No market has that id', 404);
+        }
+
+        $data = $request->validated();
+
+        return $this->respond($this->corrections->request($market, $data['result'], $data['admin_user'], $data['reason']), fn (array $result) => [
+            'correction' => $this->presentCorrection($result['correction']),
+        ]);
+    }
+
+    public function corrections(PagedListRequest $request): JsonResponse
+    {
+        $page = PredictCorrection::query()
+            ->when($request->query('status'), fn ($query, $status) => $query->where('status', $status))
+            ->orderByDesc('id')
+            ->paginate((int) ($request->validated()['per_page'] ?? 50))
+            ->withQueryString();
+
+        return $this->pagedResponse($page, fn (PredictCorrection $correction) => $this->presentCorrection($correction));
+    }
+
+    public function approveCorrection(PredictAdminActionRequest $request, string $correctionId): JsonResponse
+    {
+        return $this->correctionAction($correctionId, fn (PredictCorrection $correction) => $this->corrections->approve($correction, $request->validated()['admin_user'], $request->validated()['reason'] ?? null));
+    }
+
+    public function cancelCorrection(PredictAdminActionRequest $request, string $correctionId): JsonResponse
+    {
+        return $this->correctionAction($correctionId, fn (PredictCorrection $correction) => $this->corrections->cancel($correction, $request->validated()['admin_user'], $request->validated()['reason']));
+    }
+
+    public function retryCorrection(PredictAdminActionRequest $request, string $correctionId): JsonResponse
+    {
+        return $this->correctionAction($correctionId, fn (PredictCorrection $correction) => $this->corrections->retry($correction, $request->validated()['admin_user']));
+    }
+
+    /**
+     * @param  callable(PredictCorrection): PredictResult  $action
+     */
+    private function correctionAction(string $correctionId, callable $action): JsonResponse
+    {
+        $correction = PredictCorrection::find($this->routeId($correctionId) ?? 0);
+
+        if (! $correction) {
+            return $this->refusal('correction_not_found', 'No correction has that id', 404);
+        }
+
+        return $this->respond($action($correction), fn (array $result) => ['correction' => $this->presentCorrection($result['correction']->fresh())]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentProposal(PredictResolutionProposal $proposal): array
+    {
+        return [
+            'id' => $proposal->id,
+            'market_id' => $proposal->predict_market_id,
+            'question' => $proposal->market?->question,
+            'market_status' => $proposal->market?->status,
+            'result' => $proposal->result,
+            'evidence' => $proposal->evidence,
+            'status' => $proposal->status,
+            'reviewed_by' => $proposal->reviewed_by,
+            'review_reason' => $proposal->review_reason,
+            'reviewed_at' => $proposal->reviewed_at?->toIso8601String(),
+            'created_at' => $proposal->created_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentCorrection(PredictCorrection $correction): array
+    {
+        return [
+            'id' => $correction->id,
+            'market_id' => $correction->predict_market_id,
+            'from_result' => $correction->from_result,
+            'to_result' => $correction->to_result,
+            'reason' => $correction->reason,
+            'status' => $correction->status,
+            'requested_by' => $correction->requested_by,
+            'approved_by' => $correction->approved_by,
+            'approved_at' => $correction->approved_at?->toIso8601String(),
+            'wagers_corrected' => $correction->wagers_corrected,
+            'attempts' => $correction->attempts,
+            'error' => $correction->error,
+            'finished_at' => $correction->finished_at?->toIso8601String(),
+            'created_at' => $correction->created_at?->toIso8601String(),
+        ];
     }
 
     public function audit(PagedListRequest $request): JsonResponse

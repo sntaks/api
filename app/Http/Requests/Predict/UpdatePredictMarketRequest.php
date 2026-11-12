@@ -45,6 +45,9 @@ class UpdatePredictMarketRequest extends FormRequest
             'max_stake' => ['sometimes', 'numeric', 'gt:0', 'decimal:0,2'],
             'max_payout' => ['sometimes', 'numeric', 'gt:0', 'decimal:0,2'],
             'min_multiplier' => ['sometimes', 'numeric', 'between:1,2', 'decimal:0,2'],
+            'margin' => ['sometimes', 'numeric', 'between:0,0.5', 'decimal:0,4'],
+            'max_liability' => ['sometimes', 'numeric', 'gt:0', 'decimal:0,2', 'max:100000000'],
+            'max_customer_stake' => ['sometimes', 'numeric', 'gt:0', 'decimal:0,2', 'max:100000000'],
         ];
     }
 

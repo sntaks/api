@@ -167,7 +167,7 @@ class SettlementService
         PredictBet::where('predict_market_id', $market->id)
             ->where('status', PredictBet::STATUS_OPEN)
             ->with('wager:id,status,payout,settled_at')
-            ->chunkById(500, function ($bets) use ($run) {
+            ->chunkById(500, function ($bets) use ($market, $run) {
                 foreach ($bets as $bet) {
                     if ($bet->wager->status === Wager::STATUS_OPEN) {
                         continue;
@@ -176,7 +176,8 @@ class SettlementService
                     $bet->update([
                         'status' => $bet->wager->status,
                         'payout_minor' => (int) round(((float) $bet->wager->payout) * 100),
-                        'final_multiplier_x100' => $run->final_multiplier_x100,
+                        // A pool shares one final multiplier; a fixed-odds bet keeps the one it was placed at
+                        'final_multiplier_x100' => $market->engine === PredictMarket::ENGINE_POOL ? $run->final_multiplier_x100 : $bet->estimated_multiplier_x100,
                         'settled_at' => $bet->wager->settled_at ?? now(),
                     ]);
                 }

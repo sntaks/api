@@ -230,6 +230,14 @@ Route::prefix('/v1')->group(function () {
                 Route::post('/markets/{id}/blocks', [PredictAdminController::class, 'block'])->middleware('throttle:write');
                 Route::delete('/markets/{id}/blocks/{customerId}', [PredictAdminController::class, 'unblock'])->middleware('throttle:write');
                 Route::post('/settlements/{settlementId}/retry', [PredictAdminController::class, 'retrySettlement'])->middleware('throttle:write');
+                Route::get('/proposals', [PredictAdminController::class, 'proposals']);
+                Route::post('/proposals/{proposalId}/confirm', [PredictAdminController::class, 'confirmProposal'])->middleware('throttle:write');
+                Route::post('/proposals/{proposalId}/reject', [PredictAdminController::class, 'rejectProposal'])->middleware('throttle:write');
+                Route::post('/markets/{id}/corrections', [PredictAdminController::class, 'requestCorrection'])->middleware('throttle:write');
+                Route::get('/corrections', [PredictAdminController::class, 'corrections']);
+                Route::post('/corrections/{correctionId}/approve', [PredictAdminController::class, 'approveCorrection'])->middleware('throttle:write');
+                Route::post('/corrections/{correctionId}/cancel', [PredictAdminController::class, 'cancelCorrection'])->middleware('throttle:write');
+                Route::post('/corrections/{correctionId}/retry', [PredictAdminController::class, 'retryCorrection'])->middleware('throttle:write');
                 Route::get('/audit', [PredictAdminController::class, 'audit']);
                 Route::get('/reports/markets', [PredictAdminController::class, 'report']);
             });
@@ -426,6 +434,7 @@ Route::prefix('/v1')->group(function () {
             Route::get('/customers/{encryptedIdentifier}/wagers', [WagerAdminController::class, 'customerIndex']);
 
             // Prediction market bets for a kadi player (site key). Idempotent by the site's own reference, not the idempotency middleware
+            Route::post('/customers/{encryptedIdentifier}/predict/quotes', [PredictBetController::class, 'quote'])->middleware('throttle:wagers');
             Route::post('/customers/{encryptedIdentifier}/predict/bets', [PredictBetController::class, 'store'])->middleware('throttle:wagers');
             Route::get('/customers/{encryptedIdentifier}/predict/bets', [PredictBetController::class, 'index']);
 

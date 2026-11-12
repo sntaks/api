@@ -2,9 +2,11 @@
 
 namespace App\Services\Predict\Engines;
 
+use App\Models\Customer;
 use App\Models\PredictBet;
 use App\Models\PredictMarket;
 use App\Models\PredictPool;
+use App\Models\PredictQuote;
 use App\Models\Wager;
 use App\Services\Predict\PoolMath;
 use Closure;
@@ -23,7 +25,7 @@ class PoolEngine implements PricingEngine
         return $this->terms($market, $pool, $side, $stakeMinor);
     }
 
-    public function placeBet(PredictMarket $market, string $side, int $stakeMinor, Closure $placeWager): array
+    public function placeBet(PredictMarket $market, string $side, int $stakeMinor, Closure $placeWager, ?PredictQuote $quote = null, ?Customer $customer = null): array
     {
         $pool = PredictPool::whereKey($market->id)->lockForUpdate()->firstOrFail();
         $terms = $this->terms($market, $pool, $side, $stakeMinor);

@@ -137,7 +137,7 @@ class EventImporter
                 'resolution_criteria' => $imported->description ?: 'Resolves as the market resolves on Polymarket; see the resolution source.',
                 'resolution_source' => $event->slug ? 'https://polymarket.com/event/'.$event->slug : null,
                 'created_by' => 'polymarket-sync',
-                // Pool terms do not apply to a reference-priced market; limits come from config
+                // Pool terms do not apply to a fixed-odds market; its terms and limits come from config
                 'cut_bp' => 0,
                 'seed_minor' => 0,
                 'start_probability_bp' => 5000,
@@ -145,6 +145,9 @@ class EventImporter
                 'max_stake_minor' => (int) round(config('predict.limits.max_stake') * 100),
                 'max_payout_minor' => (int) round(config('predict.limits.max_payout') * 100),
                 'min_multiplier_x100' => (int) round(config('predict.pool.min_multiplier') * 100),
+                'margin_bp' => (int) round(config('predict.fixed.margin') * 10000),
+                'max_liability_minor' => (int) round(config('predict.fixed.max_liability') * 100),
+                'max_customer_stake_minor' => (int) round(config('predict.fixed.max_customer_stake') * 100),
                 ...$this->externalAttributes($imported),
                 ...$this->syncedAttributes($imported, $closeAt, $event->image_url),
             ]);
@@ -207,6 +210,7 @@ class EventImporter
             'external_slug' => $imported->slug,
             'external_question' => $imported->question,
             'external_end_at' => $imported->endAt,
+            'external_game_start_at' => $imported->gameStartAt,
             'external_closed' => $imported->closed,
             'external_volume' => $imported->volume,
             'external_liquidity' => $imported->liquidity,

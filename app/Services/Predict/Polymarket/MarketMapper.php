@@ -38,6 +38,7 @@ class MarketMapper
             slug: $market['slug'] ?? null,
             imageUrl: isset($market['image']) ? mb_substr((string) $market['image'], 0, 500) : null,
             endAt: isset($market['endDate']) ? Carbon::parse($market['endDate']) : null,
+            gameStartAt: ! empty($market['gameStartTime']) ? Carbon::parse($market['gameStartTime']) : null,
             closed: (bool) ($market['closed'] ?? false),
             volume: isset($market['volumeNum']) ? (float) $market['volumeNum'] : null,
             liquidity: isset($market['liquidityNum']) ? (float) $market['liquidityNum'] : null,
@@ -48,6 +49,7 @@ class MarketMapper
             noTokenId: (string) $tokens[1],
             yesPrice: $this->price($prices[0] ?? null),
             noPrice: $this->price($prices[1] ?? null),
+            resolutionStatus: $market['umaResolutionStatus'] ?? null,
         );
     }
 

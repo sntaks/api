@@ -25,6 +25,14 @@ final readonly class BetTerms
     }
 
     /**
+     * Fixed odds: a multiplier that holds for the bet, with the prices it came from.
+     */
+    public static function fixed(int $multiplierX100, string $fairPrice, string $offerPrice): self
+    {
+        return new self($multiplierX100, false, extra: ['p_fair' => $fairPrice, 'p_offer' => $offerPrice]);
+    }
+
+    /**
      * @param  array<string, mixed>  $extra
      */
     public static function refused(string $code, string $message, int $status = 422, array $extra = []): self

@@ -7,7 +7,11 @@ use App\Models\Customer;
 use App\Models\Game;
 use App\Models\GameTransaction;
 use App\Models\GameWallet;
+use App\Models\PredictExposure;
+use App\Models\PredictMarket;
+use App\Models\PredictOutcome;
 use App\Models\Product;
+use App\Models\WagerRound;
 use App\Models\Wallet;
 use App\Services\LedgerService;
 use Illuminate\Support\Str;
@@ -260,4 +264,61 @@ function placePredictBet(object $test, Customer $player, int $marketId, string $
         'stake' => $stake,
         'reference' => $reference ?? (string) Str::uuid(),
     ], $test->siteHeaders);
+}
+
+/**
+ * An open imported market priced at $yesMid / (1 − $yesMid), with a book that passes the betting guards.
+ */
+function fixedMarket(object $test, string $yesMid = '0.60', array $overrides = []): PredictMarket
+{
+    $market = PredictMarket::factory()->create(array_merge([
+        'source' => PredictMarket::SOURCE_POLYMARKET,
+        'engine' => PredictMarket::ENGINE_REFERENCE,
+        'product_id' => $test->fixedProduct->id,
+        'external_market_id' => (string) Str::random(8),
+        'external_volume' => 250000,
+        'status' => PredictMarket::STATUS_OPEN,
+        'opened_at' => now(),
+        'close_at' => now()->addDays(2),
+        'margin_bp' => 500,
+        'max_liability_minor' => 50000000,
+        'max_customer_stake_minor' => 2000000,
+    ], $overrides));
+
+    WagerRound::create(['product_id' => $market->product_id, 'reference' => $market->round_reference, 'status' => WagerRound::STATUS_OPEN]);
+
+    foreach (['yes' => $yesMid, 'no' => bcsub('1', $yesMid, 2)] as $side => $mid) {
+        PredictExposure::create(['predict_market_id' => $market->id, 'side' => $side, 'stakes_minor' => 0, 'payouts_minor' => 0]);
+        PredictOutcome::create(['predict_market_id' => $market->id, 'side' => $side, 'label' => ucfirst($side), 'external_token_id' => "tok-{$market->id}-{$side}"]);
+        setPrice($market, $side, $mid);
+    }
+
+    return $market;
+}
+
+function setPrice(PredictMarket $market, string $side, string $mid, string $spread = '0.02', string $depth = '50000'): void
+{
+    PredictOutcome::where('predict_market_id', $market->id)->where('side', $side)->update([
+        'midpoint' => $mid, 'best_bid' => bcsub($mid, bcdiv($spread, '2', 6), 6), 'best_ask' => bcadd($mid, bcdiv($spread, '2', 6), 6),
+        'spread' => $spread, 'depth_usd' => $depth, 'price_reliable' => true, 'price_captured_at' => now(),
+    ]);
+}
+
+function quoteFor(object $test, PredictMarket $market, string $side = 'yes', float $stake = 100, $player = null): TestResponse
+{
+    return $test->postJson('/api/v1/customers/'.encryptId(($player ?? $test->player)->id).'/predict/quotes', ['market_id' => $market->id, 'side' => $side, 'stake' => $stake], $test->siteHeaders);
+}
+
+function betWithQuote(object $test, PredictMarket $market, string $quoteId, string $side = 'yes', float $stake = 100, $player = null): TestResponse
+{
+    return $test->postJson('/api/v1/customers/'.encryptId(($player ?? $test->player)->id).'/predict/bets', [
+        'market_id' => $market->id, 'side' => $side, 'stake' => $stake, 'reference' => (string) Str::uuid(), 'quote_id' => $quoteId,
+    ], $test->siteHeaders);
+}
+
+function quoteAndBet(object $test, PredictMarket $market, string $side = 'yes', float $stake = 100, $player = null): TestResponse
+{
+    $quoteId = quoteFor($test, $market, $side, $stake, $player)->assertCreated()->json('data.quote.quote_id');
+
+    return betWithQuote($test, $market, $quoteId, $side, $stake, $player);
 }

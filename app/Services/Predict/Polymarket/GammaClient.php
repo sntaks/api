@@ -45,6 +45,26 @@ class GammaClient
         ];
     }
 
+    /**
+     * Markets by Gamma id, open or closed, at most `predict.polymarket.lookup_batch` ids per call. Ids go as a
+     * repeated `id=` (the only form `closed=any` accepts; `id[0]=` is refused, verified 2026-11-12).
+     *
+     * @param  list<string>  $ids
+     * @return list<array<string, mixed>>
+     */
+    public function marketsById(array $ids): array
+    {
+        $markets = [];
+
+        foreach (array_chunk($ids, (int) config('predict.polymarket.lookup_batch')) as $chunk) {
+            $query = 'closed=any&limit='.count($chunk).'&'.implode('&', array_map(fn (string $id) => 'id='.rawurlencode($id), $chunk));
+            $page = $this->http->get($this->baseUrl(), '/markets/keyset?'.$query);
+            $markets = [...$markets, ...array_values($page['markets'] ?? [])];
+        }
+
+        return $markets;
+    }
+
     private function baseUrl(): string
     {
         return (string) config('predict.polymarket.gamma_url');

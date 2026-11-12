@@ -3,6 +3,7 @@
 namespace App\Services\Predict;
 
 use App\Exceptions\PolymarketUnavailable;
+use App\Models\PredictExposure;
 use App\Models\PredictMarket;
 use App\Models\PredictMarketBlock;
 use App\Models\PredictPool;
@@ -27,7 +28,11 @@ use Illuminate\Support\Str;
 class MarketService
 {
     /** Fields an admin may still change once the market is open; the pool terms are frozen at publish */
-    private const EDITABLE_WHEN_LIVE = ['question', 'description', 'resolution_source', 'image_url', 'category', 'countries', 'close_at', 'resolution_deadline_at'];
+    private const EDITABLE_WHEN_LIVE = [
+        'question', 'description', 'resolution_source', 'image_url', 'category', 'countries', 'close_at', 'resolution_deadline_at',
+        // Fixed-odds terms apply to the next quote, never to bets already placed
+        'margin_bp', 'max_liability_minor', 'max_customer_stake_minor',
+    ];
 
     public function __construct(
         private PredictContext $context,
@@ -342,26 +347,35 @@ class MarketService
     }
 
     /**
-     * Open an approved imported market: shown with its reference prices, with a wager round ready for the
-     * fixed-odds bets of phase 2. Needs usable prices on both sides.
+     * Open an approved imported market for fixed-odds betting: its wager round and exposure rows. Needs prices
+     * that pass the betting guards on both sides.
      */
     private function openImported(PredictMarket $locked): ?PredictResult
     {
         if (! $this->hasUsablePrices($locked)) {
-            return PredictResult::refused('price_unavailable', 'This market has no usable reference price yet', 409);
+            return PredictResult::refused('price_unavailable', 'This market has no price that passes the betting guards yet', 409);
         }
 
         WagerRound::create(['product_id' => $locked->product_id, 'reference' => $locked->round_reference, 'status' => WagerRound::STATUS_OPEN]);
+
+        // The rows every fixed-odds bet locks; created here, never on the first bet
+        foreach (PredictMarket::SIDES as $side) {
+            PredictExposure::create(['predict_market_id' => $locked->id, 'side' => $side, 'stakes_minor' => 0, 'payouts_minor' => 0]);
+        }
+
         $locked->update(['status' => PredictMarket::STATUS_OPEN, 'opened_at' => now()]);
 
         return null;
     }
 
+    /**
+     * Both sides pass the betting guards (fresh, reliable, tight and deep enough to bet on).
+     */
     private function hasUsablePrices(PredictMarket $market): bool
     {
         $outcomes = $market->outcomes()->get();
 
-        return $outcomes->count() === 2 && $outcomes->every->hasUsablePrice();
+        return $outcomes->count() === 2 && $outcomes->every(fn ($outcome) => $outcome->bettingGuardFailure() === null);
     }
 
     public function block(PredictMarket $market, int $customerId, string $adminUser, string $reason): PredictResult
@@ -463,6 +477,9 @@ class MarketService
             'max_stake' => ['max_stake_minor', $minor, config('predict.limits.max_stake')],
             'max_payout' => ['max_payout_minor', $minor, config('predict.limits.max_payout')],
             'min_multiplier' => ['min_multiplier_x100', fn ($v) => (int) round(((float) $v) * 100), config('predict.pool.min_multiplier')],
+            'margin' => ['margin_bp', $bp, config('predict.fixed.margin')],
+            'max_liability' => ['max_liability_minor', $minor, config('predict.fixed.max_liability')],
+            'max_customer_stake' => ['max_customer_stake_minor', $minor, config('predict.fixed.max_customer_stake')],
         ];
 
         foreach ($defaults as $field => [$column, $convert, $default]) {
