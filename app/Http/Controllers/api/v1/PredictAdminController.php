@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\api\v1;
 
 use App\Http\Requests\PagedListRequest;
+use App\Http\Requests\Predict\BulkPredictMarketsRequest;
 use App\Http\Requests\Predict\ListPredictMarketsRequest;
 use App\Http\Requests\Predict\PredictAdminActionRequest;
 use App\Http\Requests\Predict\StorePredictMarketRequest;
@@ -16,8 +17,10 @@ use App\Services\Predict\MarketQuery;
 use App\Services\Predict\MarketService;
 use App\Services\Predict\PredictResult;
 use App\Services\Predict\SettlementService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 
 /**
  * GMS (full key): create and run prediction markets. Every write names the admin and is audit-logged.
@@ -72,6 +75,23 @@ class PredictAdminController extends PredictController
     public function publish(PredictAdminActionRequest $request, string $id): JsonResponse
     {
         return $this->act($request, $id, fn (PredictMarket $market, array $data) => $this->markets->publish($market, $data['admin_user'], $data['reason'] ?? null));
+    }
+
+    /**
+     * Publish many drafts (imported ones are approved on fresh prices fetched in one batch).
+     */
+    public function bulkPublish(BulkPredictMarketsRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        return $this->bulk($data, fn ($markets) => $this->markets->bulkPublish($markets, $data['admin_user'], $data['reason'] ?? null));
+    }
+
+    public function bulkReject(BulkPredictMarketsRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        return $this->bulk($data, fn ($markets) => $this->markets->bulkReject($markets, $data['admin_user'], $data['reason']));
     }
 
     public function reject(PredictAdminActionRequest $request, string $id): JsonResponse
@@ -204,6 +224,42 @@ class PredictAdminController extends PredictController
         }
 
         return $this->market($action($market, $request->validated()));
+    }
+
+    /**
+     * Run a bulk action on the drafts the request selects, oldest first, at most `limit` of them.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  callable(Collection<int, PredictMarket>): array{done: list<int>, refused: list<array{id: int, code: string}>}  $action
+     */
+    private function bulk(array $data, callable $action): JsonResponse
+    {
+        $limit = (int) ($data['limit'] ?? BulkPredictMarketsRequest::MAX);
+        $selected = fn () => $this->bulkSelection($data);
+        $result = $action($selected()->orderBy('id')->limit($limit)->get());
+
+        return response()->json(['success' => true, 'data' => $result + [
+            'remaining' => isset($data['ids']) ? 0 : $selected()->count(),
+        ]]);
+    }
+
+    /**
+     * Drafts by id, or drafts matching the filter. Volume is Polymarket's trading volume, so a volume filter
+     * selects imported markets only.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function bulkSelection(array $data): Builder
+    {
+        $filter = $data['filter'] ?? [];
+
+        return PredictMarket::query()
+            ->where('status', PredictMarket::STATUS_DRAFT)
+            ->when(isset($data['ids']), fn (Builder $q) => $q->whereIn('id', $data['ids']))
+            ->when($filter['source'] ?? null, fn (Builder $q, string $source) => $q->where('source', $source))
+            ->when($filter['category'] ?? null, fn (Builder $q, string $category) => $q->where('category', $category))
+            ->when(isset($filter['min_volume']), fn (Builder $q) => $q->where('external_volume', '>=', $filter['min_volume']))
+            ->when(isset($filter['max_volume']), fn (Builder $q) => $q->where('external_volume', '<', $filter['max_volume']));
     }
 
     private function findMarket(string $id): ?PredictMarket

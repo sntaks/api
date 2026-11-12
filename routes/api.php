@@ -218,6 +218,9 @@ Route::prefix('/v1')->group(function () {
             Route::prefix('/admin')->group(function () {
                 Route::get('/markets', [PredictAdminController::class, 'index']);
                 Route::post('/markets', [PredictAdminController::class, 'store'])->middleware('throttle:write');
+                // Before the {id} routes: "bulk" would otherwise be taken for an id
+                Route::post('/markets/bulk/publish', [PredictAdminController::class, 'bulkPublish'])->middleware('throttle:write');
+                Route::post('/markets/bulk/reject', [PredictAdminController::class, 'bulkReject'])->middleware('throttle:write');
                 Route::get('/markets/{id}', [PredictAdminController::class, 'show']);
                 Route::put('/markets/{id}', [PredictAdminController::class, 'update'])->middleware('throttle:write');
                 foreach (['publish', 'reject', 'suspend', 'resume', 'close', 'resolve', 'void'] as $action) {

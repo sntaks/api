@@ -17,6 +17,7 @@ class MarketMapper
     public function map(array $market): ?ImportedMarket
     {
         $outcomes = $this->jsonList($market['outcomes'] ?? null);
+        $prices = $this->jsonList($market['outcomePrices'] ?? null) ?? [];
         $version = $this->version($market);
         $tokens = match ($version) {
             'v1' => $this->jsonList($market['clobTokenIds'] ?? null),
@@ -45,6 +46,8 @@ class MarketMapper
             yesTokenId: (string) $tokens[0],
             noLabel: mb_substr((string) $outcomes[1], 0, 100),
             noTokenId: (string) $tokens[1],
+            yesPrice: $this->price($prices[0] ?? null),
+            noPrice: $this->price($prices[1] ?? null),
         );
     }
 
@@ -62,6 +65,11 @@ class MarketMapper
         }
 
         return in_array($version, ['v1', 'v2'], true) ? $version : null;
+    }
+
+    private function price(mixed $value): ?string
+    {
+        return is_numeric($value) ? (string) $value : null;
     }
 
     /**

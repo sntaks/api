@@ -26,6 +26,7 @@ class EventImporter
         private MarketMapper $mapper,
         private MarketService $markets,
         private PredictContext $context,
+        private ReferencePriceRecorder $prices,
     ) {}
 
     /**
@@ -151,6 +152,8 @@ class EventImporter
             foreach ([PredictMarket::SIDE_YES => [$imported->yesLabel, $imported->yesTokenId], PredictMarket::SIDE_NO => [$imported->noLabel, $imported->noTokenId]] as $side => [$label, $token]) {
                 PredictOutcome::create(['predict_market_id' => $market->id, 'side' => $side, 'label' => $label, 'external_token_id' => $token]);
             }
+
+            $this->prices->recordFromGamma($market, $imported);
         });
 
         $counts['created']++;
@@ -174,6 +177,11 @@ class EventImporter
 
         foreach ([PredictMarket::SIDE_YES => $imported->yesTokenId, PredictMarket::SIDE_NO => $imported->noTokenId] as $side => $token) {
             PredictOutcome::where('predict_market_id', $market->id)->where('side', $side)->update(['external_token_id' => $token]);
+        }
+
+        // A draft's price comes from Gamma; live markets are priced by the price sync
+        if ($market->status === PredictMarket::STATUS_DRAFT) {
+            $this->prices->recordFromGamma($market, $imported);
         }
 
         $counts['updated']++;
