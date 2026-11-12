@@ -18,6 +18,7 @@ class MarketQuery
 {
     /**
      * Markets players may see in a country: never drafts. Without a status filter, the open and suspended ones.
+     * `source` narrows to `polymarket` (imported) or `custom` (our own) markets.
      *
      * @param  array<string, mixed>  $filters
      */
@@ -32,7 +33,8 @@ class MarketQuery
             ->with(['pool', 'outcomes', 'event', 'exposures', 'lmsrState'])
             ->whereIn('status', $statuses)
             ->whereJsonContains('countries', $country)
-            ->when($filters['category'] ?? null, fn (Builder $q, string $category) => $q->where('category', $category));
+            ->when($filters['category'] ?? null, fn (Builder $q, string $category) => $q->where('category', $category))
+            ->when($filters['source'] ?? null, fn (Builder $q, string $source) => $q->where('source', $source));
 
         return $this->sorted($query, $filters['sort'] ?? 'closing_soon')
             ->paginate((int) ($filters['per_page'] ?? 20))
