@@ -46,6 +46,7 @@ class UpdatePredictMarketRequest extends FormRequest
             'max_payout' => ['sometimes', 'numeric', 'gt:0', 'decimal:0,2'],
             'min_multiplier' => ['sometimes', 'numeric', 'between:1,2', 'decimal:0,2'],
             'margin' => ['sometimes', 'numeric', 'between:0,0.5', 'decimal:0,4'],
+            'liquidity' => ['sometimes', 'numeric', 'min:100', 'max:10000000', 'decimal:0,2'],
             'max_liability' => ['sometimes', 'numeric', 'gt:0', 'decimal:0,2', 'max:100000000'],
             'max_customer_stake' => ['sometimes', 'numeric', 'gt:0', 'decimal:0,2', 'max:100000000'],
         ];
@@ -78,6 +79,7 @@ class UpdatePredictMarketRequest extends FormRequest
 
             // Check the terms as they would be after the edit
             PredictMarketTerms::check($validator, $data + [
+                'engine' => $market->engine,
                 'start_probability' => $market->start_probability_bp / 10000,
                 'cut' => $market->cut_bp / 10000,
                 'min_multiplier' => $market->min_multiplier_x100 / 100,

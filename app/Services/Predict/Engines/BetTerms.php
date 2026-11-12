@@ -27,9 +27,16 @@ final readonly class BetTerms
     /**
      * Fixed odds: a multiplier that holds for the bet, with the prices it came from.
      */
-    public static function fixed(int $multiplierX100, string $fairPrice, string $offerPrice): self
+    public static function fixed(int $multiplierX100, string $fairPrice, string $offerPrice, ?int $payoutMinor = null): self
     {
-        return new self($multiplierX100, false, extra: ['p_fair' => $fairPrice, 'p_offer' => $offerPrice]);
+        $extra = ['p_fair' => $fairPrice, 'p_offer' => $offerPrice];
+
+        // LMSR locks the payout itself (the shares bought); fixed odds derive it from the multiplier
+        if ($payoutMinor !== null) {
+            $extra['payout_minor'] = $payoutMinor;
+        }
+
+        return new self($multiplierX100, false, extra: $extra);
     }
 
     /**

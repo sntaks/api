@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Predict\Polymarket\Stream\PriceStream;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -61,7 +62,10 @@ class PredictOutcome extends Model
             return 'no_price';
         }
 
-        if ($this->price_captured_at->lt(now()->subSeconds((int) config('predict.fixed.max_price_age_seconds')))) {
+        // Stricter while the market stream is live (prices arrive within a second), looser on REST polling alone
+        $maxAge = PriceStream::isLive() ? config('predict.fixed.max_price_age_stream_seconds') : config('predict.fixed.max_price_age_seconds');
+
+        if ($this->price_captured_at->lt(now()->subSeconds((int) $maxAge))) {
             return 'stale_price';
         }
 

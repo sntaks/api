@@ -19,6 +19,7 @@ return [
         'pool' => env('PREDICT_POOL_PRODUCT', 'predict_pool'),
         // Imported markets: view-only in phase 1b, fixed odds from phase 2
         'reference' => env('PREDICT_REFERENCE_PRODUCT', 'predict_fixed'),
+        'lmsr' => env('PREDICT_LMSR_PRODUCT', 'predict_lmsr'),
     ],
 
     'currency' => 'KES',
@@ -40,6 +41,12 @@ return [
         'min_multiplier' => (float) env('PREDICT_POOL_MIN_MULTIPLIER', 1.05),
     ],
 
+    // LMSR market maker for custom markets (decided 2026-11-12). The fee is stored as the market's cut
+    'lmsr' => [
+        'liquidity' => (float) env('PREDICT_LMSR_LIQUIDITY', 5000),
+        'fee' => (float) env('PREDICT_LMSR_FEE', 0.10),
+    ],
+
     // Fixed odds on imported markets (decided 2026-11-12)
     'fixed' => [
         'margin' => (float) env('PREDICT_FIXED_MARGIN', 0.05),
@@ -47,12 +54,17 @@ return [
         'max_liability' => (float) env('PREDICT_FIXED_MAX_LIABILITY', 500000),
         // The most one customer may stake in total on one market (KES)
         'max_customer_stake' => (float) env('PREDICT_FIXED_MAX_CUSTOMER_STAKE', 20000),
+        // Margin added as a side's liability fills its cap: [share of the cap reached, basis points added].
+        // Decided 2026-11-12: +2% past half the cap, +5% past 80%
+        'margin_ladder' => [[0.5, 200], [0.8, 500]],
         'max_offer' => 0.99,
         'quote_seconds' => 10,
         // Re-quote when our offer price moved more than this fraction against the house
         'requote_tolerance' => 0.01,
         // Betting guards; a failing one refuses bets and the price sync suspends the market
         'max_price_age_seconds' => (int) env('PREDICT_FIXED_MAX_PRICE_AGE', 45),
+        // While the WebSocket price stream is live (decided 2026-11-12)
+        'max_price_age_stream_seconds' => (int) env('PREDICT_FIXED_MAX_PRICE_AGE_STREAM', 10),
         'max_spread' => (float) env('PREDICT_FIXED_MAX_SPREAD', 0.05),
         // USD resting on each side's asks within depth_band of the best ask. Set 2026-11-12 from a live sample:
         // USD 5,000 within 0.02 left ~8% of high-volume markets bettable, USD 1,000 within 0.05 ~29%
@@ -60,6 +72,14 @@ return [
         'depth_band' => (float) env('PREDICT_FIXED_DEPTH_BAND', 0.05),
         // Without a game start time, betting stops this long before the close time
         'cutoff_minutes' => 15,
+    ],
+
+    // Insider and abuse rules (decided 2026-11-12): each fires a RiskEvent for GMS, the bet still goes through
+    'risk' => [
+        'late_large' => ['min_stake' => 2000, 'minutes_before_cutoff' => 30],
+        'fresh_account' => ['max_age_days' => 7, 'min_market_stake' => 2000],
+        'cluster' => ['min_customers' => 5, 'min_stake' => 1000, 'window_minutes' => 10],
+        'sharp_winner' => ['min_settled' => 10, 'min_win_rate' => 0.8],
     ],
 
     'resolution' => [
@@ -116,6 +136,14 @@ return [
         'snapshot_days' => 30,
 
         // Consecutive failed calls that open the circuit, and how long it stays open
+        // WebSocket market channel (predict:price-stream under Supervisor)
+        'stream_url' => env('PREDICT_POLYMARKET_STREAM_URL', 'wss://ws-subscriptions-clob.polymarket.com/ws/market'),
+        'stream_resubscribe_seconds' => 30,
+        // The stream counts as live while its heartbeat is younger than this
+        'stream_heartbeat_seconds' => 15,
+        // While the import is off the worker idles this long before exiting, so Supervisor does not spin
+        'stream_idle_seconds' => 60,
+
         'circuit_failures' => 5,
         'circuit_open_seconds' => 60,
 

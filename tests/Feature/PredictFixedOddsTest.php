@@ -141,3 +141,24 @@ it('shows GMS the exposure per side', function () {
         ->assertJsonPath('data.exposure.yes.house_result_if_wins', -58)
         ->assertJsonPath('data.exposure.worst_case', -58);
 });
+
+it('quotes a wider margin once a side\'s liability passes half its cap', function () {
+    // Cap KES 1,000: yes owes KES 900 against KES 300 staked, so liability 600 = 60% → margin 5% + 2%
+    $market = fixedMarket($this, '0.60', ['max_liability_minor' => 100000]);
+    PredictExposure::forMarket($market->id)->where('side', 'yes')->update(['stakes_minor' => 30000, 'payouts_minor' => 90000]);
+
+    // 0.60 × 1.07 = 0.642 → 1.55x (instead of 1.58x)
+    quoteFor($this, $market, stake: 10)->assertCreated()->assertJsonPath('data.quote.multiplier', 1.55);
+    quoteFor($this, $market, 'no', 10)->assertCreated()->assertJsonPath('data.quote.multiplier', 2.38);
+});
+
+it('shows an open fixed-odds bet with its locked multiplier and payout', function () {
+    $market = fixedMarket($this, '0.60');
+    quoteAndBet($this, $market, 'yes', 100)->assertCreated();
+
+    $this->getJson('/api/v1/customers/'.encryptId($this->player->id).'/predict/bets', $this->siteHeaders)
+        ->assertOk()
+        ->assertJsonPath('data.items.0.multiplier', 1.58)
+        ->assertJsonPath('data.items.0.potential_payout', 158)
+        ->assertJsonPath('data.items.0.is_estimate', false);
+});

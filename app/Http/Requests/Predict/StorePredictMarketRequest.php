@@ -26,7 +26,9 @@ class StorePredictMarketRequest extends FormRequest
     {
         return [
             'admin_user' => ['required', 'string', 'max:100'],
-            'engine' => ['nullable', 'in:'.PredictMarket::ENGINE_POOL],
+            'engine' => ['nullable', 'in:'.PredictMarket::ENGINE_POOL.','.PredictMarket::ENGINE_LMSR],
+            // LMSR liquidity b in KES: worst-case house loss is b·ln(1 / the smaller opening price)
+            'liquidity' => ['nullable', 'numeric', 'min:100', 'max:10000000', 'decimal:0,2'],
             'question' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
             'resolution_criteria' => ['required', 'string', 'max:5000'],
@@ -52,6 +54,6 @@ class StorePredictMarketRequest extends FormRequest
      */
     public function after(): array
     {
-        return [fn (Validator $validator) => PredictMarketTerms::check($validator, array_filter($this->only(['start_probability', 'cut', 'min_multiplier', 'min_stake', 'max_stake']), fn ($value) => $value !== null))];
+        return [fn (Validator $validator) => PredictMarketTerms::check($validator, array_filter($this->only(['engine', 'start_probability', 'cut', 'min_multiplier', 'min_stake', 'max_stake']), fn ($value) => $value !== null))];
     }
 }

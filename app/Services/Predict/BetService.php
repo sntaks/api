@@ -26,6 +26,7 @@ class BetService
         private PredictContext $context,
         private EngineRegistry $engines,
         private WagerService $wagers,
+        private RiskService $risk,
     ) {}
 
     /**
@@ -52,7 +53,14 @@ class BetService
             return PredictResult::refused('quote_mismatch', 'No quote has that id', 409);
         }
 
-        return DB::transaction(fn () => $this->placeLocked($customer, $market->id, $data['side'], $stakeMinor, $data['reference'], $quote), 3);
+        $result = DB::transaction(fn () => $this->placeLocked($customer, $market->id, $data['side'], $stakeMinor, $data['reference'], $quote), 3);
+
+        // Flag-only risk rules, after the bet committed: a rule never refuses or rolls back a bet
+        if ($result->created) {
+            rescue(fn () => $this->risk->check($result->data['bet'], $market, $customer, request()?->ip()));
+        }
+
+        return $result;
     }
 
     /**
@@ -71,7 +79,8 @@ class BetService
             'side' => $side,
             'stake' => $stakeMinor / 100,
             'estimated_multiplier' => $terms->multiplierX100 / 100,
-            'estimated_payout' => PoolMath::payoutMinor($stakeMinor, $terms->multiplierX100, $market->max_payout_minor) / 100,
+            // LMSR knows the exact payout (the shares bought); otherwise it follows from the multiplier
+            'estimated_payout' => ($terms->extra['payout_minor'] ?? PoolMath::payoutMinor($stakeMinor, $terms->multiplierX100, $market->max_payout_minor)) / 100,
             // A preview, never binding: pool odds move until close, and fixed odds hold only through a quote
             'is_estimate' => true,
         ]);
@@ -121,6 +130,7 @@ class BetService
             'currency' => config('predict.currency'),
             'stake_minor' => $stakeMinor,
             'estimated_multiplier_x100' => $terms->multiplierX100,
+            'shares_minor' => $terms->extra['payout_minor'] ?? null,
             'status' => PredictBet::STATUS_OPEN,
             'placed_at' => now(),
         ]);

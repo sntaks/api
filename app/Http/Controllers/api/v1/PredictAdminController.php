@@ -15,11 +15,14 @@ use App\Models\PredictMarket;
 use App\Models\PredictMarketBlock;
 use App\Models\PredictResolutionProposal;
 use App\Models\PredictSettlement;
+use App\Models\RiskEvent;
+use App\Services\Predict\AuditLogger;
 use App\Services\Predict\CorrectionService;
 use App\Services\Predict\MarketQuery;
 use App\Services\Predict\MarketService;
 use App\Services\Predict\PredictResult;
 use App\Services\Predict\ResolutionService;
+use App\Services\Predict\RiskService;
 use App\Services\Predict\SettlementService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -37,6 +40,7 @@ class PredictAdminController extends PredictController
         private SettlementService $settlements,
         private ResolutionService $resolutions,
         private CorrectionService $corrections,
+        private AuditLogger $audit,
     ) {}
 
     public function index(ListPredictMarketsRequest $request): JsonResponse
@@ -60,7 +64,7 @@ class PredictAdminController extends PredictController
     public function store(StorePredictMarketRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $market = $this->markets->createCustom(Arr::except($data, ['admin_user', 'engine']), $data['admin_user']);
+        $market = $this->markets->createCustom(Arr::except($data, ['admin_user']), $data['admin_user']);
 
         return response()->json(['success' => true, 'data' => PredictMarketAdminResource::make($market->load(['pool', 'product']))->resolve()], 201);
     }
@@ -333,6 +337,70 @@ class PredictAdminController extends PredictController
             'error' => $correction->error,
             'finished_at' => $correction->finished_at?->toIso8601String(),
             'created_at' => $correction->created_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Risk flags raised by prediction bets, newest first; unresolved only unless ?resolved=1.
+     */
+    public function riskEvents(PagedListRequest $request): JsonResponse
+    {
+        $page = RiskEvent::query()
+            ->whereIn('event_type', RiskService::TYPES)
+            ->when(! $request->boolean('resolved'), fn ($query) => $query->whereNull('resolved_at'))
+            ->when(in_array($request->query('type'), RiskService::TYPES, true), fn ($query) => $query->where('event_type', $request->query('type')))
+            ->when(ctype_digit((string) $request->query('customer_id')), fn ($query) => $query->where('customer_id', (int) $request->query('customer_id')))
+            ->when(ctype_digit((string) $request->query('market_id')), fn ($query) => $query->where('details->market_id', (int) $request->query('market_id')))
+            ->orderByDesc('id')
+            ->paginate((int) ($request->validated()['per_page'] ?? 50))
+            ->withQueryString();
+
+        return $this->pagedResponse($page, fn (RiskEvent $event) => $this->presentRiskEvent($event));
+    }
+
+    /**
+     * Close a risk flag once reviewed (the reason is kept on the flag and in the audit log).
+     */
+    public function resolveRiskEvent(PredictAdminActionRequest $request, string $riskEventId): JsonResponse
+    {
+        $event = RiskEvent::whereIn('event_type', RiskService::TYPES)->find($this->routeId($riskEventId) ?? 0);
+
+        if (! $event) {
+            return $this->refusal('risk_event_not_found', 'No prediction risk flag has that id', 404);
+        }
+
+        if ($event->resolved_at !== null) {
+            return $this->refusal('risk_event_resolved', 'This flag is already resolved', 409);
+        }
+
+        $data = $request->validated();
+        $event->update([
+            'resolved_at' => now(),
+            'action_taken' => 'reviewed',
+            'details' => ($event->details ?? []) + ['resolved_by' => $data['admin_user'], 'resolution' => $data['reason']],
+        ]);
+        $market = isset($event->details['market_id']) ? PredictMarket::find($event->details['market_id']) : null;
+        $this->audit->record('resolve_risk_event', $market, $data['admin_user'], $data['reason'], null, ['risk_event_id' => $event->id]);
+
+        return response()->json(['success' => true, 'data' => ['risk_event' => $this->presentRiskEvent($event)]]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentRiskEvent(RiskEvent $event): array
+    {
+        return [
+            'id' => $event->id,
+            'type' => $event->event_type,
+            'severity' => $event->severity,
+            'score' => $event->score,
+            'customer_id' => $event->customer_id,
+            'market_id' => $event->details['market_id'] ?? null,
+            'details' => $event->details,
+            'action_taken' => $event->action_taken,
+            'resolved_at' => $event->resolved_at?->toIso8601String(),
+            'created_at' => $event->created_at?->toIso8601String(),
         ];
     }
 

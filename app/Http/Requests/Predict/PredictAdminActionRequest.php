@@ -26,7 +26,7 @@ class PredictAdminActionRequest extends FormRequest
     public function rules(): array
     {
         $action = $this->route()?->getActionMethod();
-        $needsReason = in_array($action, ['void', 'block', 'reject', 'rejectProposal', 'requestCorrection', 'cancelCorrection'], true);
+        $needsReason = in_array($action, ['void', 'block', 'reject', 'rejectProposal', 'requestCorrection', 'cancelCorrection', 'resolveRiskEvent'], true);
         $needsResult = in_array($action, ['resolve', 'requestCorrection'], true);
 
         return [

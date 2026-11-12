@@ -4,6 +4,7 @@ namespace App\Services\Predict;
 
 use App\Exceptions\PolymarketUnavailable;
 use App\Models\PredictExposure;
+use App\Models\PredictLmsrState;
 use App\Models\PredictMarket;
 use App\Models\PredictMarketBlock;
 use App\Models\PredictPool;
@@ -49,11 +50,20 @@ class MarketService
      */
     public function createCustom(array $data, string $adminUser): PredictMarket
     {
-        return DB::transaction(function () use ($data, $adminUser) {
+        $engine = $data['engine'] ?? PredictMarket::ENGINE_POOL;
+        unset($data['engine']);
+
+        // An LMSR market's fee is stored as its cut, defaulting to the LMSR fee rather than the pool cut
+        if ($engine === PredictMarket::ENGINE_LMSR) {
+            $data['cut'] ??= config('predict.lmsr.fee');
+            $data['liquidity'] ??= config('predict.lmsr.liquidity');
+        }
+
+        return DB::transaction(function () use ($data, $adminUser, $engine) {
             $market = PredictMarket::create([
                 'source' => PredictMarket::SOURCE_CUSTOM,
-                'engine' => PredictMarket::ENGINE_POOL,
-                'product_id' => $this->context->productFor(PredictMarket::ENGINE_POOL)->id,
+                'engine' => $engine,
+                'product_id' => $this->context->productFor($engine)->id,
                 'round_reference' => 'predict-'.Str::lower((string) Str::ulid()),
                 'status' => PredictMarket::STATUS_DRAFT,
                 'created_by' => $adminUser,
@@ -123,6 +133,10 @@ class MarketService
 
             if ($locked->isImported()) {
                 return $this->openImported($locked);
+            }
+
+            if ($locked->engine === PredictMarket::ENGINE_LMSR) {
+                return $this->openLmsr($locked);
             }
 
             $seed = PoolMath::seedSplit($locked->seed_minor, $locked->start_probability_bp);
@@ -369,6 +383,27 @@ class MarketService
     }
 
     /**
+     * Open a custom LMSR market: shares set so the price starts at the admin's probability, plus the wager round
+     * and the exposure rows its bets update.
+     */
+    private function openLmsr(PredictMarket $locked): ?PredictResult
+    {
+        $liquidity = bcdiv((string) $locked->liquidity_minor, '100', 2);
+        $opening = LmsrMath::opening(bcdiv((string) $locked->start_probability_bp, '10000', 4), $liquidity);
+
+        PredictLmsrState::create(['predict_market_id' => $locked->id, 'q_yes' => $opening['yes'], 'q_no' => $opening['no'], 'liquidity' => $liquidity]);
+        WagerRound::create(['product_id' => $locked->product_id, 'reference' => $locked->round_reference, 'status' => WagerRound::STATUS_OPEN]);
+
+        foreach (PredictMarket::SIDES as $side) {
+            PredictExposure::create(['predict_market_id' => $locked->id, 'side' => $side, 'stakes_minor' => 0, 'payouts_minor' => 0]);
+        }
+
+        $locked->update(['status' => PredictMarket::STATUS_OPEN, 'opened_at' => now()]);
+
+        return null;
+    }
+
+    /**
      * Both sides pass the betting guards (fresh, reliable, tight and deep enough to bet on).
      */
     private function hasUsablePrices(PredictMarket $market): bool
@@ -478,6 +513,7 @@ class MarketService
             'max_payout' => ['max_payout_minor', $minor, config('predict.limits.max_payout')],
             'min_multiplier' => ['min_multiplier_x100', fn ($v) => (int) round(((float) $v) * 100), config('predict.pool.min_multiplier')],
             'margin' => ['margin_bp', $bp, config('predict.fixed.margin')],
+            'liquidity' => ['liquidity_minor', $minor, null],
             'max_liability' => ['max_liability_minor', $minor, config('predict.fixed.max_liability')],
             'max_customer_stake' => ['max_customer_stake_minor', $minor, config('predict.fixed.max_customer_stake')],
         ];

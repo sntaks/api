@@ -17,6 +17,7 @@ use Illuminate\Support\Collection;
 /**
  * Engine A, reference fixed odds: the house is the counterparty and the multiplier is locked when the bet is
  * placed. The fair price is Polymarket's midpoint for the side; we sell at p_fair × (1 + margin), capped at 0.99,
+ * where the margin widens along `predict.fixed.margin_ladder` as the side's liability nears its cap,
  * and pay stake × floor(100 / p_offer) / 100, capped at the market's max payout.
  *
  * Every bet locks the market's two exposure rows, then its quote, so the exposure and per-customer limits are
@@ -24,17 +25,19 @@ use Illuminate\Support\Collection;
  */
 class FixedOddsEngine implements PricingEngine
 {
+    use ChecksQuotes;
+
     public function quote(PredictMarket $market, string $side, int $stakeMinor): BetTerms
     {
         $outcome = $market->outcomes()->where('side', $side)->first();
 
-        return $this->priced($market, $outcome);
+        return $this->priced($market, $outcome, PredictExposure::forMarket($market->id)->get()->keyBy('side'), $side);
     }
 
     public function placeBet(PredictMarket $market, string $side, int $stakeMinor, Closure $placeWager, ?PredictQuote $quote = null, ?Customer $customer = null): array
     {
         if ($quote === null || $customer === null) {
-            return ['terms' => BetTerms::refused('quote_required', 'Ask for a quote first and bet with its quote_id', 422), 'wager' => null];
+            return ['terms' => $this->quoteRequired(), 'wager' => null];
         }
 
         $exposures = PredictExposure::forMarket($market->id)->orderBy('side')->lockForUpdate()->get()->keyBy('side');
@@ -46,7 +49,7 @@ class FixedOddsEngine implements PricingEngine
             return ['terms' => $refusal, 'wager' => null];
         }
 
-        $current = $this->priced($market, $market->outcomes()->where('side', $side)->first());
+        $current = $this->priced($market, $market->outcomes()->where('side', $side)->first(), $exposures, $side);
 
         if ($current->isRefused()) {
             return ['terms' => $current, 'wager' => null];
@@ -99,7 +102,10 @@ class FixedOddsEngine implements PricingEngine
      * The offer for a side now, or why it cannot be bet on (a betting guard failed, or the price is too high to
      * pay more than the stake back).
      */
-    private function priced(PredictMarket $market, ?PredictOutcome $outcome): BetTerms
+    /**
+     * @param  Collection<string, PredictExposure>  $exposures
+     */
+    private function priced(PredictMarket $market, ?PredictOutcome $outcome, $exposures, string $side): BetTerms
     {
         // Not `?->… ?? 'no_price'`: a passing guard returns null, which ?? would turn into a failure
         $failure = $outcome ? $outcome->bettingGuardFailure() : 'no_price';
@@ -109,7 +115,7 @@ class FixedOddsEngine implements PricingEngine
         }
 
         $fair = bcadd((string) $outcome->midpoint, '0', 6);
-        $offer = FixedOddsMath::offerPrice($fair, $market->margin_bp, (string) config('predict.fixed.max_offer'));
+        $offer = FixedOddsMath::offerPrice($fair, self::marginBp($market, $exposures, $side), (string) config('predict.fixed.max_offer'));
         $multiplier = FixedOddsMath::multiplierX100($offer);
 
         if ($multiplier <= 100) {
@@ -119,21 +125,16 @@ class FixedOddsEngine implements PricingEngine
         return BetTerms::fixed($multiplier, $fair, $offer);
     }
 
-    private function quoteRefusal(?PredictQuote $quote, PredictMarket $market, Customer $customer, string $side, int $stakeMinor): ?BetTerms
+    /**
+     * The market's margin for a side, widened by the ladder as the side's liability nears its cap.
+     *
+     * @param  Collection<string, PredictExposure>  $exposures
+     */
+    public static function marginBp(PredictMarket $market, $exposures, string $side): int
     {
-        if ($quote === null || $quote->predict_market_id !== $market->id || $quote->customer_id !== $customer->id || $quote->side !== $side || $quote->stake_minor !== $stakeMinor) {
-            return BetTerms::refused('quote_mismatch', 'The quote is not for this customer, market, side and stake', 409);
-        }
+        $liability = (int) ($exposures[$side]->payouts_minor ?? 0) - (int) $exposures->sum('stakes_minor');
 
-        if ($quote->used_at !== null) {
-            return BetTerms::refused('quote_used', 'This quote was already used; ask for a new one', 409);
-        }
-
-        if ($quote->isExpired()) {
-            return BetTerms::refused('quote_expired', 'The quote expired; ask for a new one', 409);
-        }
-
-        return null;
+        return FixedOddsMath::ladderMarginBp($market->margin_bp, $liability, $market->max_liability_minor, config('predict.fixed.margin_ladder', []));
     }
 
     /**

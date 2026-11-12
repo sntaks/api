@@ -26,6 +26,31 @@ class FixedOddsMath
     }
 
     /**
+     * The margin for a side: the base, plus the highest ladder step whose share of the liability cap the side has
+     * reached. Liability = payouts owed if the side wins − all stakes on the market (negative while the house is
+     * ahead on that side).
+     *
+     * @param  list<array{0: float|int|string, 1: int}>  $ladder  [share of the cap, basis points added]
+     */
+    public static function ladderMarginBp(int $baseBp, int $liabilityMinor, int $capMinor, array $ladder): int
+    {
+        if ($capMinor <= 0 || $liabilityMinor <= 0) {
+            return $baseBp;
+        }
+
+        $added = 0;
+
+        foreach ($ladder as [$share, $bp]) {
+            // liability / cap >= share, in integers: liability × 10000 >= cap × share × 10000
+            if (bccomp(bcmul((string) $liabilityMinor, '10000'), bcmul((string) $capMinor, bcmul((string) $share, '10000', 0), 0), 0) >= 0) {
+                $added = max($added, (int) $bp);
+            }
+        }
+
+        return $baseBp + $added;
+    }
+
+    /**
      * Whether the offer moved against the house by more than the tolerance (a fraction) since it was quoted.
      */
     public static function movedAgainstHouse(string $quotedOffer, string $currentOffer, string $tolerance): bool
