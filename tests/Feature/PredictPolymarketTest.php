@@ -110,6 +110,14 @@ it('imports binary markets as drafts with their tokens, asking only for open eve
     Http::assertSent(fn (Request $request) => str_contains($request->url(), '/events/keyset') && $request['closed'] === 'false' && $request['tag_id'] === '1');
 });
 
+it('asks Polymarket for gzip, which large event pages require', function () {
+    fakeGamma([gammaEvent([gammaMarket()])]);
+
+    $this->artisan('predict:sync-events')->assertSuccessful();
+
+    Http::assertSent(fn (Request $request) => str_contains($request->url(), '/events/keyset') && $request->hasHeader('Accept-Encoding', 'gzip'));
+});
+
 it('reads v2 tokens from positionIds', function () {
     fakeGamma([gammaEvent([gammaMarket(['version' => 'v2', 'clobTokenIds' => null, 'positionIds' => ['pos-yes', 'pos-no']])])]);
 

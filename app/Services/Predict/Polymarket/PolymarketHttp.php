@@ -48,7 +48,10 @@ class PolymarketHttp
         }
 
         $base = (int) config('predict.polymarket.retry_base_ms');
+        // Gamma refuses large /events pages without gzip (406 gzip_required). Guzzle's default decode_content
+        // hands this header to curl, which decompresses the body.
         $request = Http::acceptJson()
+            ->withHeaders(['Accept-Encoding' => 'gzip'])
             ->connectTimeout((int) config('predict.polymarket.connect_timeout'))
             ->timeout((int) config('predict.polymarket.timeout'))
             ->retry(
