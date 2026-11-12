@@ -220,7 +220,7 @@ Route::prefix('/v1')->group(function () {
                 Route::post('/markets', [PredictAdminController::class, 'store'])->middleware('throttle:write');
                 Route::get('/markets/{id}', [PredictAdminController::class, 'show']);
                 Route::put('/markets/{id}', [PredictAdminController::class, 'update'])->middleware('throttle:write');
-                foreach (['publish', 'suspend', 'resume', 'close', 'resolve', 'void'] as $action) {
+                foreach (['publish', 'reject', 'suspend', 'resume', 'close', 'resolve', 'void'] as $action) {
                     Route::post("/markets/{id}/{$action}", [PredictAdminController::class, $action])->middleware('throttle:write');
                 }
                 Route::get('/markets/{id}/blocks', [PredictAdminController::class, 'blocks']);

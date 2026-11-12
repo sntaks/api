@@ -26,6 +26,7 @@ class ListPredictMarketsRequest extends FormRequest
         return [
             'category' => ['nullable', 'in:'.implode(',', config('predict.categories'))],
             'country' => ['nullable', 'in:'.implode(',', array_keys(config('predict.countries')))],
+            'source' => ['nullable', 'in:'.PredictMarket::SOURCE_CUSTOM.','.PredictMarket::SOURCE_POLYMARKET],
             'status' => ['nullable', 'in:'.implode(',', PredictMarket::STATUSES)],
             'sort' => ['nullable', 'in:trending,closing_soon,new'],
             'page' => ['nullable', 'integer', 'min:1'],

@@ -23,6 +23,14 @@ class PredictMarket extends Model
 
     public const ENGINE_POOL = 'pool';
 
+    /** Imported markets: priced from Polymarket's reference price. View-only until the fixed-odds engine (phase 2) */
+    public const ENGINE_REFERENCE = 'reference';
+
+    public const SUSPENDED_BY_ADMIN = 'admin';
+
+    /** Suspended by the price sync (stale, unreliable or unreachable prices); lifted automatically */
+    public const SUSPENDED_FOR_PRICE = 'price';
+
     public const STATUS_DRAFT = 'draft';
 
     public const STATUS_OPEN = 'open';
@@ -37,9 +45,12 @@ class PredictMarket extends Model
 
     public const STATUS_VOIDED = 'voided';
 
+    /** A draft an admin (or the sync, when it closed upstream) turned down; the sync never re-imports it */
+    public const STATUS_REJECTED = 'rejected';
+
     public const STATUSES = [
         self::STATUS_DRAFT, self::STATUS_OPEN, self::STATUS_SUSPENDED, self::STATUS_CLOSED,
-        self::STATUS_RESOLVED, self::STATUS_SETTLED, self::STATUS_VOIDED,
+        self::STATUS_RESOLVED, self::STATUS_SETTLED, self::STATUS_VOIDED, self::STATUS_REJECTED,
     ];
 
     /** Statuses players can see; drafts are admin-only */
@@ -56,9 +67,22 @@ class PredictMarket extends Model
 
     protected $fillable = [
         'source',
+        'predict_event_id',
         'external_market_id',
         'condition_id',
         'protocol_version',
+        'external_slug',
+        'external_question',
+        'external_end_at',
+        'external_closed',
+        'external_volume',
+        'external_liquidity',
+        'external_spread',
+        'external_synced_at',
+        'overridden_fields',
+        'suspension_cause',
+        'rejected_at',
+        'reject_reason',
         'question',
         'description',
         'resolution_criteria',
@@ -97,6 +121,14 @@ class PredictMarket extends Model
     {
         return [
             'countries' => 'array',
+            'overridden_fields' => 'array',
+            'external_end_at' => 'datetime',
+            'external_closed' => 'boolean',
+            'external_volume' => 'decimal:2',
+            'external_liquidity' => 'decimal:2',
+            'external_spread' => 'decimal:6',
+            'external_synced_at' => 'datetime',
+            'rejected_at' => 'datetime',
             'close_at' => 'datetime',
             'resolution_deadline_at' => 'datetime',
             'opened_at' => 'datetime',
@@ -117,6 +149,29 @@ class PredictMarket extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(PredictEvent::class, 'predict_event_id');
+    }
+
+    public function outcomes(): HasMany
+    {
+        return $this->hasMany(PredictOutcome::class);
+    }
+
+    public function isImported(): bool
+    {
+        return $this->source === self::SOURCE_POLYMARKET;
+    }
+
+    /**
+     * Whether players can bet on it now: open and priced by an engine that takes bets.
+     */
+    public function takesBets(): bool
+    {
+        return $this->status === self::STATUS_OPEN && $this->engine === self::ENGINE_POOL;
     }
 
     public function pool(): HasOne

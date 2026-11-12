@@ -17,6 +17,8 @@ return [
 
     'products' => [
         'pool' => env('PREDICT_POOL_PRODUCT', 'predict_pool'),
+        // Imported markets: view-only in phase 1b, fixed odds from phase 2
+        'reference' => env('PREDICT_REFERENCE_PRODUCT', 'predict_fixed'),
     ],
 
     'currency' => 'KES',
@@ -49,5 +51,46 @@ return [
     'history_points' => 200,
 
     'queue' => env('PREDICT_QUEUE', 'default'),
+
+    /*
+    | Polymarket, read-only and without authentication: events and markets from the Gamma API, reference prices
+    | from the CLOB API. Used under licence (confirmed 2026-11-10). Off until PREDICT_POLYMARKET_ENABLED is set.
+    */
+    'polymarket' => [
+        'enabled' => (bool) env('PREDICT_POLYMARKET_ENABLED', false),
+        'gamma_url' => env('PREDICT_POLYMARKET_GAMMA_URL', 'https://gamma-api.polymarket.com'),
+        'clob_url' => env('PREDICT_POLYMARKET_CLOB_URL', 'https://clob.polymarket.com'),
+        'connect_timeout' => 3,
+        'timeout' => 5,
+        'retries' => 3,
+        'retry_base_ms' => 200,
+
+        // Our category => the Polymarket tag slugs imported under it
+        'tags' => [
+            'sport' => ['sports'],
+            'politics' => ['politics'],
+            'entertainment' => ['pop-culture'],
+        ],
+        'page_size' => 100,
+        'max_pages_per_tag' => (int) env('PREDICT_POLYMARKET_MAX_PAGES', 5),
+        // Markets with less trading volume (USD) than this are not imported
+        'min_volume' => (float) env('PREDICT_POLYMARKET_MIN_VOLUME', 10000),
+        // Imported markets must be resolved by their end date plus this
+        'resolution_days' => 7,
+
+        // A reference price older than this is stale: the market is suspended
+        'stale_after_seconds' => (int) env('PREDICT_POLYMARKET_STALE_AFTER', 120),
+        'midpoint_batch' => 100,
+        // History keeps a point when the price moves this much, or at least every snapshot_every_seconds
+        'snapshot_min_move' => 0.005,
+        'snapshot_every_seconds' => 300,
+        'snapshot_days' => 30,
+
+        // Consecutive failed calls that open the circuit, and how long it stays open
+        'circuit_failures' => 5,
+        'circuit_open_seconds' => 60,
+
+        'attribution' => 'Reference prices from Polymarket',
+    ],
 
 ];

@@ -90,5 +90,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('stk-pushes:prune')->daily();
         // Prediction markets stop taking bets at their close time
         $schedule->command('predict:close-due')->everyMinute()->withoutOverlapping();
+        // Polymarket (no-ops while PREDICT_POLYMARKET_ENABLED is off): drafts and metadata, reference prices, history
+        $schedule->command('predict:sync-events')->everyTenMinutes()->withoutOverlapping();
+        $schedule->command('predict:sync-prices')->everyTwentySeconds()->withoutOverlapping();
+        $schedule->command('predict:prune-snapshots')->daily();
     })
     ->create();

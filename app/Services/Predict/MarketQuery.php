@@ -4,6 +4,7 @@ namespace App\Services\Predict;
 
 use App\Models\PredictBet;
 use App\Models\PredictMarket;
+use App\Models\PredictPriceSnapshot;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -27,7 +28,7 @@ class MarketQuery
             : [PredictMarket::STATUS_OPEN, PredictMarket::STATUS_SUSPENDED];
 
         $query = PredictMarket::query()
-            ->with('pool')
+            ->with(['pool', 'outcomes', 'event'])
             ->whereIn('status', $statuses)
             ->whereJsonContains('countries', $country)
             ->when($filters['category'] ?? null, fn (Builder $q, string $category) => $q->where('category', $category));
@@ -45,8 +46,9 @@ class MarketQuery
     public function adminList(array $filters): LengthAwarePaginator
     {
         $query = PredictMarket::query()
-            ->with(['pool', 'product'])
+            ->with(['pool', 'product', 'outcomes', 'event'])
             ->when($filters['status'] ?? null, fn (Builder $q, string $status) => $q->where('status', $status))
+            ->when($filters['source'] ?? null, fn (Builder $q, string $source) => $q->where('source', $source))
             ->when($filters['category'] ?? null, fn (Builder $q, string $category) => $q->where('category', $category))
             ->when($filters['country'] ?? null, fn (Builder $q, string $country) => $q->whereJsonContains('countries', $country));
 
@@ -57,7 +59,7 @@ class MarketQuery
 
     public function findPublic(int $id): ?PredictMarket
     {
-        return PredictMarket::with('pool')
+        return PredictMarket::with(['pool', 'outcomes', 'event'])
             ->whereIn('status', PredictMarket::PUBLIC_STATUSES)
             ->whereJsonContains('countries', config('predict.default_country'))
             ->find($id);
@@ -71,6 +73,10 @@ class MarketQuery
      */
     public function history(PredictMarket $market): array
     {
+        if ($market->isImported()) {
+            return $this->referenceHistory($market);
+        }
+
         $pool = $market->pool;
 
         if (! $pool) {
@@ -91,6 +97,43 @@ class MarketQuery
                 $points[] = $this->point($bet->placed_at, $yes, $no);
             });
 
+        return $this->thinned($points);
+    }
+
+    /**
+     * An imported market's YES reference price over the kept snapshot window.
+     *
+     * @return list<array{at: string, yes_probability: float, no_probability: float}>
+     */
+    private function referenceHistory(PredictMarket $market): array
+    {
+        $yes = $market->outcomes->firstWhere('side', PredictMarket::SIDE_YES);
+
+        if (! $yes) {
+            return [];
+        }
+
+        $points = PredictPriceSnapshot::where('predict_outcome_id', $yes->id)
+            ->orderBy('captured_at')
+            ->get(['midpoint', 'captured_at'])
+            ->map(fn (PredictPriceSnapshot $snapshot) => [
+                'at' => $snapshot->captured_at->toIso8601String(),
+                'yes_probability' => (float) $snapshot->midpoint,
+                'no_probability' => (float) bcsub('1', (string) $snapshot->midpoint, 6),
+            ])
+            ->all();
+
+        return $this->thinned($points);
+    }
+
+    /**
+     * At most `predict.history_points` points, the last one always kept.
+     *
+     * @param  list<array<string, mixed>>  $points
+     * @return list<array<string, mixed>>
+     */
+    private function thinned(array $points): array
+    {
         $limit = (int) config('predict.history_points');
 
         if (count($points) <= $limit) {
@@ -112,11 +155,12 @@ class MarketQuery
     public function changedSince(Carbon $since): Collection
     {
         return PredictMarket::query()
-            ->with('pool')
+            ->with(['pool', 'outcomes', 'event'])
             ->whereIn('status', PredictMarket::PUBLIC_STATUSES)
             ->whereJsonContains('countries', config('predict.default_country'))
             ->where(fn (Builder $q) => $q->where('updated_at', '>', $since)
-                ->orWhereHas('pool', fn (Builder $pool) => $pool->where('updated_at', '>', $since)))
+                ->orWhereHas('pool', fn (Builder $pool) => $pool->where('updated_at', '>', $since))
+                ->orWhereHas('outcomes', fn (Builder $outcome) => $outcome->where('price_captured_at', '>', $since)))
             ->orderBy('id')
             ->limit(500)
             ->get();

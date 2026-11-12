@@ -53,7 +53,7 @@ class PredictMarketController extends PredictController
     {
         $market = $this->findPublic($id);
 
-        if (! $market || ! $market->pool) {
+        if (! $market) {
             return $this->refusal('market_not_found', 'No market has that id', 404);
         }
 

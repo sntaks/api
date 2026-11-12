@@ -37,7 +37,7 @@ class PredictAdminController extends PredictController
 
     public function show(string $id): JsonResponse
     {
-        $market = PredictMarket::with(['pool', 'product', 'settlements' => fn ($q) => $q->orderBy('run_no')])->find($this->routeId($id) ?? 0);
+        $market = PredictMarket::with(['pool', 'product', 'outcomes', 'event', 'settlements' => fn ($q) => $q->orderBy('run_no')])->find($this->routeId($id) ?? 0);
 
         if (! $market) {
             return $this->refusal('market_not_found', 'No market has that id', 404);
@@ -72,6 +72,11 @@ class PredictAdminController extends PredictController
     public function publish(PredictAdminActionRequest $request, string $id): JsonResponse
     {
         return $this->act($request, $id, fn (PredictMarket $market, array $data) => $this->markets->publish($market, $data['admin_user'], $data['reason'] ?? null));
+    }
+
+    public function reject(PredictAdminActionRequest $request, string $id): JsonResponse
+    {
+        return $this->act($request, $id, fn (PredictMarket $market, array $data) => $this->markets->reject($market, $data['admin_user'], $data['reason']));
     }
 
     public function suspend(PredictAdminActionRequest $request, string $id): JsonResponse
@@ -210,7 +215,7 @@ class PredictAdminController extends PredictController
 
     private function market(PredictResult $result): JsonResponse
     {
-        return $this->respond($result, fn (array $data) => ['market' => PredictMarketAdminResource::make($data['market']->load(['pool', 'product']))->resolve()]);
+        return $this->respond($result, fn (array $data) => ['market' => PredictMarketAdminResource::make($data['market']->load(['pool', 'product', 'outcomes', 'event']))->resolve()]);
     }
 
     /**
