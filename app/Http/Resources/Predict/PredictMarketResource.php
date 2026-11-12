@@ -3,6 +3,8 @@
 namespace App\Http\Resources\Predict;
 
 use App\Models\PredictMarket;
+use App\Models\PredictOutcome;
+use App\Services\Predict\FixedOddsMath;
 use App\Services\Predict\PoolMath;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -46,6 +48,7 @@ class PredictMarketResource extends JsonResource
                 'title' => $this->event->title,
             ] : null,
             'betting_available' => $this->takesBets(),
+            'betting_closes_at' => $this->bettingClosesAt()->toIso8601String(),
             'odds' => $this->oddsFor($this->resource),
             'opened_at' => $this->opened_at?->toIso8601String(),
             'resolved_at' => $this->resolved_at?->toIso8601String(),
@@ -65,8 +68,9 @@ class PredictMarketResource extends JsonResource
     }
 
     /**
-     * An imported market's reference prices (Polymarket midpoints), with the outcome labels and attribution.
-     * Null probabilities when the price is not usable. No multipliers: the market does not take bets yet.
+     * An imported market's reference prices (Polymarket midpoints), with the outcome labels and attribution, and
+     * the fixed-odds multipliers we would offer now (indicative: a bet needs a quote). Null when a side cannot be
+     * priced.
      *
      * @return array<string, mixed>
      */
@@ -81,13 +85,28 @@ class PredictMarketResource extends JsonResource
             'no_label' => $no?->label,
             'yes_probability' => $price($yes),
             'no_probability' => $price($no),
-            'yes_multiplier' => null,
-            'no_multiplier' => null,
-            'is_estimate' => false,
+            'yes_multiplier' => self::offerMultiplier($market, $yes),
+            'no_multiplier' => self::offerMultiplier($market, $no),
+            'is_estimate' => true,
             'is_reference' => true,
             'attribution' => config('predict.polymarket.attribution'),
             'updated_at' => $yes?->price_captured_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * The multiplier a quote would offer now, or null when the side fails a betting guard.
+     */
+    private static function offerMultiplier(PredictMarket $market, ?PredictOutcome $outcome): ?float
+    {
+        if (! $outcome || $outcome->bettingGuardFailure() !== null) {
+            return null;
+        }
+
+        $offer = FixedOddsMath::offerPrice(bcadd((string) $outcome->midpoint, '0', 6), $market->margin_bp, (string) config('predict.fixed.max_offer'));
+        $multiplier = FixedOddsMath::multiplierX100($offer);
+
+        return $multiplier > 100 ? $multiplier / 100 : null;
     }
 
     /**

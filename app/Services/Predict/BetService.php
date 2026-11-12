@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\PredictBet;
 use App\Models\PredictMarket;
 use App\Models\PredictMarketBlock;
+use App\Models\PredictQuote;
 use App\Models\Wager;
 use App\Services\Predict\Engines\EngineRegistry;
 use App\Services\WagerService;
@@ -28,7 +29,7 @@ class BetService
     ) {}
 
     /**
-     * @param  array{side: string, stake: float|int|string, reference: string}  $data
+     * @param  array{side: string, stake: float|int|string, reference: string, quote_id?: ?string}  $data
      */
     public function place(Customer $customer, PredictMarket $market, array $data): PredictResult
     {
@@ -45,7 +46,13 @@ class BetService
             return $refusal;
         }
 
-        return DB::transaction(fn () => $this->placeLocked($customer, $market->id, $data['side'], $stakeMinor, $data['reference']), 3);
+        $quote = isset($data['quote_id']) ? PredictQuote::find($data['quote_id']) : null;
+
+        if (isset($data['quote_id']) && ! $quote) {
+            return PredictResult::refused('quote_mismatch', 'No quote has that id', 409);
+        }
+
+        return DB::transaction(fn () => $this->placeLocked($customer, $market->id, $data['side'], $stakeMinor, $data['reference'], $quote), 3);
     }
 
     /**
@@ -65,16 +72,18 @@ class BetService
             'stake' => $stakeMinor / 100,
             'estimated_multiplier' => $terms->multiplierX100 / 100,
             'estimated_payout' => PoolMath::payoutMinor($stakeMinor, $terms->multiplierX100, $market->max_payout_minor) / 100,
-            'is_estimate' => $terms->isEstimate,
+            // A preview, never binding: pool odds move until close, and fixed odds hold only through a quote
+            'is_estimate' => true,
         ]);
     }
 
-    private function placeLocked(Customer $customer, int $marketId, string $side, int $stakeMinor, string $reference): PredictResult
+    private function placeLocked(Customer $customer, int $marketId, string $side, int $stakeMinor, string $reference, ?PredictQuote $quote): PredictResult
     {
         $market = PredictMarket::whereKey($marketId)->with('product')->sharedLock()->firstOrFail();
+        $closed = $this->closedRefusal($market);
 
-        if ($market->status !== PredictMarket::STATUS_OPEN || $market->close_at->isPast()) {
-            return PredictResult::refused('market_not_open', 'This market is not taking bets', 409, ['status' => $market->status]);
+        if ($closed) {
+            return $closed;
         }
 
         $placed = $this->engines->for($market)->placeBet($market, $side, $stakeMinor, fn () => $this->wagers->place($this->context->wagerKey(), $customer, [
@@ -85,7 +94,7 @@ class BetService
             'stake' => bcdiv((string) $stakeMinor, '100', 2),
             'channel' => 'predict',
             'metadata' => ['predict_market_id' => $market->id, 'side' => $side],
-        ]));
+        ]), $quote, $customer);
 
         $terms = $placed['terms'];
 
@@ -116,21 +125,23 @@ class BetService
             'placed_at' => now(),
         ]);
 
+        if ($quote) {
+            PredictQuote::whereKey($quote->id)->update(['used_at' => now(), 'predict_bet_id' => $bet->id]);
+        }
+
         return PredictResult::ok(['bet' => $bet->setRelation('market', $market), 'balance' => $wager->balance], created: true);
     }
 
     /**
-     * Refusals that need no lock: the market must be visible to the player, the player not blocked on it, and
-     * the stake inside the market's limits. Rechecked state (status, close time) happens under the lock.
+     * Refusals that need no lock: the market must be taking bets, the player not blocked on it, and the stake
+     * inside the market's limits. Also used before quoting. Rechecked state (status, close time) happens under the lock.
      */
-    private function refusalBeforeLock(Customer $customer, PredictMarket $market, int $stakeMinor): ?PredictResult
+    public function refusalBeforeLock(Customer $customer, PredictMarket $market, int $stakeMinor): ?PredictResult
     {
-        if ($market->status !== PredictMarket::STATUS_OPEN || $market->close_at->isPast()) {
-            return PredictResult::refused('market_not_open', 'This market is not taking bets', 409, ['status' => $market->status]);
-        }
+        $closed = $this->closedRefusal($market);
 
-        if (! $market->takesBets()) {
-            return PredictResult::refused('betting_not_available', 'This market shows reference prices only; it does not take bets yet', 409);
+        if ($closed) {
+            return $closed;
         }
 
         if (PredictMarketBlock::where('predict_market_id', $market->id)->where('customer_id', $customer->id)->exists()) {
@@ -143,6 +154,25 @@ class BetService
 
         if ($stakeMinor > $market->max_stake_minor) {
             return PredictResult::refused('stake_above_limit', 'The stake is above the limit for this market', 422, ['max_stake' => $market->max_stake_minor / 100]);
+        }
+
+        return null;
+    }
+
+    /**
+     * `market_not_open` unless the market is open; `betting_closed` once its betting cut-off passed (the close
+     * time for a pool market, the game start or 15 minutes before close for an imported one).
+     */
+    private function closedRefusal(PredictMarket $market): ?PredictResult
+    {
+        if ($market->status !== PredictMarket::STATUS_OPEN || $market->close_at->isPast()) {
+            return PredictResult::refused('market_not_open', 'This market is not taking bets', 409, ['status' => $market->status]);
+        }
+
+        if (! $market->takesBets()) {
+            return PredictResult::refused('betting_closed', 'Betting on this market has closed', 409, [
+                'betting_closes_at' => $market->bettingClosesAt()->toIso8601String(),
+            ]);
         }
 
         return null;

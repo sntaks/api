@@ -61,6 +61,10 @@ class PredictMarketController extends PredictController
             return $this->refusal('market_not_open', 'This market is not taking bets', 409, ['status' => $market->status]);
         }
 
+        if (! $market->takesBets()) {
+            return $this->refusal('betting_closed', 'Betting on this market has closed', 409, ['betting_closes_at' => $market->bettingClosesAt()->toIso8601String()]);
+        }
+
         $data = $request->validated();
 
         return $this->respond($this->bets->estimate($market, $data['side'], $data['stake']), fn (array $estimate) => $estimate);

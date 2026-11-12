@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 /**
  * A binary prediction market. Its bets are wagers in the wager round `round_reference` of `product`.
@@ -23,7 +24,7 @@ class PredictMarket extends Model
 
     public const ENGINE_POOL = 'pool';
 
-    /** Imported markets: priced from Polymarket's reference price. View-only until the fixed-odds engine (phase 2) */
+    /** Imported markets: fixed odds priced from Polymarket's reference price */
     public const ENGINE_REFERENCE = 'reference';
 
     public const SUSPENDED_BY_ADMIN = 'admin';
@@ -74,6 +75,7 @@ class PredictMarket extends Model
         'external_slug',
         'external_question',
         'external_end_at',
+        'external_game_start_at',
         'external_closed',
         'external_volume',
         'external_liquidity',
@@ -98,11 +100,14 @@ class PredictMarket extends Model
         'resolution_deadline_at',
         'result',
         'cut_bp',
+        'margin_bp',
         'seed_minor',
         'start_probability_bp',
         'min_stake_minor',
         'max_stake_minor',
         'max_payout_minor',
+        'max_liability_minor',
+        'max_customer_stake_minor',
         'min_multiplier_x100',
         'created_by',
         'opened_at',
@@ -123,6 +128,10 @@ class PredictMarket extends Model
             'countries' => 'array',
             'overridden_fields' => 'array',
             'external_end_at' => 'datetime',
+            'external_game_start_at' => 'datetime',
+            'margin_bp' => 'integer',
+            'max_liability_minor' => 'integer',
+            'max_customer_stake_minor' => 'integer',
             'external_closed' => 'boolean',
             'external_volume' => 'decimal:2',
             'external_liquidity' => 'decimal:2',
@@ -167,11 +176,44 @@ class PredictMarket extends Model
     }
 
     /**
-     * Whether players can bet on it now: open and priced by an engine that takes bets.
+     * When betting stops. A pool market takes bets until it closes. An imported market stops at the game's start
+     * time when Polymarket gives one (never after the close time), otherwise `predict.fixed.cutoff_minutes` before
+     * it closes: Polymarket's end date is often after kick-off.
+     */
+    public function bettingClosesAt(): Carbon
+    {
+        if (! $this->isImported()) {
+            return $this->close_at;
+        }
+
+        if ($this->external_game_start_at !== null) {
+            return $this->external_game_start_at->lt($this->close_at) ? $this->external_game_start_at : $this->close_at;
+        }
+
+        return $this->close_at->copy()->subMinutes((int) config('predict.fixed.cutoff_minutes'));
+    }
+
+    /**
+     * Whether players can bet on it now: open, and before the betting cut-off.
      */
     public function takesBets(): bool
     {
-        return $this->status === self::STATUS_OPEN && $this->engine === self::ENGINE_POOL;
+        return $this->status === self::STATUS_OPEN && $this->bettingClosesAt()->isFuture();
+    }
+
+    public function proposals(): HasMany
+    {
+        return $this->hasMany(PredictResolutionProposal::class);
+    }
+
+    public function corrections(): HasMany
+    {
+        return $this->hasMany(PredictCorrection::class);
+    }
+
+    public function exposures(): HasMany
+    {
+        return $this->hasMany(PredictExposure::class);
     }
 
     public function pool(): HasOne

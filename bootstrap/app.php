@@ -93,6 +93,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Polymarket (no-ops while PREDICT_POLYMARKET_ENABLED is off): drafts and metadata, reference prices, history
         $schedule->command('predict:sync-events')->everyTenMinutes()->withoutOverlapping();
         $schedule->command('predict:sync-prices')->everyTwentySeconds()->withoutOverlapping();
+        $schedule->command('predict:sync-resolutions')->everyFiveMinutes()->withoutOverlapping();
         $schedule->command('predict:prune-snapshots')->daily();
     })
     ->create();

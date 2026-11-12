@@ -2,6 +2,7 @@
 
 namespace App\Services\Predict;
 
+use App\Http\Resources\Predict\PredictMarketAdminResource;
 use App\Models\PredictBet;
 use App\Models\PredictMarket;
 use App\Models\PredictPriceSnapshot;
@@ -46,7 +47,7 @@ class MarketQuery
     public function adminList(array $filters): LengthAwarePaginator
     {
         $query = PredictMarket::query()
-            ->with(['pool', 'product', 'outcomes', 'event'])
+            ->with(['pool', 'product', 'outcomes', 'event', 'exposures'])
             ->when($filters['status'] ?? null, fn (Builder $q, string $status) => $q->where('status', $status))
             ->when($filters['source'] ?? null, fn (Builder $q, string $source) => $q->where('source', $source))
             ->when($filters['category'] ?? null, fn (Builder $q, string $category) => $q->where('category', $category))
@@ -185,7 +186,7 @@ class MarketQuery
             ->selectRaw('COUNT(*) AS bets');
 
         $page = PredictMarket::query()
-            ->with('pool')
+            ->with(['pool', 'exposures'])
             ->leftJoinSub($totals, 'totals', 'totals.predict_market_id', '=', 'predict_markets.id')
             ->select('predict_markets.*', 'totals.yes_stakes', 'totals.no_stakes', 'totals.payouts', 'totals.bets')
             ->when($filters['status'] ?? null, fn (Builder $q, string $status) => $q->where('predict_markets.status', $status))
@@ -235,7 +236,21 @@ class MarketQuery
             ];
         }
 
-        if (! $pool || in_array($market->status, [PredictMarket::STATUS_VOIDED], true)) {
+        if ($market->status === PredictMarket::STATUS_VOIDED) {
+            return $line;
+        }
+
+        if ($market->engine === PredictMarket::ENGINE_REFERENCE) {
+            $exposure = PredictMarketAdminResource::exposure($market);
+
+            return $line + [
+                'payout_if_yes' => $exposure['yes']['payouts_if_wins'],
+                'payout_if_no' => $exposure['no']['payouts_if_wins'],
+                'worst_case_house_net' => $exposure['worst_case'],
+            ];
+        }
+
+        if (! $pool) {
             return $line;
         }
 

@@ -7,8 +7,9 @@ use App\Models\PredictMarket;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * An admin action on a market (publish, reject, suspend, resume, close, resolve, void, block): who did it and why.
- * Resolve needs the result; reject, void and block need a reason; block needs the customer.
+ * An admin action (on a market, a resolution proposal or a correction): who did it and why. Resolve and a
+ * correction request need the result; reject, void, block, rejecting a proposal and requesting or cancelling a
+ * correction need a reason; block needs the customer.
  */
 class PredictAdminActionRequest extends FormRequest
 {
@@ -25,12 +26,13 @@ class PredictAdminActionRequest extends FormRequest
     public function rules(): array
     {
         $action = $this->route()?->getActionMethod();
-        $needsReason = in_array($action, ['void', 'block', 'reject'], true);
+        $needsReason = in_array($action, ['void', 'block', 'reject', 'rejectProposal', 'requestCorrection', 'cancelCorrection'], true);
+        $needsResult = in_array($action, ['resolve', 'requestCorrection'], true);
 
         return [
             'admin_user' => ['required', 'string', 'max:100'],
             'reason' => [$needsReason ? 'required' : 'nullable', 'string', 'max:255'],
-            'result' => [$action === 'resolve' ? 'required' : 'prohibited', 'in:'.implode(',', PredictMarket::SIDES)],
+            'result' => [$needsResult ? 'required' : 'prohibited', 'in:'.implode(',', PredictMarket::SIDES)],
             'customer_id' => [$action === 'block' ? 'required' : 'prohibited', 'integer', 'exists:customers,id'],
         ];
     }

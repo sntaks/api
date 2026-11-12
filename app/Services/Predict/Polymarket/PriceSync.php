@@ -10,8 +10,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Refreshes the reference prices of live imported markets (open and suspended) and keeps their history. Drafts
- * are priced by the event sync from Gamma, and freshly when approved. A market whose price is missing, never
- * traded, out of range or stale is suspended; it reopens by itself once prices are usable again, unless an admin
+ * are priced by the event sync from Gamma, and freshly when approved. An open market failing a betting guard (no
+ * usable price, price too old, spread too wide, book too thin) is suspended; it reopens by itself once prices are usable again, unless an admin
  * suspended it. When Polymarket cannot be reached, every open imported market is suspended: we never show or use
  * a stale price.
  */
@@ -45,11 +45,14 @@ class PriceSync
         }
 
         foreach ($markets as $market) {
-            $usable = $market->outcomes->count() === 2 && $market->outcomes->every(fn (PredictOutcome $outcome) => $outcome->hasUsablePrice());
+            $failure = $market->outcomes->count() === 2
+                ? $market->outcomes->map(fn (PredictOutcome $outcome) => $outcome->bettingGuardFailure())->filter()->first()
+                : 'no_price';
+            $usable = $failure === null;
             $counts['priced'] += $usable ? 1 : 0;
 
             if (! $usable && $market->status === PredictMarket::STATUS_OPEN) {
-                $counts['suspended'] += $this->markets->suspendForPrice($market, 'No usable reference price')->isRefused() ? 0 : 1;
+                $counts['suspended'] += $this->markets->suspendForPrice($market, "Betting guard failed: {$failure}")->isRefused() ? 0 : 1;
             }
 
             if ($usable && $market->status === PredictMarket::STATUS_SUSPENDED && $market->suspension_cause === PredictMarket::SUSPENDED_FOR_PRICE) {

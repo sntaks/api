@@ -2,7 +2,9 @@
 
 namespace App\Services\Predict\Engines;
 
+use App\Models\Customer;
 use App\Models\PredictMarket;
+use App\Models\PredictQuote;
 use App\Services\WagerResult;
 use Closure;
 
@@ -21,10 +23,12 @@ interface PricingEngine
      * Inside the caller's transaction: lock the engine's state, check the stake against it, run $placeWager, and
      * record the stake only when that placed a new wager (not a replay or a refusal).
      *
+     * A fixed-odds engine prices the bet from the customer's `$quote`; a pool engine ignores it.
+     *
      * @param  Closure(): WagerResult  $placeWager
      * @return array{terms: BetTerms, wager: ?WagerResult}
      */
-    public function placeBet(PredictMarket $market, string $side, int $stakeMinor, Closure $placeWager): array;
+    public function placeBet(PredictMarket $market, string $side, int $stakeMinor, Closure $placeWager, ?PredictQuote $quote = null, ?Customer $customer = null): array;
 
     /**
      * Who is paid what once the market resolved. Deterministic from the frozen state, so a rerun pays the same.

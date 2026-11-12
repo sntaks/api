@@ -4,6 +4,7 @@ use App\Models\PredictAuditLog;
 use App\Models\PredictMarket;
 use App\Models\PredictOutcome;
 use App\Models\PredictPriceSnapshot;
+use App\Models\PredictQuote;
 use App\Models\Product;
 use App\Models\WagerRound;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,7 +33,9 @@ beforeEach(function () {
     Http::fake([
         GAMMA.'/tags/slug/sports' => Http::response(['id' => '1', 'slug' => 'sports', 'label' => 'Sports']),
         GAMMA.'/events/keyset*' => fn () => Http::response(['events' => test()->gammaEvents]),
-        CLOB.'/midpoints' => fn () => Http::response(test()->clobStatus === 200 ? test()->midpoints : ['error' => 'unavailable'], test()->clobStatus),
+        CLOB.'/books' => fn (Request $request) => test()->clobStatus === 200
+            ? Http::response(fakeBooks($request->data(), test()->midpoints))
+            : Http::response(['error' => 'unavailable'], test()->clobStatus),
     ]);
 });
 
@@ -79,6 +82,28 @@ function fakeGamma(array $events, array $prices = ['tok-yes' => '0.62', 'tok-no'
     test()->gammaEvents = $events;
     test()->midpoints = $prices;
     test()->clobStatus = $clobStatus;
+}
+
+/**
+ * CLOB order books for the requested tokens that have a test price: one bid level 0.01 below it and one ask
+ * level 0.01 above it, deep enough to pass the betting guards (levels worst to best, as the real API sends them).
+ *
+ * @param  list<array{token_id: string}>  $requested
+ * @param  array<string, string>  $midpoints
+ * @return list<array<string, mixed>>
+ */
+function fakeBooks(array $requested, array $midpoints, string $size = '100000'): array
+{
+    return collect($requested)
+        ->filter(fn (array $book) => isset($midpoints[$book['token_id']]))
+        ->map(fn (array $book) => [
+            'asset_id' => $book['token_id'],
+            'market' => '0xcond',
+            'bids' => [['price' => '0.01', 'size' => '10'], ['price' => bcsub($midpoints[$book['token_id']], '0.01', 2), 'size' => $size]],
+            'asks' => [['price' => '0.99', 'size' => '10'], ['price' => bcadd($midpoints[$book['token_id']], '0.01', 2), 'size' => $size]],
+        ])
+        ->values()
+        ->all();
 }
 
 /** Import the fake events, then price them. */
@@ -196,7 +221,7 @@ it('prices drafts from Gamma without keeping history or calling the CLOB', funct
     expect((float) $yes->midpoint)->toBe(0.6)
         ->and($yes->price_reliable)->toBeTrue()
         ->and(PredictPriceSnapshot::count())->toBe(0);
-    Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/midpoints'));
+    Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/books'));
 });
 
 it('prices live markets from the CLOB and keeps their history', function () {
@@ -270,19 +295,20 @@ it('rejects a draft with a reason and never imports it again', function () {
         ->and($market->fresh()->status)->toBe(PredictMarket::STATUS_REJECTED);
 });
 
-it('shows players the reference prices of an open imported market, with no betting', function () {
+it('shows players the reference prices and the fixed odds on offer', function () {
     fakeGamma([gammaEvent([gammaMarket()])]);
     $market = openImported($this);
     $this->artisan('predict:sync-prices')->assertSuccessful();
 
+    // Book 0.61 / 0.63 → mid 0.62; offer 0.62 × 1.05 = 0.651 → 1.53x
     $this->getJson("/api/v1/predict/markets/{$market->id}", $this->siteHeaders)
         ->assertOk()
         ->assertJsonPath('data.source', 'polymarket')
-        ->assertJsonPath('data.betting_available', false)
+        ->assertJsonPath('data.betting_available', true)
         ->assertJsonPath('data.event.title', 'Safari Rally 2027')
         ->assertJsonPath('data.odds.is_reference', true)
         ->assertJsonPath('data.odds.yes_probability', 0.62)
-        ->assertJsonPath('data.odds.yes_multiplier', null)
+        ->assertJsonPath('data.odds.yes_multiplier', 1.53)
         ->assertJsonPath('data.odds.attribution', 'Reference prices from Polymarket');
 
     $this->getJson("/api/v1/predict/markets/{$market->id}/history", $this->siteHeaders)
@@ -290,16 +316,13 @@ it('shows players the reference prices of an open imported market, with no betti
         ->assertJsonPath('data.points.0.yes_probability', 0.62);
 });
 
-it('refuses bets and estimates on an imported market', function () {
+it('refuses a bet on an imported market without a quote', function () {
     fakeGamma([gammaEvent([gammaMarket()])]);
     $market = openImported($this);
 
     placePredictBet($this, predictPlayer(), $market->id, 'yes', 100)
-        ->assertConflict()
-        ->assertJsonPath('code', 'betting_not_available');
-    $this->getJson("/api/v1/predict/markets/{$market->id}/estimate?side=yes&stake=100", $this->siteHeaders)
-        ->assertConflict()
-        ->assertJsonPath('code', 'betting_not_available');
+        ->assertUnprocessable()
+        ->assertJsonPath('code', 'quote_required');
 });
 
 it('suspends a market whose price disappears and reopens it when the price returns', function () {
@@ -341,14 +364,14 @@ it('stops calling Polymarket while the circuit is open', function () {
     $market = openImported($this);
     config(['predict.polymarket.circuit_failures' => 2]);
     fakeGamma([], clobStatus: 503);
-    $midpointCalls = fn () => Http::recorded(fn (Request $request) => str_ends_with($request->url(), '/midpoints'))->count();
-    $before = $midpointCalls();
+    $bookCalls = fn () => Http::recorded(fn (Request $request) => str_ends_with($request->url(), '/books'))->count();
+    $before = $bookCalls();
 
     $this->artisan('predict:sync-prices')->assertFailed();
     $this->artisan('predict:sync-prices')->assertFailed();
     $this->artisan('predict:sync-prices')->assertFailed();
 
-    expect($midpointCalls() - $before)->toBe(2);
+    expect($bookCalls() - $before)->toBe(2);
 });
 
 it('does nothing while the Polymarket import is switched off', function () {
@@ -372,6 +395,19 @@ it('prunes price history past the kept window, and any left on drafts', function
     $this->artisan('predict:prune-snapshots')->assertSuccessful();
 
     expect(PredictPriceSnapshot::pluck('predict_outcome_id')->all())->toBe([$liveYes->id]);
+});
+
+it('prunes quotes older than a day', function () {
+    $this->fixedProduct = Product::where('code', 'predict_fixed')->sole();
+    $market = fixedMarket($this);
+    $player = predictPlayer();
+    $old = PredictQuote::create(['predict_market_id' => $market->id, 'customer_id' => $player->id, 'side' => 'yes', 'stake_minor' => 1000, 'p_fair' => '0.6', 'p_offer' => '0.63', 'multiplier_x100' => 158, 'expires_at' => now()->subDays(2)]);
+    $old->forceFill(['created_at' => now()->subDays(2)])->save();
+    PredictQuote::create(['predict_market_id' => $market->id, 'customer_id' => $player->id, 'side' => 'yes', 'stake_minor' => 1000, 'p_fair' => '0.6', 'p_offer' => '0.63', 'multiplier_x100' => 158, 'expires_at' => now()]);
+
+    $this->artisan('predict:prune-snapshots')->assertSuccessful();
+
+    expect(PredictQuote::count())->toBe(1);
 });
 
 function bulkMarkets(): void
@@ -408,7 +444,7 @@ it('approves chosen drafts on one batch of fresh prices', function () {
         ->assertJsonPath('data.refused', []);
 
     expect(PredictMarket::where('status', 'open')->count())->toBe(2);
-    expect(Http::recorded(fn (Request $request) => str_ends_with($request->url(), '/midpoints'))->count())->toBe(1);
+    expect(Http::recorded(fn (Request $request) => str_ends_with($request->url(), '/books'))->count())->toBe(1);
 });
 
 it('handles at most the limit per call and says how many drafts are left', function () {

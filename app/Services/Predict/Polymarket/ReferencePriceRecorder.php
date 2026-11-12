@@ -9,7 +9,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Stores reference prices on imported markets' outcomes: fresh CLOB midpoints for live markets (and for a draft
+ * Stores reference prices on imported markets' outcomes: fresh CLOB order books for live markets (and for a draft
  * being approved), or the prices in the Gamma payload for drafts. History is kept only when asked, i.e. for
  * markets players can see.
  */
@@ -18,19 +18,20 @@ class ReferencePriceRecorder
     public function __construct(private ClobClient $clob) {}
 
     /**
-     * Fetch midpoints for the markets' outcomes and record them. Throws PolymarketUnavailable when the CLOB
+     * Fetch the order books of the markets' outcomes and record their midpoint, spread and depth. Throws PolymarketUnavailable when the CLOB
      * cannot be reached; nothing is recorded then.
      *
      * @param  Collection<int, PredictMarket>  $markets  with `outcomes` loaded
      */
     public function refresh(Collection $markets, bool $keepHistory): void
     {
-        $prices = $this->clob->midpoints($markets->flatMap->outcomes->pluck('external_token_id')->unique()->values()->all());
+        $books = $this->clob->books($markets->flatMap->outcomes->pluck('external_token_id')->unique()->values()->all());
         $now = now();
 
         foreach ($markets as $market) {
             foreach ($market->outcomes as $outcome) {
-                $this->record($market, $outcome, $prices[$outcome->external_token_id] ?? null, $now, $keepHistory);
+                $book = $books[$outcome->external_token_id] ?? null;
+                $this->record($market, $outcome, $book?->midpoint, $now, $keepHistory, $book);
             }
         }
     }
@@ -52,7 +53,7 @@ class ReferencePriceRecorder
      * A price is reliable when Polymarket quoted it, it lies strictly between 0 and 1, and the market has traded
      * (an untraded book can show a placeholder 0.5).
      */
-    private function record(PredictMarket $market, PredictOutcome $outcome, ?string $price, Carbon $now, bool $keepHistory): void
+    private function record(PredictMarket $market, PredictOutcome $outcome, ?string $price, Carbon $now, bool $keepHistory, ?BookSummary $book = null): void
     {
         $reliable = $price !== null
             && is_numeric($price)
@@ -62,6 +63,10 @@ class ReferencePriceRecorder
 
         $outcome->update([
             'midpoint' => $reliable ? $price : null,
+            'best_bid' => $book?->bestBid,
+            'best_ask' => $book?->bestAsk,
+            'spread' => $book?->spread,
+            'depth_usd' => $book?->depthUsd,
             'price_reliable' => $reliable,
             'price_captured_at' => $now,
         ]);

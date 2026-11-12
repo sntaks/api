@@ -10,26 +10,25 @@ class ClobClient
     public function __construct(private PolymarketHttp $http) {}
 
     /**
-     * Midpoints for the tokens, as decimal strings keyed by token id. A token without an order book is
-     * missing from the result.
+     * The top of the order book for each token, keyed by token id. A token without a book is missing.
      *
      * @param  list<string>  $tokenIds
-     * @return array<string, string>
+     * @return array<string, BookSummary>
      */
-    public function midpoints(array $tokenIds): array
+    public function books(array $tokenIds): array
     {
-        $prices = [];
+        $books = [];
 
-        foreach (array_chunk($tokenIds, (int) config('predict.polymarket.midpoint_batch')) as $chunk) {
-            $answer = $this->http->post((string) config('predict.polymarket.clob_url'), '/midpoints', array_map(fn (string $id) => ['token_id' => $id], $chunk));
+        foreach (array_chunk($tokenIds, (int) config('predict.polymarket.book_batch')) as $chunk) {
+            $answer = $this->http->post((string) config('predict.polymarket.clob_url'), '/books', array_map(fn (string $id) => ['token_id' => $id], $chunk));
 
-            foreach ($answer as $tokenId => $price) {
-                if (is_string($tokenId) && is_numeric($price)) {
-                    $prices[$tokenId] = (string) $price;
+            foreach ($answer as $book) {
+                if (is_array($book) && isset($book['asset_id'])) {
+                    $books[(string) $book['asset_id']] = BookSummary::fromBook($book);
                 }
             }
         }
 
-        return $prices;
+        return $books;
     }
 }
