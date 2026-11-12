@@ -50,6 +50,7 @@ function gammaMarket(array $overrides = []): array
         'slug' => 'kenya-safari-rally',
         'conditionId' => '0xcond',
         'outcomes' => '["Yes", "No"]',
+        'outcomePrices' => '["0.6", "0.4"]',
         'clobTokenIds' => '["tok-yes", "tok-no"]',
         'version' => 'v1',
         'endDate' => now()->addDays(20)->toIso8601String(),
@@ -186,14 +187,26 @@ it('closes an open market and rejects a draft once Polymarket closes them', func
         ->and($draft->fresh()->status)->toBe(PredictMarket::STATUS_REJECTED);
 });
 
-it('records reliable reference prices and a history point', function () {
+it('prices drafts from Gamma without keeping history or calling the CLOB', function () {
     fakeGamma([gammaEvent([gammaMarket()])]);
 
     $market = importAndPrice($this);
 
     $yes = $market->outcomes()->where('side', 'yes')->sole();
-    expect((float) $yes->midpoint)->toBe(0.62)
+    expect((float) $yes->midpoint)->toBe(0.6)
         ->and($yes->price_reliable)->toBeTrue()
+        ->and(PredictPriceSnapshot::count())->toBe(0);
+    Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/midpoints'));
+});
+
+it('prices live markets from the CLOB and keeps their history', function () {
+    fakeGamma([gammaEvent([gammaMarket()])]);
+    $market = openImported($this);
+
+    $this->artisan('predict:sync-prices')->assertSuccessful();
+
+    $yes = $market->outcomes()->where('side', 'yes')->sole();
+    expect((float) $yes->midpoint)->toBe(0.62)
         ->and(PredictPriceSnapshot::where('predict_outcome_id', $yes->id)->count())->toBe(1);
 });
 
@@ -206,23 +219,41 @@ it('does not trust the price of a market that never traded', function () {
     expect($market->outcomes()->where('price_reliable', true)->exists())->toBeFalse();
 });
 
-it('approves an imported draft only once it has usable prices', function () {
+it('approves an imported draft on fresh CLOB prices', function () {
     fakeGamma([gammaEvent([gammaMarket()])]);
+    $this->artisan('predict:sync-events')->assertSuccessful();
+    $market = PredictMarket::sole();
+
+    $this->postJson("/api/v1/predict/admin/markets/{$market->id}/publish", ['admin_user' => 'ops'], $this->adminHeaders)
+        ->assertOk()
+        ->assertJsonPath('data.market.status', 'open')
+        ->assertJsonPath('data.market.odds.yes_probability', 0.62)
+        ->assertJsonPath('data.market.external.tokens.yes', 'tok-yes');
+
+    expect(WagerRound::where('reference', $market->round_reference)->exists())->toBeTrue();
+});
+
+it('refuses to approve an imported draft the CLOB has no price for', function () {
+    fakeGamma([gammaEvent([gammaMarket()])], ['tok-no' => '0.38']);
     $this->artisan('predict:sync-events')->assertSuccessful();
     $market = PredictMarket::sole();
 
     $this->postJson("/api/v1/predict/admin/markets/{$market->id}/publish", ['admin_user' => 'ops'], $this->adminHeaders)
         ->assertConflict()
         ->assertJsonPath('code', 'price_unavailable');
+});
 
-    $this->artisan('predict:sync-prices')->assertSuccessful();
+it('asks to retry an approval while Polymarket is down', function () {
+    fakeGamma([gammaEvent([gammaMarket()])], clobStatus: 503);
+    $this->artisan('predict:sync-events')->assertSuccessful();
+    $market = PredictMarket::sole();
 
     $this->postJson("/api/v1/predict/admin/markets/{$market->id}/publish", ['admin_user' => 'ops'], $this->adminHeaders)
-        ->assertOk()
-        ->assertJsonPath('data.market.status', 'open')
-        ->assertJsonPath('data.market.external.tokens.yes', 'tok-yes');
+        ->assertStatus(503)
+        ->assertJsonPath('code', 'polymarket_unavailable')
+        ->assertJsonPath('retryable', true);
 
-    expect(WagerRound::where('reference', $market->round_reference)->exists())->toBeTrue();
+    expect($market->fresh()->status)->toBe(PredictMarket::STATUS_DRAFT);
 });
 
 it('rejects a draft with a reason and never imports it again', function () {
@@ -242,6 +273,7 @@ it('rejects a draft with a reason and never imports it again', function () {
 it('shows players the reference prices of an open imported market, with no betting', function () {
     fakeGamma([gammaEvent([gammaMarket()])]);
     $market = openImported($this);
+    $this->artisan('predict:sync-prices')->assertSuccessful();
 
     $this->getJson("/api/v1/predict/markets/{$market->id}", $this->siteHeaders)
         ->assertOk()
@@ -328,13 +360,81 @@ it('does nothing while the Polymarket import is switched off', function () {
     Http::assertNothingSent();
 });
 
-it('prunes price history past the kept window', function () {
-    fakeGamma([gammaEvent([gammaMarket()])]);
-    $market = importAndPrice($this);
-    $outcome = $market->outcomes()->where('side', 'yes')->sole();
-    PredictPriceSnapshot::create(['predict_outcome_id' => $outcome->id, 'midpoint' => '0.5', 'captured_at' => now()->subDays(31)]);
+it('prunes price history past the kept window, and any left on drafts', function () {
+    fakeGamma([gammaEvent([gammaMarket(), gammaMarket(['id' => '703258', 'clobTokenIds' => '["t3", "t4"]'])])], ['tok-yes' => '0.6', 'tok-no' => '0.4']);
+    $live = openImported($this);
+    $this->artisan('predict:sync-prices')->assertSuccessful();
+    $liveYes = $live->outcomes()->where('side', 'yes')->sole();
+    $draftYes = PredictMarket::where('external_market_id', '703258')->sole()->outcomes()->where('side', 'yes')->sole();
+    PredictPriceSnapshot::create(['predict_outcome_id' => $liveYes->id, 'midpoint' => '0.5', 'captured_at' => now()->subDays(31)]);
+    PredictPriceSnapshot::create(['predict_outcome_id' => $draftYes->id, 'midpoint' => '0.5', 'captured_at' => now()]);
 
     $this->artisan('predict:prune-snapshots')->assertSuccessful();
 
-    expect(PredictPriceSnapshot::count())->toBe(1);
+    expect(PredictPriceSnapshot::pluck('predict_outcome_id')->all())->toBe([$liveYes->id]);
+});
+
+function bulkMarkets(): void
+{
+    fakeGamma([gammaEvent([
+        gammaMarket(['id' => 'm1', 'clobTokenIds' => '["a1", "a2"]', 'volumeNum' => 5000]),
+        gammaMarket(['id' => 'm2', 'clobTokenIds' => '["b1", "b2"]', 'volumeNum' => 50000]),
+        gammaMarket(['id' => 'm3', 'clobTokenIds' => '["c1", "c2"]', 'volumeNum' => 500000]),
+    ])], ['a1' => '0.3', 'a2' => '0.7', 'b1' => '0.4', 'b2' => '0.6', 'c1' => '0.5', 'c2' => '0.5']);
+    test()->artisan('predict:sync-events')->assertSuccessful();
+}
+
+it('rejects every draft below a volume in one call, logging each', function () {
+    bulkMarkets();
+
+    $this->postJson('/api/v1/predict/admin/markets/bulk/reject', [
+        'admin_user' => 'ops', 'reason' => 'Too little volume', 'filter' => ['source' => 'polymarket', 'max_volume' => 100000],
+    ], $this->adminHeaders)
+        ->assertOk()
+        ->assertJsonCount(2, 'data.done')
+        ->assertJsonPath('data.remaining', 0);
+
+    expect(PredictMarket::where('status', 'rejected')->pluck('external_market_id')->sort()->values()->all())->toBe(['m1', 'm2'])
+        ->and(PredictAuditLog::where('action', 'reject')->count())->toBe(2);
+});
+
+it('approves chosen drafts on one batch of fresh prices', function () {
+    bulkMarkets();
+    $ids = PredictMarket::whereIn('external_market_id', ['m2', 'm3'])->pluck('id')->all();
+
+    $this->postJson('/api/v1/predict/admin/markets/bulk/publish', ['admin_user' => 'ops', 'ids' => $ids], $this->adminHeaders)
+        ->assertOk()
+        ->assertJsonCount(2, 'data.done')
+        ->assertJsonPath('data.refused', []);
+
+    expect(PredictMarket::where('status', 'open')->count())->toBe(2);
+    expect(Http::recorded(fn (Request $request) => str_ends_with($request->url(), '/midpoints'))->count())->toBe(1);
+});
+
+it('handles at most the limit per call and says how many drafts are left', function () {
+    bulkMarkets();
+
+    $this->postJson('/api/v1/predict/admin/markets/bulk/reject', [
+        'admin_user' => 'ops', 'reason' => 'Clean-up', 'filter' => ['source' => 'polymarket'], 'limit' => 2,
+    ], $this->adminHeaders)
+        ->assertOk()
+        ->assertJsonCount(2, 'data.done')
+        ->assertJsonPath('data.remaining', 1);
+});
+
+it('reports the drafts it could not approve and approves the rest', function () {
+    bulkMarkets();
+    fakeGamma(test()->gammaEvents, ['a1' => '0.3', 'a2' => '0.7', 'b1' => '0.4', 'b2' => '0.6']);
+    $m3 = PredictMarket::where('external_market_id', 'm3')->value('id');
+
+    $this->postJson('/api/v1/predict/admin/markets/bulk/publish', ['admin_user' => 'ops', 'filter' => ['source' => 'polymarket']], $this->adminHeaders)
+        ->assertOk()
+        ->assertJsonCount(2, 'data.done')
+        ->assertJsonPath('data.refused', [['id' => $m3, 'code' => 'price_unavailable']]);
+});
+
+it('needs ids or a filter, and a reason to reject', function () {
+    $this->postJson('/api/v1/predict/admin/markets/bulk/reject', ['admin_user' => 'ops'], $this->adminHeaders)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['ids', 'filter', 'reason']);
 });

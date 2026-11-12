@@ -2,12 +2,15 @@
 
 namespace App\Services\Predict;
 
+use App\Exceptions\PolymarketUnavailable;
 use App\Models\PredictMarket;
 use App\Models\PredictMarketBlock;
 use App\Models\PredictPool;
 use App\Models\WagerRound;
 use App\Services\Predict\Polymarket\EventImporter;
+use App\Services\Predict\Polymarket\ReferencePriceRecorder;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -30,6 +33,7 @@ class MarketService
         private PredictContext $context,
         private AuditLogger $audit,
         private SettlementService $settlements,
+        private ReferencePriceRecorder $prices,
     ) {}
 
     /**
@@ -93,8 +97,20 @@ class MarketService
         });
     }
 
-    public function publish(PredictMarket $market, string $adminUser, ?string $reason): PredictResult
+    /**
+     * Publish a draft. An imported draft is approved on fresh CLOB prices, fetched here first unless the caller
+     * just did (a bulk approval fetches them for the whole batch at once).
+     */
+    public function publish(PredictMarket $market, string $adminUser, ?string $reason, bool $refreshPrices = true): PredictResult
     {
+        if ($refreshPrices && $market->isImported() && $market->status === PredictMarket::STATUS_DRAFT) {
+            try {
+                $this->prices->refresh(collect([$market->load('outcomes')]), keepHistory: false);
+            } catch (PolymarketUnavailable) {
+                return $this->polymarketUnavailable();
+            }
+        }
+
         return $this->transition($market, 'publish', [PredictMarket::STATUS_DRAFT], $adminUser, $reason, function (PredictMarket $locked) {
             if ($locked->close_at->isPast()) {
                 return PredictResult::refused('close_time_passed', 'The close time has passed; edit it before publishing', 409);
@@ -121,6 +137,66 @@ class MarketService
 
             return null;
         });
+    }
+
+    /**
+     * Publish many drafts, fetching the imported ones' prices in one batch first. Each market is its own
+     * transition and audit entry; one refusal does not stop the rest.
+     *
+     * @param  Collection<int, PredictMarket>  $markets
+     * @return array{done: list<int>, refused: list<array{id: int, code: string}>}
+     */
+    public function bulkPublish(Collection $markets, string $adminUser, ?string $reason): array
+    {
+        $imported = $markets->filter(fn (PredictMarket $market) => $market->isImported() && $market->status === PredictMarket::STATUS_DRAFT);
+        $pricesFailed = false;
+
+        if ($imported->isNotEmpty()) {
+            try {
+                $this->prices->refresh($imported->each->load('outcomes'), keepHistory: false);
+            } catch (PolymarketUnavailable) {
+                $pricesFailed = true;
+            }
+        }
+
+        return $this->each($markets, fn (PredictMarket $market) => $pricesFailed && $market->isImported()
+            ? $this->polymarketUnavailable()
+            : $this->publish($market, $adminUser, $reason, refreshPrices: false));
+    }
+
+    /**
+     * @param  Collection<int, PredictMarket>  $markets
+     * @return array{done: list<int>, refused: list<array{id: int, code: string}>}
+     */
+    public function bulkReject(Collection $markets, string $adminUser, string $reason): array
+    {
+        return $this->each($markets, fn (PredictMarket $market) => $this->reject($market, $adminUser, $reason));
+    }
+
+    /**
+     * @param  Collection<int, PredictMarket>  $markets
+     * @param  callable(PredictMarket): PredictResult  $action
+     * @return array{done: list<int>, refused: list<array{id: int, code: string}>}
+     */
+    private function each(Collection $markets, callable $action): array
+    {
+        $done = [];
+        $refused = [];
+
+        foreach ($markets as $market) {
+            $result = $action($market);
+
+            $result->isRefused()
+                ? $refused[] = ['id' => $market->id, 'code' => $result->refusal['code']]
+                : $done[] = $market->id;
+        }
+
+        return ['done' => $done, 'refused' => $refused];
+    }
+
+    private function polymarketUnavailable(): PredictResult
+    {
+        return PredictResult::refused('polymarket_unavailable', 'Polymarket cannot be reached for a fresh price; try again shortly', 503);
     }
 
     /**

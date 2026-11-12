@@ -26,5 +26,7 @@ final readonly class ImportedMarket
         public string $yesTokenId,
         public string $noLabel,
         public string $noTokenId,
+        public ?string $yesPrice = null,
+        public ?string $noPrice = null,
     ) {}
 }
