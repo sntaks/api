@@ -88,3 +88,16 @@ it('refuses an estimate on a market that is not open', function () {
         ->assertConflict()
         ->assertJsonPath('code', 'market_not_open');
 });
+
+it('filters the list by source', function () {
+    $custom = PredictMarket::factory()->open()->create(['product_id' => $this->product->id]);
+    $imported = PredictMarket::factory()->create([
+        'product_id' => $this->product->id, 'source' => PredictMarket::SOURCE_POLYMARKET, 'engine' => PredictMarket::ENGINE_REFERENCE,
+        'external_market_id' => 'pm-1', 'status' => PredictMarket::STATUS_OPEN, 'opened_at' => now(),
+    ]);
+
+    expect($this->getJson('/api/v1/predict/markets?source=polymarket', $this->siteHeaders)->assertOk()->json('data.items.*.id'))->toBe([$imported->id])
+        ->and($this->getJson('/api/v1/predict/markets?source=custom', $this->siteHeaders)->assertOk()->json('data.items.*.id'))->toBe([$custom->id]);
+
+    $this->getJson('/api/v1/predict/markets?source=elsewhere', $this->siteHeaders)->assertUnprocessable()->assertJsonValidationErrors(['source']);
+});
