@@ -7,8 +7,8 @@ use App\Models\PredictMarket;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * An admin action on a market (publish, suspend, resume, close, resolve, void, block): who did it and why.
- * Resolve needs the result; void and block need a reason; block needs the customer.
+ * An admin action on a market (publish, reject, suspend, resume, close, resolve, void, block): who did it and why.
+ * Resolve needs the result; reject, void and block need a reason; block needs the customer.
  */
 class PredictAdminActionRequest extends FormRequest
 {
@@ -25,7 +25,7 @@ class PredictAdminActionRequest extends FormRequest
     public function rules(): array
     {
         $action = $this->route()?->getActionMethod();
-        $needsReason = in_array($action, ['void', 'block'], true);
+        $needsReason = in_array($action, ['void', 'block', 'reject'], true);
 
         return [
             'admin_user' => ['required', 'string', 'max:100'],

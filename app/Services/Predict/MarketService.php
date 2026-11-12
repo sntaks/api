@@ -6,6 +6,7 @@ use App\Models\PredictMarket;
 use App\Models\PredictMarketBlock;
 use App\Models\PredictPool;
 use App\Models\WagerRound;
+use App\Services\Predict\Polymarket\EventImporter;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -14,7 +15,8 @@ use Illuminate\Support\Str;
  * Market lifecycle and admin actions. Every transition locks the market row, checks the state it comes from
  * and writes the audit log in the same transaction.
  *
- * DRAFT → OPEN (publish) · OPEN → SUSPENDED (suspend) · SUSPENDED → OPEN (resume) · OPEN|SUSPENDED → CLOSED
+ * DRAFT → OPEN (publish, also approves an imported draft) · DRAFT → REJECTED (reject) · OPEN → SUSPENDED (suspend;
+ * the price sync too, for an imported market) · SUSPENDED → OPEN (resume) · OPEN|SUSPENDED → CLOSED
  * (close, or the close time) · CLOSED → RESOLVED (resolve, starts settlement) · RESOLVED → SETTLED (settlement
  * job) · DRAFT|OPEN|SUSPENDED|CLOSED → VOIDED (void, refunds). A resolved market is never voided: its payouts
  * may have started.
@@ -77,6 +79,12 @@ class MarketService
                 }
             }
 
+            if ($locked->isImported()) {
+                // The sync stops overwriting a field once an admin has localised it
+                $overridden = array_intersect(array_keys($attributes), EventImporter::SYNCED_FIELDS);
+                $attributes['overridden_fields'] = array_values(array_unique([...($locked->overridden_fields ?? []), ...$overridden]));
+            }
+
             $before = $this->snapshot($locked);
             $locked->update($attributes);
             $this->audit->record('update', $locked, $adminUser, $reason, $before, $this->snapshot($locked));
@@ -90,6 +98,10 @@ class MarketService
         return $this->transition($market, 'publish', [PredictMarket::STATUS_DRAFT], $adminUser, $reason, function (PredictMarket $locked) {
             if ($locked->close_at->isPast()) {
                 return PredictResult::refused('close_time_passed', 'The close time has passed; edit it before publishing', 409);
+            }
+
+            if ($locked->isImported()) {
+                return $this->openImported($locked);
             }
 
             $seed = PoolMath::seedSplit($locked->seed_minor, $locked->start_probability_bp);
@@ -111,10 +123,31 @@ class MarketService
         });
     }
 
+    /**
+     * Turn down a draft (an imported market not worth showing, or a custom draft). The sync never re-imports it.
+     */
+    public function reject(PredictMarket $market, string $adminUser, string $reason): PredictResult
+    {
+        return $this->transition($market, 'reject', [PredictMarket::STATUS_DRAFT], $adminUser, $reason, function (PredictMarket $locked) use ($reason) {
+            $locked->update(['status' => PredictMarket::STATUS_REJECTED, 'rejected_at' => now(), 'reject_reason' => $reason]);
+
+            return null;
+        });
+    }
+
+    /**
+     * An admin suspension. It also stops the price sync from reopening the market by itself.
+     */
     public function suspend(PredictMarket $market, string $adminUser, ?string $reason): PredictResult
     {
-        return $this->transition($market, 'suspend', [PredictMarket::STATUS_OPEN], $adminUser, $reason, function (PredictMarket $locked) {
-            $locked->update(['status' => PredictMarket::STATUS_SUSPENDED]);
+        $from = [PredictMarket::STATUS_OPEN, PredictMarket::STATUS_SUSPENDED];
+
+        return $this->transition($market, 'suspend', $from, $adminUser, $reason, function (PredictMarket $locked) {
+            if ($locked->status === PredictMarket::STATUS_SUSPENDED && $locked->suspension_cause === PredictMarket::SUSPENDED_BY_ADMIN) {
+                return PredictResult::refused('invalid_transition', 'This market is already suspended by an admin', 409, ['status' => $locked->status]);
+            }
+
+            $locked->update(['status' => PredictMarket::STATUS_SUSPENDED, 'suspension_cause' => PredictMarket::SUSPENDED_BY_ADMIN]);
 
             return null;
         });
@@ -127,7 +160,40 @@ class MarketService
                 return PredictResult::refused('close_time_passed', 'The close time has passed; the market can only be closed', 409);
             }
 
-            $locked->update(['status' => PredictMarket::STATUS_OPEN]);
+            if ($locked->isImported() && ! $this->hasUsablePrices($locked)) {
+                return PredictResult::refused('price_unavailable', 'This market has no usable reference price', 409);
+            }
+
+            $locked->update(['status' => PredictMarket::STATUS_OPEN, 'suspension_cause' => null]);
+
+            return null;
+        });
+    }
+
+    /**
+     * The price sync suspends an open imported market whose reference price is unusable.
+     */
+    public function suspendForPrice(PredictMarket $market, string $reason): PredictResult
+    {
+        return $this->transition($market, 'suspend', [PredictMarket::STATUS_OPEN], 'price-sync', $reason, function (PredictMarket $locked) {
+            $locked->update(['status' => PredictMarket::STATUS_SUSPENDED, 'suspension_cause' => PredictMarket::SUSPENDED_FOR_PRICE]);
+
+            return null;
+        });
+    }
+
+    /**
+     * The price sync reopens a market it suspended, once prices are usable and the close time is not reached.
+     * A market an admin suspended stays suspended.
+     */
+    public function resumeAfterPrice(PredictMarket $market): PredictResult
+    {
+        return $this->transition($market, 'resume', [PredictMarket::STATUS_SUSPENDED], 'price-sync', 'Reference price usable again', function (PredictMarket $locked) {
+            if ($locked->suspension_cause !== PredictMarket::SUSPENDED_FOR_PRICE || $locked->close_at->isPast() || ! $this->hasUsablePrices($locked)) {
+                return PredictResult::refused('not_resumable', 'This market stays suspended', 409);
+            }
+
+            $locked->update(['status' => PredictMarket::STATUS_OPEN, 'suspension_cause' => null]);
 
             return null;
         });
@@ -136,7 +202,7 @@ class MarketService
     public function close(PredictMarket $market, string $adminUser, ?string $reason): PredictResult
     {
         return $this->transition($market, 'close', [PredictMarket::STATUS_OPEN, PredictMarket::STATUS_SUSPENDED], $adminUser, $reason, function (PredictMarket $locked) {
-            $locked->update(['status' => PredictMarket::STATUS_CLOSED, 'closed_at' => now()]);
+            $locked->update(['status' => PredictMarket::STATUS_CLOSED, 'closed_at' => now(), 'suspension_cause' => null]);
 
             return null;
         });
@@ -197,6 +263,29 @@ class MarketService
             });
 
         return $closed;
+    }
+
+    /**
+     * Open an approved imported market: shown with its reference prices, with a wager round ready for the
+     * fixed-odds bets of phase 2. Needs usable prices on both sides.
+     */
+    private function openImported(PredictMarket $locked): ?PredictResult
+    {
+        if (! $this->hasUsablePrices($locked)) {
+            return PredictResult::refused('price_unavailable', 'This market has no usable reference price yet', 409);
+        }
+
+        WagerRound::create(['product_id' => $locked->product_id, 'reference' => $locked->round_reference, 'status' => WagerRound::STATUS_OPEN]);
+        $locked->update(['status' => PredictMarket::STATUS_OPEN, 'opened_at' => now()]);
+
+        return null;
+    }
+
+    private function hasUsablePrices(PredictMarket $market): bool
+    {
+        $outcomes = $market->outcomes()->get();
+
+        return $outcomes->count() === 2 && $outcomes->every->hasUsablePrice();
     }
 
     public function block(PredictMarket $market, int $customerId, string $adminUser, string $reason): PredictResult

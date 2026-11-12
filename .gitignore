@@ -42,3 +42,7 @@ CLAUDE.md
 AGENTS.md
 
 /docs
+
+# Agent implementation plans (local only)
+/plans
+/.ai/guidelines/agentmemory.md

@@ -129,6 +129,10 @@ class BetService
             return PredictResult::refused('market_not_open', 'This market is not taking bets', 409, ['status' => $market->status]);
         }
 
+        if (! $market->takesBets()) {
+            return PredictResult::refused('betting_not_available', 'This market shows reference prices only; it does not take bets yet', 409);
+        }
+
         if (PredictMarketBlock::where('predict_market_id', $market->id)->where('customer_id', $customer->id)->exists()) {
             return PredictResult::refused('player_blocked', 'This player cannot bet on this market', 403);
         }

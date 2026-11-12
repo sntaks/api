@@ -10,12 +10,13 @@ use InvalidArgumentException;
  */
 class EngineRegistry
 {
-    public function __construct(private PoolEngine $pool) {}
+    public function __construct(private PoolEngine $pool, private ReferenceViewEngine $reference) {}
 
     public function for(PredictMarket $market): PricingEngine
     {
         return match ($market->engine) {
             PredictMarket::ENGINE_POOL => $this->pool,
+            PredictMarket::ENGINE_REFERENCE => $this->reference,
             default => throw new InvalidArgumentException("Unknown pricing engine {$market->engine}"),
         };
     }
