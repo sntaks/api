@@ -596,3 +596,43 @@ it('settles an imported pool market on Polymarket\'s result', function () {
     expect($market->fresh()->only(['status', 'result']))->toBe(['status' => 'settled', 'result' => 'yes'])
         ->and((float) Wallet::where('customer_id', $player->id)->value('balance'))->toBe(10037.0);
 });
+
+it('only counts the fixed-odds drafts it would convert without --force', function () {
+    fakeGamma([gammaEvent([gammaMarket()])]);
+    $this->artisan('predict:sync-events')->assertSuccessful();
+
+    $this->artisan('predict:convert-drafts-to-pool')
+        ->expectsOutputToContain('1 imported fixed-odds draft(s) would move to the pool')
+        ->assertSuccessful();
+
+    expect(PredictMarket::sole()->engine)->toBe('reference');
+});
+
+it('moves imported fixed-odds drafts to the pool, leaving live and custom markets alone', function () {
+    fakeGamma([gammaEvent([gammaMarket()])]);
+    $live = openImported($this);
+    fakeGamma([gammaEvent([gammaMarket(), gammaMarket(['id' => '703258', 'question' => 'Will it rain at the rally?'])])]);
+    $this->artisan('predict:sync-events')->assertSuccessful();
+    $draft = PredictMarket::where('external_market_id', '703258')->sole();
+    $custom = PredictMarket::factory()->create(['product_id' => $this->product->id]);
+
+    $this->artisan('predict:convert-drafts-to-pool', ['--force' => true])->assertSuccessful();
+
+    expect($draft->fresh()->only(['engine', 'product_id', 'seed_minor', 'cut_bp']))
+        ->toBe(['engine' => 'pool', 'product_id' => $this->product->id, 'seed_minor' => 100000, 'cut_bp' => 1000])
+        ->and($live->fresh()->engine)->toBe('reference')
+        ->and($custom->fresh()->updated_at->equalTo($custom->updated_at))->toBeTrue()
+        ->and(PredictAuditLog::where('action', 'convert_engine')->pluck('predict_market_id')->all())->toBe([$draft->id]);
+});
+
+it('publishes a converted draft as a pool at Polymarket\'s price', function () {
+    fakeGamma([gammaEvent([gammaMarket()])]);
+    $this->artisan('predict:sync-events')->assertSuccessful();
+    $this->artisan('predict:convert-drafts-to-pool', ['--force' => true])->assertSuccessful();
+    $market = PredictMarket::sole();
+
+    $this->postJson("/api/v1/predict/admin/markets/{$market->id}/publish", ['admin_user' => 'ops'], $this->adminHeaders)
+        ->assertOk()
+        ->assertJsonPath('data.market.pool.seed_yes', 620)
+        ->assertJsonPath('data.market.pool.seed_no', 380);
+});
