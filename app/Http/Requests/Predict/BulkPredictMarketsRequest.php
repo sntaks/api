@@ -8,7 +8,8 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * GMS publishes or rejects many drafts at once: by `ids`, or by a filter. At most `limit` (up to 500) drafts are
- * handled per call; the answer says how many still match, so GMS can call again.
+ * handled per call; the answer says how many still match, so GMS can call again. A refused draft stays a draft, so
+ * a filter call answers `next_after_id`: sent back as `after_id`, the next call starts past the drafts already tried.
  */
 class BulkPredictMarketsRequest extends FormRequest
 {
@@ -39,6 +40,7 @@ class BulkPredictMarketsRequest extends FormRequest
             'filter.min_volume' => ['nullable', 'numeric', 'min:0'],
             'filter.max_volume' => ['nullable', 'numeric', 'min:0'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX],
+            'after_id' => ['nullable', 'prohibits:ids', 'integer', 'min:0'],
         ];
     }
 }
