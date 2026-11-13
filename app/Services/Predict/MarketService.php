@@ -194,6 +194,32 @@ class MarketService
     }
 
     /**
+     * Move an imported fixed-odds draft to our pool, with the import seed and the pool cut, as a new import would
+     * be. A draft has no round, exposures or bets yet, so only its terms change; anything else is refused.
+     */
+    public function convertDraftToPool(PredictMarket $market, string $adminUser): PredictResult
+    {
+        return DB::transaction(function () use ($market, $adminUser) {
+            $locked = PredictMarket::whereKey($market->id)->lockForUpdate()->firstOrFail();
+
+            if (! $locked->followsReferencePrice() || $locked->status !== PredictMarket::STATUS_DRAFT) {
+                return PredictResult::refused('not_convertible', 'Only an imported fixed-odds draft can move to the pool', 409, ['status' => $locked->status, 'engine' => $locked->engine]);
+            }
+
+            $before = $this->snapshot($locked);
+            $locked->update([
+                'engine' => PredictMarket::ENGINE_POOL,
+                'product_id' => $this->context->productFor(PredictMarket::ENGINE_POOL)->id,
+                'seed_minor' => (int) round(config('predict.polymarket.seed') * 100),
+                'cut_bp' => (int) round(config('predict.pool.cut') * 10000),
+            ]);
+            $this->audit->record('convert_engine', $locked, $adminUser, 'Imported drafts are priced by our pool', $before, $this->snapshot($locked));
+
+            return PredictResult::ok(['market' => $locked]);
+        });
+    }
+
+    /**
      * @param  Collection<int, PredictMarket>  $markets
      * @return array{done: list<int>, refused: list<array{id: int, code: string}>}
      */
