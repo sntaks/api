@@ -97,6 +97,11 @@ return [
     // Points returned by the history endpoint at most
     'history_points' => 200,
 
+    // The polling feed (GET /predict/updates): markets per answer, and how far before `since` it looks back so a
+    // change committed while the previous answer was being built is not lost
+    'updates_page_size' => 500,
+    'updates_overlap_seconds' => (int) env('PREDICT_UPDATES_OVERLAP', 3),
+
     'queue' => env('PREDICT_QUEUE', 'default'),
 
     /*

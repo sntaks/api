@@ -54,7 +54,11 @@ class ReferencePriceRecorder
 
         $unchanged = array_values(array_diff($known, array_keys($changed)));
 
+        $staleBefore = $now->copy()->subSeconds(PredictOutcome::maxBettingAgeSeconds());
+
         foreach (array_chunk($unchanged, 500) as $chunk) {
+            // A price too old to bet on becomes fresh again: its multiplier is back, which is a change players see
+            PredictOutcome::whereIn('external_token_id', $chunk)->where('price_reliable', true)->where('price_captured_at', '<', $staleBefore)->update(['price_changed_at' => $now]);
             PredictOutcome::whereIn('external_token_id', $chunk)->where('price_reliable', true)->update(['price_captured_at' => $now]);
         }
     }
@@ -84,7 +88,10 @@ class ReferencePriceRecorder
             && bccomp($price, '1', 6) < 0
             && (float) ($market->external_volume ?? 0) > 0;
 
-        $outcome->update([
+        $before = $outcome->shownFigures();
+        $wasFresh = $outcome->price_captured_at !== null && $outcome->price_captured_at->gte($now->copy()->subSeconds(PredictOutcome::maxBettingAgeSeconds()));
+
+        $outcome->fill([
             'midpoint' => $reliable ? $price : null,
             'best_bid' => $book?->bestBid,
             'best_ask' => $book?->bestAsk,
@@ -93,6 +100,14 @@ class ReferencePriceRecorder
             'price_reliable' => $reliable,
             'price_captured_at' => $now,
         ]);
+
+        // `price_changed_at` feeds GET /predict/updates: it moves only when what players see moved, or when a
+        // price that had gone too old to bet on is fresh again
+        if (! $wasFresh || $outcome->shownFigures() !== $before) {
+            $outcome->price_changed_at = $now;
+        }
+
+        $outcome->save();
 
         if ($keepHistory && $reliable && $outcome->side === PredictMarket::SIDE_YES) {
             $this->snapshot($outcome, $price, $now);

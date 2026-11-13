@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\api\v1;
 
-use App\Http\Requests\PagedListRequest;
 use App\Http\Requests\Predict\CreatePredictQuoteRequest;
+use App\Http\Requests\Predict\ListPredictBetsRequest;
 use App\Http\Requests\Predict\PlacePredictBetRequest;
 use App\Http\Resources\Predict\PredictBetResource;
 use App\Http\Resources\Predict\PredictQuoteResource;
@@ -92,7 +92,7 @@ class PredictBetController extends PredictController
         return $this->refusal('price_changed', $refused->refusal['message'], 409, $extra);
     }
 
-    public function index(PagedListRequest $request, string $encryptedIdentifier): JsonResponse
+    public function index(ListPredictBetsRequest $request, string $encryptedIdentifier): JsonResponse
     {
         $customer = $this->customers->getCustomer($encryptedIdentifier);
 
@@ -102,7 +102,7 @@ class PredictBetController extends PredictController
 
         $page = PredictBet::with('market.pool')
             ->where('customer_id', $customer->id)
-            ->when($request->query('status'), fn ($query, $status) => $query->where('status', $status))
+            ->when($request->statuses(), fn ($query, array $statuses) => $query->whereIn('status', $statuses))
             ->orderByDesc('id')
             ->paginate((int) ($request->validated()['per_page'] ?? 20))
             ->withQueryString();

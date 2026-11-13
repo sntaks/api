@@ -4,12 +4,12 @@ namespace App\Http\Controllers\api\v1;
 
 use App\Http\Requests\Predict\EstimatePredictBetRequest;
 use App\Http\Requests\Predict\ListPredictMarketsRequest;
+use App\Http\Requests\Predict\PredictUpdatesRequest;
 use App\Http\Resources\Predict\PredictMarketResource;
 use App\Models\PredictMarket;
 use App\Services\Predict\BetService;
 use App\Services\Predict\MarketQuery;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 /**
@@ -71,18 +71,20 @@ class PredictMarketController extends PredictController
     }
 
     /**
-     * Polling feed: markets whose state or odds changed after `since`. Pass back `server_time` as the next since.
+     * Polling feed: markets whose state or figures changed after `since`. Pass back `server_time` as the next
+     * since; while `has_more` is true, repeat the call with the same since and `after_id` = the last market's id.
      */
-    public function updates(Request $request): JsonResponse
+    public function updates(PredictUpdatesRequest $request): JsonResponse
     {
-        $data = $request->validate(['since' => ['required', 'date', 'after:-1 day']]);
+        $data = $request->validated();
         $serverTime = now();
+        $changed = $this->markets->changedSince(Carbon::parse($data['since']), isset($data['after_id']) ? (int) $data['after_id'] : null);
 
         return response()->json(['success' => true, 'data' => [
             'server_time' => $serverTime->toIso8601String(),
-            'markets' => $this->markets->changedSince(Carbon::parse($data['since']))
-                ->map(fn (PredictMarket $market) => PredictMarketResource::make($market)->resolve())
-                ->values(),
+            'has_more' => $changed['has_more'],
+            'reference_prices_at' => $this->markets->referencePricesAt()?->toIso8601String(),
+            'markets' => $changed['markets']->map(fn (PredictMarket $market) => PredictMarketResource::make($market)->resolve()),
         ]]);
     }
 

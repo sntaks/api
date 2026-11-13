@@ -5,6 +5,7 @@ namespace App\Services\Predict;
 use App\Http\Resources\Predict\PredictMarketAdminResource;
 use App\Models\PredictBet;
 use App\Models\PredictMarket;
+use App\Models\PredictOutcome;
 use App\Models\PredictPriceSnapshot;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -188,22 +189,47 @@ class MarketQuery
     }
 
     /**
-     * Visible markets whose state or odds changed after $since, for clients that poll.
+     * Visible markets whose state or figures changed after $since, for clients that poll: the market itself, its
+     * pool, its LMSR state, its exposure (which moves the margin ladder) or an outcome's price. The query looks
+     * back `predict.updates_overlap_seconds` before $since, so a change committed while the last answer was being
+     * built (or in the same second as its `server_time`) is not lost; a market may therefore come back twice.
+     * At most `predict.updates_page_size` markets by id; `has_more` says there are others, read with $afterId.
      *
-     * @return Collection<int, PredictMarket>
+     * @return array{markets: Collection<int, PredictMarket>, has_more: bool}
      */
-    public function changedSince(Carbon $since): Collection
+    public function changedSince(Carbon $since, ?int $afterId = null): array
     {
-        return PredictMarket::query()
+        $from = $since->copy()->subSeconds((int) config('predict.updates_overlap_seconds'));
+        $pageSize = (int) config('predict.updates_page_size');
+
+        $markets = PredictMarket::query()
             ->with(['pool', 'outcomes', 'event', 'exposures', 'lmsrState'])
             ->whereIn('status', PredictMarket::PUBLIC_STATUSES)
             ->whereJsonContains('countries', config('predict.default_country'))
-            ->where(fn (Builder $q) => $q->where('updated_at', '>', $since)
-                ->orWhereHas('pool', fn (Builder $pool) => $pool->where('updated_at', '>', $since))
-                ->orWhereHas('outcomes', fn (Builder $outcome) => $outcome->where('price_captured_at', '>', $since)))
+            ->where(fn (Builder $q) => $q->where('updated_at', '>', $from)
+                ->orWhereHas('pool', fn (Builder $pool) => $pool->where('updated_at', '>', $from))
+                ->orWhereHas('lmsrState', fn (Builder $state) => $state->where('updated_at', '>', $from))
+                ->orWhereHas('exposures', fn (Builder $exposure) => $exposure->where('updated_at', '>', $from))
+                ->orWhereHas('outcomes', fn (Builder $outcome) => $outcome->where('price_changed_at', '>', $from)))
+            ->when($afterId, fn (Builder $q, int $id) => $q->where('id', '>', $id))
             ->orderBy('id')
-            ->limit(500)
+            ->limit($pageSize + 1)
             ->get();
+
+        return ['markets' => $markets->take($pageSize)->values(), 'has_more' => $markets->count() > $pageSize];
+    }
+
+    /**
+     * When a reference price was last captured on any open imported market, changed or not: the price feed's
+     * heartbeat. Null when no open market has a price.
+     */
+    public function referencePricesAt(): ?Carbon
+    {
+        $latest = PredictOutcome::query()
+            ->whereIn('predict_market_id', PredictMarket::query()->select('id')->where('status', PredictMarket::STATUS_OPEN)->where('source', PredictMarket::SOURCE_POLYMARKET))
+            ->max('price_captured_at');
+
+        return $latest === null ? null : Carbon::parse($latest);
     }
 
     /**

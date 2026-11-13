@@ -13,3 +13,6 @@ A fixed-odds bet locks predict_markets (shared) -> both predict_exposures rows o
 
 ## LMSR lock order, risk flags and the price stream
 An LMSR bet locks predict_markets (shared) -> its predict_lmsr_states row -> its quote -> the side's predict_exposures row -> then WagerService::place. LMSR money maths uses LmsrMath (bcmath exp/ln); never PHP floats. RiskService rules only flag (RiskEvent types predict_*); they run after the bet transaction commits and must never refuse or roll back a bet. The WebSocket worker (predict:price-stream) must never write a price from a book it has not had a snapshot for, and drops all books on disconnect; PriceStream::isLive() switches the betting age guard to 10 s.
+
+## The polling feed derives changes from row timestamps
+GET /predict/updates (MarketQuery::changedSince) finds changed markets from updated_at on predict_markets, predict_pools, predict_lmsr_states and predict_exposures, and price_changed_at on predict_outcomes. Any new write that changes what players see must move one of those (a query-builder update() must set updated_at itself). Never write to predict_markets inside a bet to mark a change: bets hold a shared lock on that row, so two concurrent bets would deadlock. price_captured_at advances for unchanged books and is for the age guards only; price_changed_at moves only when the shown figures move.

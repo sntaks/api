@@ -208,11 +208,11 @@ Route::prefix('/v1')->group(function () {
 
         // Prediction markets as players see them (site key, GMS); drafts are never listed
         Route::prefix('/predict')->group(function () {
-            Route::get('/markets', [PredictMarketController::class, 'index']);
-            Route::get('/markets/{id}', [PredictMarketController::class, 'show']);
-            Route::get('/markets/{id}/history', [PredictMarketController::class, 'history']);
-            Route::get('/markets/{id}/estimate', [PredictMarketController::class, 'estimate']);
-            Route::get('/updates', [PredictMarketController::class, 'updates']);
+            Route::get('/markets', [PredictMarketController::class, 'index'])->middleware('throttle:predict-read');
+            Route::get('/markets/{id}', [PredictMarketController::class, 'show'])->middleware('throttle:predict-read');
+            Route::get('/markets/{id}/history', [PredictMarketController::class, 'history'])->middleware('throttle:predict-read');
+            Route::get('/markets/{id}/estimate', [PredictMarketController::class, 'estimate'])->middleware('throttle:predict-read');
+            Route::get('/updates', [PredictMarketController::class, 'updates'])->middleware('throttle:predict-read');
 
             // GMS (full key): create, run, resolve and void markets. Every write is audit-logged
             Route::prefix('/admin')->group(function () {
