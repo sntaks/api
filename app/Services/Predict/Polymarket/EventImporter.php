@@ -124,12 +124,14 @@ class EventImporter
             return;
         }
 
-        DB::transaction(function () use ($event, $imported, $category, $closeAt) {
+        $engine = config('predict.polymarket.engine') === PredictMarket::ENGINE_REFERENCE ? PredictMarket::ENGINE_REFERENCE : PredictMarket::ENGINE_POOL;
+
+        DB::transaction(function () use ($event, $imported, $category, $closeAt, $engine) {
             $market = PredictMarket::create([
                 'source' => PredictMarket::SOURCE_POLYMARKET,
                 'predict_event_id' => $event->id,
-                'engine' => PredictMarket::ENGINE_REFERENCE,
-                'product_id' => $this->context->productFor(PredictMarket::ENGINE_REFERENCE)->id,
+                'engine' => $engine,
+                'product_id' => $this->context->productFor($engine)->id,
                 'round_reference' => 'predict-'.Str::lower((string) Str::ulid()),
                 'status' => PredictMarket::STATUS_DRAFT,
                 'category' => $category,
@@ -137,9 +139,10 @@ class EventImporter
                 'resolution_criteria' => $imported->description ?: 'Resolves as the market resolves on Polymarket; see the resolution source.',
                 'resolution_source' => $event->slug ? 'https://polymarket.com/event/'.$event->slug : null,
                 'created_by' => 'polymarket-sync',
-                // Pool terms do not apply to a fixed-odds market; its terms and limits come from config
-                'cut_bp' => 0,
-                'seed_minor' => 0,
+                // A pool import gets the pool cut and the import seed; its opening probability is set from
+                // Polymarket's price at publish. Pool terms do not apply to a fixed-odds market.
+                'cut_bp' => $engine === PredictMarket::ENGINE_POOL ? (int) round(config('predict.pool.cut') * 10000) : 0,
+                'seed_minor' => $engine === PredictMarket::ENGINE_POOL ? (int) round(config('predict.polymarket.seed') * 100) : 0,
                 'start_probability_bp' => 5000,
                 'min_stake_minor' => (int) round(config('predict.limits.min_stake') * 100),
                 'max_stake_minor' => (int) round(config('predict.limits.max_stake') * 100),

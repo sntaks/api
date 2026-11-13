@@ -184,6 +184,15 @@ class PredictMarket extends Model
     }
 
     /**
+     * The market is priced from Polymarket's live book (fixed odds). An imported pool market only takes its
+     * question, times and result from Polymarket; its odds are ours.
+     */
+    public function followsReferencePrice(): bool
+    {
+        return $this->isImported() && $this->engine === self::ENGINE_REFERENCE;
+    }
+
+    /**
      * When betting stops. A pool market takes bets until it closes. An imported market stops at the game's start
      * time when Polymarket gives one (never after the close time), otherwise `predict.fixed.cutoff_minutes` before
      * it closes: Polymarket's end date is often after kick-off.

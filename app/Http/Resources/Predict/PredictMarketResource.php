@@ -78,7 +78,7 @@ class PredictMarketResource extends JsonResource
      */
     private function oddsFor(PredictMarket $market): ?array
     {
-        if ($market->isImported()) {
+        if ($market->followsReferencePrice()) {
             return $market->relationLoaded('outcomes') ? self::referenceOdds($market) : null;
         }
 
@@ -172,10 +172,11 @@ class PredictMarketResource extends JsonResource
         $pool = $market->pool;
         $total = $pool->yes_minor + $pool->no_minor;
         $yesShare = PoolMath::shareBp($total, $pool->yes_minor);
+        $label = fn (string $side, string $default) => $market->relationLoaded('outcomes') ? ($market->outcomes->firstWhere('side', $side)?->label ?? $default) : $default;
 
         return [
-            'yes_label' => 'Yes',
-            'no_label' => 'No',
+            'yes_label' => $label(PredictMarket::SIDE_YES, 'Yes'),
+            'no_label' => $label(PredictMarket::SIDE_NO, 'No'),
             'yes_probability' => $yesShare / 10000,
             'no_probability' => (10000 - $yesShare) / 10000,
             'yes_multiplier' => PoolMath::multiplierX100($total, $pool->yes_minor, $market->cut_bp) / 100,

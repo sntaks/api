@@ -77,7 +77,7 @@ class MarketQuery
      */
     public function history(PredictMarket $market): array
     {
-        if ($market->isImported()) {
+        if ($market->followsReferencePrice()) {
             return $this->referenceHistory($market);
         }
 
@@ -226,7 +226,7 @@ class MarketQuery
     public function referencePricesAt(): ?Carbon
     {
         $latest = PredictOutcome::query()
-            ->whereIn('predict_market_id', PredictMarket::query()->select('id')->where('status', PredictMarket::STATUS_OPEN)->where('source', PredictMarket::SOURCE_POLYMARKET))
+            ->whereIn('predict_market_id', PredictMarket::query()->select('id')->where('status', PredictMarket::STATUS_OPEN)->where('source', PredictMarket::SOURCE_POLYMARKET)->where('engine', PredictMarket::ENGINE_REFERENCE))
             ->max('price_captured_at');
 
         return $latest === null ? null : Carbon::parse($latest);

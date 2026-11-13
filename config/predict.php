@@ -130,6 +130,14 @@ return [
         // Imported markets must be resolved by their end date plus this
         'resolution_days' => 7,
 
+        // How new imports are priced (decided 2026-11-13): `pool` uses Polymarket only as the market source and
+        // prices with our pool and a notional house seed; `reference` follows Polymarket's live price at fixed odds
+        'engine' => env('PREDICT_POLYMARKET_ENGINE', 'pool'),
+        'seed' => (float) env('PREDICT_POLYMARKET_SEED', 1000),
+        // A pool import opens at Polymarket's YES price, read once at publish and kept within these bounds
+        'opening_min' => 0.05,
+        'opening_max' => 0.95,
+
         // A reference price older than this is stale: the market is suspended
         'stale_after_seconds' => (int) env('PREDICT_POLYMARKET_STALE_AFTER', 120),
         'midpoint_batch' => 100,
