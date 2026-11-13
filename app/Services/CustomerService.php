@@ -12,6 +12,7 @@ use App\Models\DisputedTransaction;
 use App\Models\GameTransaction;
 use App\Models\GameWallet;
 use App\Models\PendingBalance;
+use App\Models\PredictBet;
 use App\Models\ReferralWithdrawal;
 use App\Models\ShopWithdrawal;
 use App\Models\Wallet;
@@ -712,6 +713,10 @@ class CustomerService
 
         if ($hasOpenDispute) {
             $open[] = 'open_dispute';
+        }
+
+        if (PredictBet::where('customer_id', $customer->id)->where('status', PredictBet::STATUS_OPEN)->exists()) {
+            $open[] = 'open_prediction_bet';
         }
 
         return $open;

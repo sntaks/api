@@ -80,6 +80,11 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute($limit(1200, $request))->by('wagers:'.$caller($request));
         });
 
+        // The player market pages and the polling feed: the Kadi site reads them for all its players through one key.
+        RateLimiter::for('predict-read', function (Request $request) use ($caller, $limit) {
+            return Limit::perMinute($limit(1200, $request))->by('predict-read:'.$caller($request));
+        });
+
         RateLimiter::for('financial', function (Request $request) use ($caller, $limit) {
             return Limit::perMinute($limit(5, $request))->by($caller($request));
         });

@@ -44,8 +44,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) {
         // Wager and round routes always answer {success, message, code, retryable}, also for a rate limit or a
         // crash, so a game's outbox can tell what to retry. The exception is still reported and logged as usual.
+        // Prediction market routes answer the same shape for a rate limit; their other errors are shaped where they arise.
         $exceptions->render(function (Throwable $e, Request $request) {
-            if (! ($request->is('api/v1/wagers') || $request->is('api/v1/wagers/*') || $request->is('api/v1/rounds/*'))) {
+            $isWagerRoute = $request->is('api/v1/wagers') || $request->is('api/v1/wagers/*') || $request->is('api/v1/rounds/*');
+            $isPredictRoute = $request->is('api/v1/predict/*') || $request->is('api/v1/customers/*/predict/*');
+
+            if (! $isWagerRoute && ! ($isPredictRoute && $e instanceof ThrottleRequestsException)) {
                 return null;
             }
 

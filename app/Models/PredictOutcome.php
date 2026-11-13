@@ -24,6 +24,7 @@ class PredictOutcome extends Model
         'depth_usd',
         'price_reliable',
         'price_captured_at',
+        'price_changed_at',
     ];
 
     /**
@@ -39,6 +40,7 @@ class PredictOutcome extends Model
             'depth_usd' => 'decimal:2',
             'price_reliable' => 'boolean',
             'price_captured_at' => 'datetime',
+            'price_changed_at' => 'datetime',
         ];
     }
 
@@ -53,6 +55,31 @@ class PredictOutcome extends Model
     }
 
     /**
+     * How old a price may be to bet on: stricter while the market stream is live (prices arrive within a second),
+     * looser on REST polling alone.
+     */
+    public static function maxBettingAgeSeconds(): int
+    {
+        return (int) (PriceStream::isLive() ? config('predict.fixed.max_price_age_stream_seconds') : config('predict.fixed.max_price_age_seconds'));
+    }
+
+    /**
+     * The figures players see from this outcome's book: the price, and whether its spread and depth pass the
+     * betting guards (a failed guard withdraws the offered multiplier).
+     *
+     * @return array{midpoint: string|null, reliable: bool, spread_ok: bool, depth_ok: bool}
+     */
+    public function shownFigures(): array
+    {
+        return [
+            'midpoint' => $this->midpoint === null ? null : bcadd((string) $this->midpoint, '0', 6),
+            'reliable' => (bool) $this->price_reliable,
+            'spread_ok' => $this->spread !== null && bccomp((string) $this->spread, (string) config('predict.fixed.max_spread'), 6) <= 0,
+            'depth_ok' => $this->depth_usd !== null && bccomp((string) $this->depth_usd, (string) config('predict.fixed.min_depth_usd'), 2) >= 0,
+        ];
+    }
+
+    /**
      * Why this outcome's price may not be bet on now, or null when it may: the stricter betting guards in
      * `predict.fixed` (age, spread, depth near the best ask).
      */
@@ -62,10 +89,7 @@ class PredictOutcome extends Model
             return 'no_price';
         }
 
-        // Stricter while the market stream is live (prices arrive within a second), looser on REST polling alone
-        $maxAge = PriceStream::isLive() ? config('predict.fixed.max_price_age_stream_seconds') : config('predict.fixed.max_price_age_seconds');
-
-        if ($this->price_captured_at->lt(now()->subSeconds((int) $maxAge))) {
+        if ($this->price_captured_at->lt(now()->subSeconds(self::maxBettingAgeSeconds()))) {
             return 'stale_price';
         }
 

@@ -35,6 +35,7 @@ class PredictMarketResource extends JsonResource
             'resolution_source' => $this->resolution_source,
             'category' => $this->category,
             'image_url' => $this->image_url,
+            'external_url' => $this->externalUrl(),
             'countries' => $this->countries,
             'timezone' => config("predict.countries.{$country}.timezone"),
             'currency' => config('predict.currency'),
@@ -56,6 +57,20 @@ class PredictMarketResource extends JsonResource
             'opened_at' => $this->opened_at?->toIso8601String(),
             'resolved_at' => $this->resolved_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * The market's page on polymarket.com, from the slugs imported with it; null for our own markets.
+     */
+    private function externalUrl(): ?string
+    {
+        $eventSlug = $this->isImported() && $this->relationLoaded('event') ? $this->event?->slug : null;
+
+        if (! $eventSlug) {
+            return null;
+        }
+
+        return 'https://polymarket.com/event/'.rawurlencode($eventSlug).($this->external_slug ? '/'.rawurlencode($this->external_slug) : '');
     }
 
     /**
