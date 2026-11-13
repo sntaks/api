@@ -6,6 +6,7 @@ use App\Http\Resources\Predict\PredictMarketAdminResource;
 use App\Models\PredictBet;
 use App\Models\PredictMarket;
 use App\Models\PredictOutcome;
+use App\Models\PredictPool;
 use App\Models\PredictPriceSnapshot;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -290,7 +291,7 @@ class MarketQuery
 
         if ($isSettled) {
             $payouts = (int) $market->payouts;
-            $cut = $pool ? (int) bcdiv(bcmul((string) ($pool->yes_minor + $pool->no_minor), (string) $market->cut_bp), '10000', 0) : 0;
+            $cut = $pool ? (int) bcdiv(bcmul((string) $this->cutBase($market, $pool), (string) $market->cut_bp), '10000', 0) : 0;
             $houseNet = $stakes - $payouts;
 
             return $line + [
@@ -320,14 +321,27 @@ class MarketQuery
         }
 
         $total = $pool->yes_minor + $pool->no_minor;
-        $payoutIfYes = PoolMath::payoutMinor($yesStakes, PoolMath::multiplierX100($total, $pool->yes_minor, $market->cut_bp), PHP_INT_MAX);
-        $payoutIfNo = PoolMath::payoutMinor($noStakes, PoolMath::multiplierX100($total, $pool->no_minor, $market->cut_bp), PHP_INT_MAX);
+        $payoutIfYes = PoolMath::payoutMinor($yesStakes, PoolMath::multiplierX100($total, $pool->yes_minor, $market->cut_bp, $market->cutsFromWinnings()), PHP_INT_MAX);
+        $payoutIfNo = PoolMath::payoutMinor($noStakes, PoolMath::multiplierX100($total, $pool->no_minor, $market->cut_bp, $market->cutsFromWinnings()), PHP_INT_MAX);
 
         return $line + [
             'payout_if_yes' => $payoutIfYes / 100,
             'payout_if_no' => $payoutIfNo / 100,
             'worst_case_house_net' => ($stakes - max($payoutIfYes, $payoutIfNo)) / 100,
         ];
+    }
+
+    /**
+     * The money a settled pool's cut is taken from: the losing side under the cut on winnings, the whole pool
+     * for a market settled under the old rule.
+     */
+    private function cutBase(PredictMarket $market, PredictPool $pool): int
+    {
+        if (! $market->cutsFromWinnings()) {
+            return $pool->yes_minor + $pool->no_minor;
+        }
+
+        return $market->result === PredictMarket::SIDE_YES ? $pool->no_minor : $pool->yes_minor;
     }
 
     private function sorted(Builder $query, string $sort): Builder

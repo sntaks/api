@@ -3,14 +3,17 @@
 namespace App\Services\Predict;
 
 use App\Exceptions\PolymarketUnavailable;
+use App\Models\PredictBet;
 use App\Models\PredictExposure;
 use App\Models\PredictLmsrState;
 use App\Models\PredictMarket;
 use App\Models\PredictMarketBlock;
 use App\Models\PredictPool;
+use App\Models\Wager;
 use App\Models\WagerRound;
 use App\Services\Predict\Polymarket\EventImporter;
 use App\Services\Predict\Polymarket\ReferencePriceRecorder;
+use App\Services\WagerRoundService;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -40,6 +43,7 @@ class MarketService
         private AuditLogger $audit,
         private SettlementService $settlements,
         private ReferencePriceRecorder $prices,
+        private WagerRoundService $rounds,
     ) {}
 
     /**
@@ -149,18 +153,7 @@ class MarketService
                 return $this->openLmsr($locked);
             }
 
-            $seed = PoolMath::seedSplit($locked->seed_minor, $locked->start_probability_bp);
-
-            PredictPool::create([
-                'predict_market_id' => $locked->id,
-                'yes_minor' => $seed['yes'],
-                'no_minor' => $seed['no'],
-                'seed_yes_minor' => $seed['yes'],
-                'seed_no_minor' => $seed['no'],
-            ]);
-
-            // Created here, never on the first bet: a bet must not insert the round under its locks
-            WagerRound::create(['product_id' => $locked->product_id, 'reference' => $locked->round_reference, 'status' => WagerRound::STATUS_OPEN]);
+            $this->openPool($locked);
 
             $locked->update(['status' => PredictMarket::STATUS_OPEN, 'opened_at' => now()]);
 
@@ -217,6 +210,69 @@ class MarketService
 
             return PredictResult::ok(['market' => $locked]);
         });
+    }
+
+    /**
+     * Move a published fixed-odds import to our pool (decided 2026-11-13): seed it at Polymarket's current YES price
+     * with the import seed and the pool terms, on a new round under the pool product. Only a market nobody has bet
+     * on can move. A bet takes a shared lock on the market row before it picks its engine, so holding the row FOR
+     * UPDATE here keeps the two apart. The old fixed-odds round is empty and is voided once this commits.
+     */
+    public function convertLiveToPool(PredictMarket $market, string $adminUser): PredictResult
+    {
+        $converted = DB::transaction(function () use ($market, $adminUser) {
+            $locked = PredictMarket::whereKey($market->id)->with('product')->lockForUpdate()->firstOrFail();
+            $live = [PredictMarket::STATUS_OPEN, PredictMarket::STATUS_SUSPENDED];
+
+            if (! $locked->followsReferencePrice() || ! in_array($locked->status, $live, true)) {
+                return PredictResult::refused('not_convertible', 'Only a published fixed-odds import can move to the pool', 409, ['status' => $locked->status, 'engine' => $locked->engine]);
+            }
+
+            $oldRound = WagerRound::where('product_id', $locked->product_id)->where('reference', $locked->round_reference)->first();
+
+            if (PredictBet::where('predict_market_id', $locked->id)->exists() || ($oldRound && Wager::where('wager_round_id', $oldRound->id)->exists())) {
+                return PredictResult::refused('market_has_bets', 'A market with bets keeps its fixed odds', 409);
+            }
+
+            $opening = $this->openingProbabilityBp($locked);
+
+            if ($opening === null) {
+                return PredictResult::refused('price_unavailable', 'This market has no usable Polymarket price to open the pool at', 409);
+            }
+
+            $before = $this->snapshot($locked);
+            $oldProductCode = $locked->product->code;
+            $oldReference = $locked->round_reference;
+            $locked->unsetRelation('product');
+            $reopen = $locked->status === PredictMarket::STATUS_SUSPENDED && $locked->suspension_cause === PredictMarket::SUSPENDED_FOR_PRICE;
+
+            $locked->update([
+                'engine' => PredictMarket::ENGINE_POOL,
+                'product_id' => $this->context->productFor(PredictMarket::ENGINE_POOL)->id,
+                'round_reference' => 'predict-'.Str::lower((string) Str::ulid()),
+                'seed_minor' => (int) round(config('predict.polymarket.seed') * 100),
+                'cut_bp' => (int) round(config('predict.pool.cut') * 10000),
+                'cut_on' => PredictMarket::CUT_ON_WINNINGS,
+                'min_multiplier_x100' => (int) round(config('predict.pool.min_multiplier') * 100),
+                'start_probability_bp' => $opening,
+                ...($reopen ? ['status' => PredictMarket::STATUS_OPEN, 'suspension_cause' => null] : []),
+            ]);
+
+            PredictExposure::where('predict_market_id', $locked->id)->delete();
+            $this->openPool($locked);
+            $this->audit->record('convert_engine', $locked, $adminUser, 'Published imports are priced by our pool', $before, $this->snapshot($locked));
+
+            return ['market' => $locked, 'product' => $oldProductCode, 'round' => $oldReference];
+        });
+
+        if ($converted instanceof PredictResult) {
+            return $converted;
+        }
+
+        // The old round has no wagers; voiding it only closes it. A failure leaves an empty round nothing points at
+        $voided = $this->rounds->void($this->context->wagerKey(), $converted['product'], $converted['round'], 'Market moved to the pool');
+
+        return PredictResult::ok(['market' => $converted['market'], 'old_round_voided' => ! $voided->isRefused()]);
     }
 
     /**
@@ -437,6 +493,25 @@ class MarketService
         $locked->update(['status' => PredictMarket::STATUS_OPEN, 'opened_at' => now()]);
 
         return null;
+    }
+
+    /**
+     * Seed a pool market's pool by its opening probability and open its wager round. The round is created here,
+     * never on the first bet: a bet must not insert the round under its locks.
+     */
+    private function openPool(PredictMarket $locked): void
+    {
+        $seed = PoolMath::seedSplit($locked->seed_minor, $locked->start_probability_bp);
+
+        PredictPool::create([
+            'predict_market_id' => $locked->id,
+            'yes_minor' => $seed['yes'],
+            'no_minor' => $seed['no'],
+            'seed_yes_minor' => $seed['yes'],
+            'seed_no_minor' => $seed['no'],
+        ]);
+
+        WagerRound::create(['product_id' => $locked->product_id, 'reference' => $locked->round_reference, 'status' => WagerRound::STATUS_OPEN]);
     }
 
     /**

@@ -59,6 +59,6 @@ class PredictBetResource extends JsonResource
 
         $side = $this->side === 'yes' ? $pool->yes_minor : $pool->no_minor;
 
-        return PoolMath::multiplierX100($pool->yes_minor + $pool->no_minor, $side, $this->market->cut_bp);
+        return PoolMath::multiplierX100($pool->yes_minor + $pool->no_minor, $side, $this->market->cut_bp, $this->market->cutsFromWinnings());
     }
 }

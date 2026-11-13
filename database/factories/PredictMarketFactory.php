@@ -36,13 +36,13 @@ class PredictMarketFactory extends Factory
             'round_reference' => 'predict-'.Str::lower((string) Str::ulid()),
             'close_at' => now()->addDays(3),
             'resolution_deadline_at' => now()->addDays(4),
-            'cut_bp' => 1000,
+            'cut_bp' => 2000,
             'seed_minor' => 500000,
             'start_probability_bp' => 5000,
             'min_stake_minor' => 1000,
             'max_stake_minor' => 500000,
             'max_payout_minor' => 25000000,
-            'min_multiplier_x100' => 105,
+            'min_multiplier_x100' => 101,
             'created_by' => 'factory',
         ];
     }

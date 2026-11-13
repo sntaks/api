@@ -515,7 +515,7 @@ it('imports a market as a pool draft with the import seed when pricing is ours',
     $this->artisan('predict:sync-events')->assertSuccessful();
 
     expect(PredictMarket::sole()->only(['source', 'engine', 'product_id', 'seed_minor', 'cut_bp']))
-        ->toBe(['source' => 'polymarket', 'engine' => 'pool', 'product_id' => $this->product->id, 'seed_minor' => 100000, 'cut_bp' => 1000]);
+        ->toBe(['source' => 'polymarket', 'engine' => 'pool', 'product_id' => $this->product->id, 'seed_minor' => 100000, 'cut_bp' => 2000]);
 });
 
 it('opens an imported pool at Polymarket\'s price once and prices it from our pool after', function () {
@@ -592,9 +592,9 @@ it('settles an imported pool market on Polymarket\'s result', function () {
 
     $this->artisan('predict:sync-resolutions')->assertSuccessful();
 
-    // Pot 1100 less the 10% cut, shared by YES (720): 1.375x floors to 1.37x, so the player's 100 returns 137
+    // YES 720 / NO 380: 1 + 380 × 0.8 / 720 = 1.422x floors to 1.42x, so the player's 100 returns 142
     expect($market->fresh()->only(['status', 'result']))->toBe(['status' => 'settled', 'result' => 'yes'])
-        ->and((float) Wallet::where('customer_id', $player->id)->value('balance'))->toBe(10037.0);
+        ->and((float) Wallet::where('customer_id', $player->id)->value('balance'))->toBe(10042.0);
 });
 
 it('only counts the fixed-odds drafts it would convert without --force', function () {
@@ -619,7 +619,7 @@ it('moves imported fixed-odds drafts to the pool, leaving live and custom market
     $this->artisan('predict:convert-drafts-to-pool', ['--force' => true])->assertSuccessful();
 
     expect($draft->fresh()->only(['engine', 'product_id', 'seed_minor', 'cut_bp']))
-        ->toBe(['engine' => 'pool', 'product_id' => $this->product->id, 'seed_minor' => 100000, 'cut_bp' => 1000])
+        ->toBe(['engine' => 'pool', 'product_id' => $this->product->id, 'seed_minor' => 100000, 'cut_bp' => 2000])
         ->and($live->fresh()->engine)->toBe('reference')
         ->and($custom->fresh()->updated_at->equalTo($custom->updated_at))->toBeTrue()
         ->and(PredictAuditLog::where('action', 'convert_engine')->pluck('predict_market_id')->all())->toBe([$draft->id]);
@@ -635,4 +635,105 @@ it('publishes a converted draft as a pool at Polymarket\'s price', function () {
         ->assertOk()
         ->assertJsonPath('data.market.pool.seed_yes', 620)
         ->assertJsonPath('data.market.pool.seed_no', 380);
+});
+
+it('lets players back the favourite of a long-shot import above 1x', function () {
+    config(['predict.polymarket.engine' => 'pool']);
+    fakeGamma([gammaEvent([gammaMarket()])], ['tok-yes' => '0.03', 'tok-no' => '0.97']);
+    $this->artisan('predict:sync-events')->assertSuccessful();
+    $market = PredictMarket::sole();
+
+    // Opens at the 5% bound: YES 50 / NO 950, so NO pays 1 + 50 × 0.8 / 950 = 1.04x and YES 16.20x
+    $this->postJson("/api/v1/predict/admin/markets/{$market->id}/publish", ['admin_user' => 'ops'], $this->adminHeaders)
+        ->assertOk()
+        ->assertJsonPath('data.market.odds.no_multiplier', 1.04)
+        ->assertJsonPath('data.market.odds.yes_multiplier', 16.2);
+
+    placePredictBet($this, predictPlayer(), $market->id, 'no', 100)->assertCreated();
+});
+
+it('only counts the published fixed-odds markets it would convert without --force', function () {
+    fakeGamma([gammaEvent([gammaMarket()])]);
+    $market = openImported($this);
+
+    $this->artisan('predict:convert-live-to-pool')
+        ->expectsOutputToContain('1 published fixed-odds market(s) found; 0 have bets')
+        ->assertSuccessful();
+
+    expect($market->fresh()->engine)->toBe('reference');
+});
+
+it('moves a published fixed-odds market nobody bet on to the pool at Polymarket\'s current price', function () {
+    fakeGamma([gammaEvent([gammaMarket()])]);
+    $market = openImported($this);
+    $oldRound = WagerRound::where('reference', $market->round_reference)->sole();
+
+    $this->artisan('predict:convert-live-to-pool', ['--force' => true])
+        ->expectsOutputToContain('Converted 1 market(s) to the pool.')
+        ->assertSuccessful();
+
+    $market->refresh();
+    expect($market->only(['engine', 'product_id', 'status', 'seed_minor', 'cut_bp', 'cut_on', 'min_multiplier_x100', 'start_probability_bp']))
+        ->toBe(['engine' => 'pool', 'product_id' => $this->product->id, 'status' => 'open', 'seed_minor' => 100000, 'cut_bp' => 2000, 'cut_on' => 'winnings', 'min_multiplier_x100' => 101, 'start_probability_bp' => 6200])
+        ->and($market->round_reference)->not->toBe($oldRound->reference)
+        ->and(WagerRound::where('reference', $market->round_reference)->sole()->only(['product_id', 'status']))->toBe(['product_id' => $this->product->id, 'status' => 'open'])
+        ->and($oldRound->fresh()->status)->not->toBe(WagerRound::STATUS_OPEN)
+        ->and($market->exposures()->count())->toBe(0)
+        ->and(PredictAuditLog::where('action', 'convert_engine')->where('predict_market_id', $market->id)->count())->toBe(1);
+
+    $this->getJson("/api/v1/predict/markets/{$market->id}", $this->siteHeaders)
+        ->assertOk()
+        ->assertJsonPath('data.odds.is_reference', false)
+        ->assertJsonPath('data.odds.yes_probability', 0.62);
+});
+
+it('keeps fixed odds on a market someone has bet on', function () {
+    fakeGamma([gammaEvent([gammaMarket()])]);
+    $market = openImported($this);
+    quoteAndBet($this, $market, 'yes', 100, predictPlayer())->assertCreated();
+
+    $this->artisan('predict:convert-live-to-pool', ['--force' => true])
+        ->expectsOutputToContain('Left on fixed odds: 1 (market_has_bets)')
+        ->assertSuccessful();
+
+    expect($market->fresh()->only(['engine', 'round_reference']))->toBe(['engine' => 'reference', 'round_reference' => $market->round_reference]);
+});
+
+it('keeps fixed odds on a market Polymarket has no price for now', function () {
+    fakeGamma([gammaEvent([gammaMarket()])]);
+    $market = openImported($this);
+    fakeGamma([], ['tok-no' => '0.38']);
+
+    $this->artisan('predict:convert-live-to-pool', ['--force' => true])
+        ->expectsOutputToContain('Left on fixed odds: 1 (price_unavailable)')
+        ->assertSuccessful();
+
+    expect($market->fresh()->engine)->toBe('reference');
+});
+
+it('reopens a market suspended for its price, and leaves one an admin suspended suspended', function (string $cause, string $status) {
+    fakeGamma([gammaEvent([gammaMarket()])]);
+    $market = openImported($this);
+    $market->update(['status' => 'suspended', 'suspension_cause' => $cause]);
+
+    $this->artisan('predict:convert-live-to-pool', ['--force' => true])->assertSuccessful();
+
+    expect($market->fresh()->only(['engine', 'status']))->toBe(['engine' => 'pool', 'status' => $status]);
+})->with([
+    'price' => [PredictMarket::SUSPENDED_FOR_PRICE, 'open'],
+    'admin' => [PredictMarket::SUSPENDED_BY_ADMIN, 'suspended'],
+]);
+
+it('takes pool bets on a converted market and settles them by the cut on winnings', function () {
+    fakeGamma([gammaEvent([gammaMarket()])]);
+    $market = openImported($this);
+    $this->artisan('predict:convert-live-to-pool', ['--force' => true])->assertSuccessful();
+    $player = predictPlayer(10000);
+
+    placePredictBet($this, $player, $market->id, 'yes', 100)->assertCreated();
+    $this->postJson("/api/v1/predict/admin/markets/{$market->id}/close", ['admin_user' => 'ops'], $this->adminHeaders)->assertOk();
+    $this->postJson("/api/v1/predict/admin/markets/{$market->id}/resolve", ['admin_user' => 'ops', 'result' => 'yes'], $this->adminHeaders)->assertOk();
+
+    // YES 720 / NO 380: 1 + 380 × 0.8 / 720 = 1.42x
+    expect((float) Wallet::where('customer_id', $player->id)->value('balance'))->toBe(10042.0);
 });

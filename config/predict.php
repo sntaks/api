@@ -35,10 +35,11 @@ return [
     'categories' => ['sport', 'entertainment', 'politics'],
 
     'pool' => [
-        'cut' => (float) env('PREDICT_POOL_CUT', 0.10),
+        // Share of the losing side's money the house keeps (decided 2026-11-13; was 10% of the whole pool)
+        'cut' => (float) env('PREDICT_POOL_CUT', 0.20),
         'seed' => (float) env('PREDICT_POOL_SEED', 5000),
         // A bet is refused when it would push its side's multiplier below this
-        'min_multiplier' => (float) env('PREDICT_POOL_MIN_MULTIPLIER', 1.05),
+        'min_multiplier' => (float) env('PREDICT_POOL_MIN_MULTIPLIER', 1.01),
     ],
 
     // LMSR market maker for custom markets (decided 2026-11-12). The fee is stored as the market's cut

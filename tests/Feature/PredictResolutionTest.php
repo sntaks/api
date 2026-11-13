@@ -111,13 +111,15 @@ it('settles at once when auto-settle is on', function () {
 });
 
 /**
- * The brief's pool settled YES: A 100 YES → 261, B 500 NO → 0, C 200 YES → 522.
+ * A pool (seed 1,000 at p 0.30, cut 20% of the losing side) settled YES: A 100 YES → 260, B 500 NO → 0,
+ * C 200 YES → 520. With $terms the market can be put on the old whole-pool cut.
  *
+ * @param  array<string, mixed>  $terms
  * @return array{0: PredictMarket, 1: Customer, 2: Customer, 3: Customer}
  */
-function settledPool(object $test): array
+function settledPool(object $test, array $terms = []): array
 {
-    $market = PredictMarket::factory()->open()->create(['product_id' => $test->product->id, 'seed_minor' => 100000, 'start_probability_bp' => 3000, 'cut_bp' => 1300]);
+    $market = PredictMarket::factory()->open()->create(['product_id' => $test->product->id, 'seed_minor' => 100000, 'start_probability_bp' => 3000, 'cut_bp' => 2000, ...$terms]);
     [$a, $b, $c] = [predictPlayer(), predictPlayer(), predictPlayer()];
     placePredictBet($test, $a, $market->id, 'yes', 100)->assertCreated();
     placePredictBet($test, $b, $market->id, 'no', 500)->assertCreated();
@@ -135,14 +137,24 @@ it('corrects a wrong result once a second admin approves, moving every payout', 
         ->assertCreated()->json('data.correction.id');
     admin($this, "corrections/{$id}/approve", ['admin_user' => 'ops-2'])->assertOk();
 
-    // NO at 1,800 × 0.87 / 1,200 = 1.30x: B is paid 650, A and C give back 261 and 522
+    // NO at 1 + 600 × 0.8 / 1,200 = 1.40x: B is paid 700, A and C give back 260 and 520
     expect(balanceOfPlayer($a))->toBe(9900.0)
-        ->and(balanceOfPlayer($b))->toBe(10150.0)
+        ->and(balanceOfPlayer($b))->toBe(10200.0)
         ->and(balanceOfPlayer($c))->toBe(9800.0)
         ->and($market->fresh()->only(['status', 'result']))->toBe(['status' => 'settled', 'result' => 'no'])
         ->and(PredictCorrection::sole()->only(['status', 'wagers_corrected']))->toBe(['status' => 'done', 'wagers_corrected' => 3])
-        ->and(PredictBet::where('customer_id', $b->id)->first()->only(['status', 'payout_minor', 'final_multiplier_x100']))->toBe(['status' => 'won', 'payout_minor' => 65000, 'final_multiplier_x100' => 130])
+        ->and(PredictBet::where('customer_id', $b->id)->first()->only(['status', 'payout_minor', 'final_multiplier_x100']))->toBe(['status' => 'won', 'payout_minor' => 70000, 'final_multiplier_x100' => 140])
         ->and(PredictAuditLog::whereIn('action', ['request_correction', 'approve_correction', 'correct'])->count())->toBe(3);
+});
+
+it('corrects a market settled under the whole-pool cut by that rule', function () {
+    [$market, , $b] = settledPool($this, ['cut_bp' => 1300, 'cut_on' => PredictMarket::CUT_ON_POOL]);
+
+    $id = admin($this, "markets/{$market->id}/corrections", ['admin_user' => 'ops-1', 'result' => 'no', 'reason' => 'FKF reversed the result'])->json('data.correction.id');
+    admin($this, "corrections/{$id}/approve", ['admin_user' => 'ops-2'])->assertOk();
+
+    // NO at 1,800 × 0.87 / 1,200 = 1.30x: B is paid 650
+    expect(balanceOfPlayer($b))->toBe(10150.0);
 });
 
 it('refuses an approval by the admin who asked for the correction', function () {
@@ -162,7 +174,7 @@ it('leaves a player who already withdrew a wrong payout with a negative balance'
 
     admin($this, "corrections/{$id}/approve", ['admin_user' => 'ops-2'])->assertOk();
 
-    expect(balanceOfPlayer($c))->toBe(-522.0);
+    expect(balanceOfPlayer($c))->toBe(-520.0);
 });
 
 it('never moves a wager twice when a correction run repeats', function () {
@@ -176,7 +188,7 @@ it('never moves a wager twice when a correction run repeats', function () {
     app(CorrectionService::class)->run($correction);
 
     expect(balanceOfPlayer($a))->toBe(9900.0)
-        ->and(balanceOfPlayer($b))->toBe(10150.0)
+        ->and(balanceOfPlayer($b))->toBe(10200.0)
         ->and($correction->fresh()->status)->toBe('done');
 });
 

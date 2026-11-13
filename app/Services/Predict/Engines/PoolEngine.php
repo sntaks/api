@@ -51,7 +51,7 @@ class PoolEngine implements PricingEngine
         $pool = $market->pool()->firstOrFail();
         $total = $pool->yes_minor + $pool->no_minor;
         $winningTotal = $winningSide === PredictMarket::SIDE_YES ? $pool->yes_minor : $pool->no_minor;
-        $multiplier = PoolMath::multiplierX100($total, $winningTotal, $market->cut_bp);
+        $multiplier = PoolMath::multiplierX100($total, $winningTotal, $market->cut_bp, $market->cutsFromWinnings());
 
         // A bet whose wager GMS voided on its own was refunded: it is not paid, and listing it would make the
         // round refuse the whole settlement
@@ -80,10 +80,10 @@ class PoolEngine implements PricingEngine
     {
         $total = $pool->yes_minor + $pool->no_minor;
         $sideTotal = $side === PredictMarket::SIDE_YES ? $pool->yes_minor : $pool->no_minor;
-        $estimate = PoolMath::estimateX100($total, $sideTotal, $stakeMinor, $market->cut_bp);
+        $estimate = PoolMath::estimateX100($total, $sideTotal, $stakeMinor, $market->cut_bp, $market->cutsFromWinnings());
 
         if ($estimate < $market->min_multiplier_x100) {
-            $largest = PoolMath::maxStakeForMinimum($total, $sideTotal, $market->cut_bp, $market->min_multiplier_x100);
+            $largest = PoolMath::maxStakeForMinimum($total, $sideTotal, $market->cut_bp, $market->min_multiplier_x100, $market->cutsFromWinnings());
 
             return BetTerms::refused('pool_side_full', 'This side cannot take a stake that large now', 422, [
                 'max_stake' => $largest >= $market->min_stake_minor ? $largest / 100 : 0,
