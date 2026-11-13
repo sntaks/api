@@ -6,7 +6,8 @@ use App\Models\PredictMarket;
 use InvalidArgumentException;
 
 /**
- * The pricing engine a market uses: pool (B) or LMSR (C) for custom markets, fixed odds (A) for imported ones.
+ * The pricing engine a market uses: pool (B) or LMSR (C) for custom markets, fixed odds (A) or pool (B) for
+ * imported ones (`predict.polymarket.engine`).
  */
 class EngineRegistry
 {

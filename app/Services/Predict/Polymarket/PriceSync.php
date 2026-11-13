@@ -9,7 +9,8 @@ use App\Services\Predict\MarketService;
 use Illuminate\Support\Collection;
 
 /**
- * Refreshes the reference prices of live imported markets (open and suspended) and keeps their history. Drafts
+ * Refreshes the reference prices of live fixed-odds imported markets (open and suspended; an imported pool
+ * market has its own odds and is never priced here) and keeps their history. Drafts
  * are priced by the event sync from Gamma, and freshly when approved. An open market failing a betting guard (no
  * usable price, price too old, spread too wide, book too thin) is suspended; it reopens by itself once prices are usable again, unless an admin
  * suspended it. When Polymarket cannot be reached, every open imported market is suspended: we never show or use
@@ -26,6 +27,7 @@ class PriceSync
     {
         $markets = PredictMarket::with('outcomes')
             ->where('source', PredictMarket::SOURCE_POLYMARKET)
+            ->where('engine', PredictMarket::ENGINE_REFERENCE)
             ->whereIn('status', [PredictMarket::STATUS_OPEN, PredictMarket::STATUS_SUSPENDED])
             ->get();
 

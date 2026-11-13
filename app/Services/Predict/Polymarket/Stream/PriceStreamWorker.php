@@ -168,6 +168,7 @@ class PriceStreamWorker
     {
         return PredictOutcome::whereHas('market', fn ($q) => $q
             ->where('source', PredictMarket::SOURCE_POLYMARKET)
+            ->where('engine', PredictMarket::ENGINE_REFERENCE)
             ->whereIn('status', [PredictMarket::STATUS_OPEN, PredictMarket::STATUS_SUSPENDED]))
             ->pluck('external_token_id')
             ->unique()

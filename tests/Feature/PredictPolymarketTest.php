@@ -7,6 +7,7 @@ use App\Models\PredictPriceSnapshot;
 use App\Models\PredictQuote;
 use App\Models\Product;
 use App\Models\WagerRound;
+use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
@@ -28,6 +29,8 @@ beforeEach(function () {
         'predict.polymarket.retries' => 1,
         'predict.polymarket.retry_base_ms' => 0,
         'predict.polymarket.min_volume' => 1000,
+        // Most tests here cover fixed-odds imports; the pool-import tests switch this to pool
+        'predict.polymarket.engine' => 'reference',
     ]);
     fakeGamma([]);
     Http::fake([
@@ -503,4 +506,93 @@ it('needs ids or a filter, and a reason to reject', function () {
     $this->postJson('/api/v1/predict/admin/markets/bulk/reject', ['admin_user' => 'ops'], $this->adminHeaders)
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['ids', 'filter', 'reason']);
+});
+
+it('imports a market as a pool draft with the import seed when pricing is ours', function () {
+    config(['predict.polymarket.engine' => 'pool', 'predict.polymarket.seed' => 1000]);
+    fakeGamma([gammaEvent([gammaMarket()])]);
+
+    $this->artisan('predict:sync-events')->assertSuccessful();
+
+    expect(PredictMarket::sole()->only(['source', 'engine', 'product_id', 'seed_minor', 'cut_bp']))
+        ->toBe(['source' => 'polymarket', 'engine' => 'pool', 'product_id' => $this->product->id, 'seed_minor' => 100000, 'cut_bp' => 1000]);
+});
+
+it('opens an imported pool at Polymarket\'s price once and prices it from our pool after', function () {
+    config(['predict.polymarket.engine' => 'pool']);
+    fakeGamma([gammaEvent([gammaMarket(['outcomes' => '["Kenya", "Field"]'])])]);
+    $this->artisan('predict:sync-events')->assertSuccessful();
+    $market = PredictMarket::sole();
+
+    $this->postJson("/api/v1/predict/admin/markets/{$market->id}/publish", ['admin_user' => 'ops'], $this->adminHeaders)
+        ->assertOk()
+        ->assertJsonPath('data.market.status', 'open')
+        ->assertJsonPath('data.market.pool.seed_yes', 620)
+        ->assertJsonPath('data.market.pool.seed_no', 380);
+
+    placePredictBet($this, predictPlayer(), $market->id, 'yes', 100)->assertCreated();
+
+    // Pool 720 YES / 380 NO after the bet: our odds, with Polymarket's outcome labels
+    $this->getJson("/api/v1/predict/markets/{$market->id}", $this->siteHeaders)
+        ->assertOk()
+        ->assertJsonPath('data.odds.is_reference', false)
+        ->assertJsonPath('data.odds.yes_label', 'Kenya')
+        ->assertJsonPath('data.odds.no_label', 'Field')
+        ->assertJsonPath('data.odds.volume', 100);
+    expect($market->fresh()->start_probability_bp)->toBe(6200);
+});
+
+it('keeps a lopsided Polymarket price inside the opening bounds', function () {
+    config(['predict.polymarket.engine' => 'pool']);
+    fakeGamma([gammaEvent([gammaMarket()])], ['tok-yes' => '0.985', 'tok-no' => '0.015']);
+    $this->artisan('predict:sync-events')->assertSuccessful();
+    $market = PredictMarket::sole();
+
+    $this->postJson("/api/v1/predict/admin/markets/{$market->id}/publish", ['admin_user' => 'ops'], $this->adminHeaders)->assertOk();
+
+    expect($market->fresh()->start_probability_bp)->toBe(9500);
+});
+
+it('refuses to open an imported pool without a Polymarket price', function () {
+    config(['predict.polymarket.engine' => 'pool']);
+    fakeGamma([gammaEvent([gammaMarket()])], ['tok-no' => '0.38']);
+    $this->artisan('predict:sync-events')->assertSuccessful();
+    $market = PredictMarket::sole();
+
+    $this->postJson("/api/v1/predict/admin/markets/{$market->id}/publish", ['admin_user' => 'ops'], $this->adminHeaders)
+        ->assertConflict()
+        ->assertJsonPath('code', 'price_unavailable');
+
+    expect($market->fresh()->status)->toBe('draft');
+});
+
+it('never price-syncs or suspends an imported pool market', function () {
+    config(['predict.polymarket.engine' => 'pool']);
+    fakeGamma([gammaEvent([gammaMarket()])]);
+    $this->artisan('predict:sync-events')->assertSuccessful();
+    $market = PredictMarket::sole();
+    $this->postJson("/api/v1/predict/admin/markets/{$market->id}/publish", ['admin_user' => 'ops'], $this->adminHeaders)->assertOk();
+    fakeGamma([], clobStatus: 500);
+
+    $this->artisan('predict:sync-prices')->assertSuccessful();
+
+    expect($market->fresh()->status)->toBe('open');
+});
+
+it('settles an imported pool market on Polymarket\'s result', function () {
+    config(['predict.polymarket.engine' => 'pool', 'predict.resolution.auto_settle' => true]);
+    fakeGamma([gammaEvent([gammaMarket()])]);
+    $this->artisan('predict:sync-events')->assertSuccessful();
+    $market = PredictMarket::sole();
+    $this->postJson("/api/v1/predict/admin/markets/{$market->id}/publish", ['admin_user' => 'ops'], $this->adminHeaders)->assertOk();
+    $player = predictPlayer(10000);
+    placePredictBet($this, $player, $market->id, 'yes', 100)->assertCreated();
+    $market->update(['external_closed' => true]);
+    Http::fake([GAMMA.'/markets/keyset*' => Http::response(['markets' => [gammaMarket(['closed' => true, 'outcomePrices' => '["1", "0"]', 'umaResolutionStatus' => 'resolved'])]])]);
+
+    $this->artisan('predict:sync-resolutions')->assertSuccessful();
+
+    // Pot 1100 less the 10% cut, shared by YES (720): 1.375x floors to 1.37x, so the player's 100 returns 137
+    expect($market->fresh()->only(['status', 'result']))->toBe(['status' => 'settled', 'result' => 'yes'])
+        ->and((float) Wallet::where('customer_id', $player->id)->value('balance'))->toBe(10037.0);
 });

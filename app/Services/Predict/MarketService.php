@@ -131,8 +131,18 @@ class MarketService
                 return PredictResult::refused('close_time_passed', 'The close time has passed; edit it before publishing', 409);
             }
 
-            if ($locked->isImported()) {
+            if ($locked->followsReferencePrice()) {
                 return $this->openImported($locked);
+            }
+
+            if ($locked->isImported()) {
+                $opening = $this->openingProbabilityBp($locked);
+
+                if ($opening === null) {
+                    return PredictResult::refused('price_unavailable', 'This market has no usable Polymarket price to open the pool at', 409);
+                }
+
+                $locked->update(['start_probability_bp' => $opening]);
             }
 
             if ($locked->engine === PredictMarket::ENGINE_LMSR) {
@@ -255,7 +265,7 @@ class MarketService
                 return PredictResult::refused('close_time_passed', 'The close time has passed; the market can only be closed', 409);
             }
 
-            if ($locked->isImported() && ! $this->hasUsablePrices($locked)) {
+            if ($locked->followsReferencePrice() && ! $this->hasUsablePrices($locked)) {
                 return PredictResult::refused('price_unavailable', 'This market has no usable reference price', 409);
             }
 
@@ -401,6 +411,25 @@ class MarketService
         $locked->update(['status' => PredictMarket::STATUS_OPEN, 'opened_at' => now()]);
 
         return null;
+    }
+
+    /**
+     * The opening YES probability of an imported pool market, in basis points: Polymarket's fresh YES midpoint,
+     * read once, kept within `predict.polymarket.opening_min`/`opening_max`. Null when there is no usable price.
+     */
+    private function openingProbabilityBp(PredictMarket $market): ?int
+    {
+        $yes = $market->outcomes()->where('side', PredictMarket::SIDE_YES)->first();
+
+        if (! $yes?->hasUsablePrice()) {
+            return null;
+        }
+
+        $bp = (int) round((float) $yes->midpoint * 10000);
+        $min = (int) round(config('predict.polymarket.opening_min') * 10000);
+        $max = (int) round(config('predict.polymarket.opening_max') * 10000);
+
+        return max($min, min($max, $bp));
     }
 
     /**
