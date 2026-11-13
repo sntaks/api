@@ -446,7 +446,9 @@ class PredictAdminController extends PredictController
     }
 
     /**
-     * Run a bulk action on the drafts the request selects, oldest first, at most `limit` of them.
+     * Run a bulk action on the drafts the request selects, oldest first, at most `limit` of them. A filter call
+     * starts after `after_id` and answers `next_after_id` (the last draft tried) while matching drafts lie beyond
+     * it, so repeat calls walk the whole queue instead of retrying the drafts that were refused.
      *
      * @param  array<string, mixed>  $data
      * @param  callable(Collection<int, PredictMarket>): array{done: list<int>, refused: list<array{id: int, code: string}>}  $action
@@ -455,10 +457,17 @@ class PredictAdminController extends PredictController
     {
         $limit = (int) ($data['limit'] ?? BulkPredictMarketsRequest::MAX);
         $selected = fn () => $this->bulkSelection($data);
-        $result = $action($selected()->orderBy('id')->limit($limit)->get());
+        $markets = $selected()
+            ->when(isset($data['after_id']), fn (Builder $q) => $q->where('id', '>', $data['after_id']))
+            ->orderBy('id')
+            ->limit($limit)
+            ->get();
+        $result = $action($markets);
+        $lastId = isset($data['ids']) ? null : $markets->last()?->id;
 
         return response()->json(['success' => true, 'data' => $result + [
             'remaining' => isset($data['ids']) ? 0 : $selected()->count(),
+            'next_after_id' => $lastId !== null && $selected()->where('id', '>', $lastId)->exists() ? $lastId : null,
         ]]);
     }
 

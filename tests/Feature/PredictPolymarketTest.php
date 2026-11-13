@@ -469,6 +469,36 @@ it('reports the drafts it could not approve and approves the rest', function () 
         ->assertJsonPath('data.refused', [['id' => $m3, 'code' => 'price_unavailable']]);
 });
 
+it('continues past a refused draft when the next call sends the cursor', function () {
+    bulkMarkets();
+    fakeGamma(test()->gammaEvents, ['b1' => '0.4', 'b2' => '0.6', 'c1' => '0.5', 'c2' => '0.5']);
+    [$m1, $m2, $m3] = PredictMarket::orderBy('id')->pluck('id')->all();
+    $request = ['admin_user' => 'ops', 'filter' => ['source' => 'polymarket'], 'limit' => 1];
+
+    $this->postJson('/api/v1/predict/admin/markets/bulk/publish', $request, $this->adminHeaders)
+        ->assertOk()
+        ->assertJsonPath('data.refused', [['id' => $m1, 'code' => 'price_unavailable']])
+        ->assertJsonPath('data.remaining', 3)
+        ->assertJsonPath('data.next_after_id', $m1);
+
+    $this->postJson('/api/v1/predict/admin/markets/bulk/publish', $request + ['after_id' => $m1], $this->adminHeaders)
+        ->assertOk()
+        ->assertJsonPath('data.done', [$m2])
+        ->assertJsonPath('data.next_after_id', $m2);
+
+    $this->postJson('/api/v1/predict/admin/markets/bulk/publish', $request + ['after_id' => $m2], $this->adminHeaders)
+        ->assertOk()
+        ->assertJsonPath('data.done', [$m3])
+        ->assertJsonPath('data.remaining', 1)
+        ->assertJsonPath('data.next_after_id', null);
+});
+
+it('answers 422 when a cursor is sent with ids', function () {
+    $this->postJson('/api/v1/predict/admin/markets/bulk/publish', ['admin_user' => 'ops', 'ids' => [1], 'after_id' => 1], $this->adminHeaders)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['after_id']);
+});
+
 it('needs ids or a filter, and a reason to reject', function () {
     $this->postJson('/api/v1/predict/admin/markets/bulk/reject', ['admin_user' => 'ops'], $this->adminHeaders)
         ->assertUnprocessable()
