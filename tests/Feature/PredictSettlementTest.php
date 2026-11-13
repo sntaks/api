@@ -15,9 +15,9 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     setUpPredict($this);
-    // The brief's pool: seed KES 1,000 at p = 0.30, cut 13%
+    // Seed KES 1,000 at p = 0.30 (YES 300 / NO 700), cut 20% of the losing side
     $this->market = PredictMarket::factory()->open()->create([
-        'product_id' => $this->product->id, 'seed_minor' => 100000, 'start_probability_bp' => 3000, 'cut_bp' => 1300,
+        'product_id' => $this->product->id, 'seed_minor' => 100000, 'start_probability_bp' => 3000, 'cut_bp' => 2000,
     ]);
 });
 
@@ -31,7 +31,7 @@ function adminAction(object $test, PredictMarket $market, string $action, array 
     return $test->postJson("/api/v1/predict/admin/markets/{$market->id}/{$action}", $payload + ['admin_user' => 'ops@kadi'], $test->adminHeaders);
 }
 
-it('pays the brief\'s worked example when YES wins and books +17 for the house', function () {
+it('pays the winners their stakes plus the losing side less the cut, booking +20 for the house', function () {
     [$a, $b, $c] = [predictPlayer(), predictPlayer(), predictPlayer()];
     placePredictBet($this, $a, $this->market->id, 'yes', 100)->assertCreated();
     placePredictBet($this, $b, $this->market->id, 'no', 500)->assertCreated();
@@ -40,28 +40,45 @@ it('pays the brief\'s worked example when YES wins and books +17 for the house',
     adminAction($this, $this->market, 'close')->assertOk();
     adminAction($this, $this->market, 'resolve', ['result' => 'yes'])->assertOk();
 
+    // YES 600 / NO 1,200: 1 + 1,200 × 0.8 / 600 = 2.60x; user stakes 800 − payouts 780
     $run = PredictSettlement::where('predict_market_id', $this->market->id)->firstOrFail();
-    expect(balanceOf($a))->toBe(10161.0)
-        ->and(balanceOf($c))->toBe(10322.0)
+    expect(balanceOf($a))->toBe(10160.0)
+        ->and(balanceOf($c))->toBe(10320.0)
         ->and(balanceOf($b))->toBe(9500.0)
-        ->and((float) $this->house->fresh()->balance)->toBe(100017.0)
+        ->and((float) $this->house->fresh()->balance)->toBe(100020.0)
         ->and($run->status)->toBe(PredictSettlement::STATUS_DONE)
-        ->and($run->final_multiplier_x100)->toBe(261)
-        ->and($run->house_net_minor)->toBe(1700)
+        ->and($run->final_multiplier_x100)->toBe(260)
+        ->and($run->house_net_minor)->toBe(2000)
         ->and($this->market->fresh()->status)->toBe(PredictMarket::STATUS_SETTLED)
-        ->and(PredictBet::where('customer_id', $a->id)->first()->only(['status', 'payout_minor']))->toBe(['status' => 'won', 'payout_minor' => 26100])
+        ->and(PredictBet::where('customer_id', $a->id)->first()->only(['status', 'payout_minor']))->toBe(['status' => 'won', 'payout_minor' => 26000])
         ->and(PredictBet::where('customer_id', $b->id)->first()->only(['status', 'payout_minor']))->toBe(['status' => 'lost', 'payout_minor' => 0]);
 });
 
-it('loses at most the seed: 500 on YES against the opening pool costs the house 315', function () {
+it('still pays the brief\'s worked example on a market settled under the whole-pool cut', function () {
+    $this->market->update(['cut_bp' => 1300, 'cut_on' => PredictMarket::CUT_ON_POOL]);
+    [$a, $b, $c] = [predictPlayer(), predictPlayer(), predictPlayer()];
+    placePredictBet($this, $a, $this->market->id, 'yes', 100)->assertCreated();
+    placePredictBet($this, $b, $this->market->id, 'no', 500)->assertCreated();
+    placePredictBet($this, $c, $this->market->id, 'yes', 200)->assertCreated();
+
+    adminAction($this, $this->market, 'close')->assertOk();
+    adminAction($this, $this->market, 'resolve', ['result' => 'yes'])->assertOk();
+
+    expect(balanceOf($a))->toBe(10161.0)
+        ->and(balanceOf($c))->toBe(10322.0)
+        ->and(PredictSettlement::where('predict_market_id', $this->market->id)->value('final_multiplier_x100'))->toBe(261);
+});
+
+it('loses at most the seed: 500 on YES against the opening pool costs the house 350', function () {
     $player = predictPlayer();
     placePredictBet($this, $player, $this->market->id, 'yes', 500)->assertCreated();
 
     adminAction($this, $this->market, 'close')->assertOk();
     adminAction($this, $this->market, 'resolve', ['result' => 'yes'])->assertOk();
 
-    expect(balanceOf($player))->toBe(10315.0)
-        ->and(PredictSettlement::where('predict_market_id', $this->market->id)->value('house_net_minor'))->toBe(-31500);
+    // YES 800 / NO 700: 1 + 700 × 0.8 / 800 = 1.70x, so 850 paid
+    expect(balanceOf($player))->toBe(10350.0)
+        ->and(PredictSettlement::where('predict_market_id', $this->market->id)->value('house_net_minor'))->toBe(-35000);
 });
 
 it('withholds winnings tax on the profit at the product rate', function () {
@@ -72,9 +89,9 @@ it('withholds winnings tax on the profit at the product rate', function () {
     adminAction($this, $this->market, 'close')->assertOk();
     adminAction($this, $this->market, 'resolve', ['result' => 'yes'])->assertOk();
 
-    // Opening pool + 100 YES: 1,100 × 0.87 / 400 = 2.39x, so 239 paid, 20% of the 139 profit withheld
-    expect(balanceOf($player))->toBe(10000 - 100 + 239 - 27.8)
-        ->and((float) WinningsTaxCharge::sum('amount'))->toBe(27.8);
+    // Opening pool + 100 YES: 1 + 700 × 0.8 / 400 = 2.40x, so 240 paid, 20% of the 140 profit withheld
+    expect(balanceOf($player))->toBe(10000 - 100 + 240 - 28.0)
+        ->and((float) WinningsTaxCharge::sum('amount'))->toBe(28.0);
 });
 
 it('never pays twice when a settlement run is repeated', function () {

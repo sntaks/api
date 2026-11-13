@@ -33,12 +33,12 @@ it('creates a custom market as a draft with the configured defaults and logs it'
 
     $response->assertCreated()
         ->assertJsonPath('data.status', 'draft')
-        ->assertJsonPath('data.cut', 0.1)
+        ->assertJsonPath('data.cut', 0.2)
         ->assertJsonPath('data.seed', 5000)
         ->assertJsonPath('data.min_stake', 10)
         ->assertJsonPath('data.max_stake', 5000)
         ->assertJsonPath('data.max_payout', 250000)
-        ->assertJsonPath('data.min_multiplier', 1.05)
+        ->assertJsonPath('data.min_multiplier', 1.01)
         ->assertJsonPath('data.product', 'predict_pool');
 
     $log = PredictAuditLog::sole();
@@ -56,7 +56,7 @@ it('rejects invalid custom market terms', function (array $overrides, string $fi
     'probability too high' => [['start_probability' => 0.995], 'start_probability', 'The start probability field must be between 0.01 and 0.99.'],
     'no resolution criteria' => [['resolution_criteria' => ''], 'resolution_criteria', 'The resolution criteria field is required.'],
     'category not licensed' => [['category' => 'crypto'], 'category', 'The selected category is invalid.'],
-    'favourite opens below the minimum' => [['start_probability' => 0.9], 'start_probability', 'With this cut, the favourite would open below the minimum multiplier.'],
+    'favourite opens below the minimum' => [['start_probability' => 0.9, 'min_multiplier' => 1.1], 'start_probability', 'With this cut, the favourite would open below the minimum multiplier.'],
     'min stake above max' => [['min_stake' => 100, 'max_stake' => 50], 'max_stake', 'The max stake must be at least the min stake.'],
 ]);
 
@@ -68,7 +68,8 @@ it('publishes a draft: seeds the pool and opens the wager round', function () {
         ->assertJsonPath('data.market.status', 'open')
         ->assertJsonPath('data.market.pool.seed_yes', 1500)
         ->assertJsonPath('data.market.pool.seed_no', 3500)
-        ->assertJsonPath('data.market.odds.yes_multiplier', 3);
+        // 1 + 3,500 × 0.8 / 1,500 = 2.866…
+        ->assertJsonPath('data.market.odds.yes_multiplier', 2.86);
 
     expect(WagerRound::where('reference', $market->round_reference)->value('status'))->toBe(WagerRound::STATUS_OPEN)
         ->and(PredictAuditLog::where('action', 'publish')->value('admin_user'))->toBe('ops@kadi');
@@ -150,16 +151,25 @@ it('keeps the audit log append-only', function () {
 });
 
 it('reports house P&L for settled and live markets', function () {
-    $settled = PredictMarket::factory()->open()->create(['product_id' => $this->product->id, 'seed_minor' => 100000, 'start_probability_bp' => 3000, 'cut_bp' => 1300]);
-    placePredictBet($this, predictPlayer(), $settled->id, 'yes', 100)->assertCreated();
-    placePredictBet($this, predictPlayer(), $settled->id, 'no', 500)->assertCreated();
-    placePredictBet($this, predictPlayer(), $settled->id, 'yes', 200)->assertCreated();
-    $this->postJson("/api/v1/predict/admin/markets/{$settled->id}/close", ['admin_user' => 'ops'], $this->adminHeaders)->assertOk();
-    $this->postJson("/api/v1/predict/admin/markets/{$settled->id}/resolve", ['admin_user' => 'ops', 'result' => 'yes'], $this->adminHeaders)->assertOk();
+    $settle = function (array $terms): PredictMarket {
+        $market = PredictMarket::factory()->open()->create(['product_id' => $this->product->id, 'seed_minor' => 100000, 'start_probability_bp' => 3000, ...$terms]);
+        placePredictBet($this, predictPlayer(), $market->id, 'yes', 100)->assertCreated();
+        placePredictBet($this, predictPlayer(), $market->id, 'no', 500)->assertCreated();
+        placePredictBet($this, predictPlayer(), $market->id, 'yes', 200)->assertCreated();
+        $this->postJson("/api/v1/predict/admin/markets/{$market->id}/close", ['admin_user' => 'ops'], $this->adminHeaders)->assertOk();
+        $this->postJson("/api/v1/predict/admin/markets/{$market->id}/resolve", ['admin_user' => 'ops', 'result' => 'yes'], $this->adminHeaders)->assertOk();
 
-    $line = collect($this->getJson('/api/v1/predict/admin/reports/markets', $this->adminHeaders)->assertOk()->json('data.items'))->firstWhere('market_id', $settled->id);
+        return $market;
+    };
+    $settled = $settle(['cut_bp' => 2000]);
+    $oldRule = $settle(['cut_bp' => 1300, 'cut_on' => PredictMarket::CUT_ON_POOL]);
 
-    expect($line)->toMatchArray(['stakes' => 800, 'payouts' => 783, 'house_net' => 17, 'cut' => 234, 'seed_result' => -217]);
+    $lines = collect($this->getJson('/api/v1/predict/admin/reports/markets', $this->adminHeaders)->assertOk()->json('data.items'));
+
+    // YES 600 wins at 2.60x; the cut is 20% of the losing NO side (1,200)
+    expect($lines->firstWhere('market_id', $settled->id))->toMatchArray(['stakes' => 800, 'payouts' => 780, 'house_net' => 20, 'cut' => 240, 'seed_result' => -220])
+        // The old rule: 13% of the whole pool (1,800)
+        ->and($lines->firstWhere('market_id', $oldRule->id))->toMatchArray(['stakes' => 800, 'payouts' => 783, 'house_net' => 17, 'cut' => 234, 'seed_result' => -217]);
 });
 
 it('keeps the admin routes away from the Kadi site key', function () {

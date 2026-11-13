@@ -30,6 +30,12 @@ class PredictMarket extends Model
     /** Custom markets priced by an LMSR market maker */
     public const ENGINE_LMSR = 'lmsr';
 
+    /** Pool cut taken from the losing side only: a winning bet always returns more than its stake (from 2026-11-13) */
+    public const CUT_ON_WINNINGS = 'winnings';
+
+    /** Pool cut taken from the whole pool: markets settled before 2026-11-13 keep it, so a correction pays as before */
+    public const CUT_ON_POOL = 'pool';
+
     /** Engines whose bets need a quote (a locked price) */
     public const QUOTED_ENGINES = [self::ENGINE_REFERENCE, self::ENGINE_LMSR];
 
@@ -106,6 +112,7 @@ class PredictMarket extends Model
         'resolution_deadline_at',
         'result',
         'cut_bp',
+        'cut_on',
         'margin_bp',
         'seed_minor',
         'liquidity_minor',
@@ -181,6 +188,14 @@ class PredictMarket extends Model
     public function isImported(): bool
     {
         return $this->source === self::SOURCE_POLYMARKET;
+    }
+
+    /**
+     * A pool market takes its cut from the losing side only (see PoolMath::multiplierX100).
+     */
+    public function cutsFromWinnings(): bool
+    {
+        return $this->cut_on !== self::CUT_ON_POOL;
     }
 
     /**

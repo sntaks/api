@@ -110,16 +110,17 @@ it('does not take bets on a draft', function () {
 });
 
 it('refuses a stake that would push its side below the minimum multiplier and says what still fits', function () {
-    // Seed KES 1,000 at 80% YES, cut 10%: YES opens at 1.125x, so little room is left above 1.05x
+    // Seed KES 100 at 80% YES, cut 20% of the losing side, minimum 1.05x: YES opens at 1.20x and stays at or
+    // above 1.05x up to 320 on the side, so at most 240 more fits
     $market = PredictMarket::factory()->open()->create([
-        'product_id' => $this->product->id, 'seed_minor' => 100000, 'start_probability_bp' => 8000,
+        'product_id' => $this->product->id, 'seed_minor' => 10000, 'start_probability_bp' => 8000, 'min_multiplier_x100' => 105,
     ]);
 
-    $response = placePredictBet($this, $this->player, $market->id, 'yes', 500);
+    $response = placePredictBet($this, $this->player, $market->id, 'yes', 300);
 
     $response->assertUnprocessable()->assertJsonPath('code', 'pool_side_full');
     $maxStake = $response->json('max_stake');
-    expect($maxStake)->toBeGreaterThan(0)->toBeLessThan(500);
+    expect($maxStake)->toBe(240);
 
     placePredictBet($this, $this->player, $market->id, 'yes', $maxStake)->assertCreated();
 });

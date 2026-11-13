@@ -30,12 +30,13 @@ class PredictMarketTerms
             return;
         }
 
-        // The opening odds of both sides must clear the minimum multiplier, or one side starts full
+        // The opening odds of both sides must clear the minimum multiplier, or one side starts full. The cut comes
+        // from the losing side only, so the favourite at share p opens at 1 + (1 − p)(1 − c) / p
         $cut = (float) ($terms['cut'] ?? config('predict.pool.cut'));
         $minMultiplier = (float) ($terms['min_multiplier'] ?? config('predict.pool.min_multiplier'));
         $largestShare = max((float) $terms['start_probability'], 1 - (float) $terms['start_probability']);
 
-        if ((1 - $cut) / $largestShare < $minMultiplier) {
+        if (1 + (1 - $largestShare) * (1 - $cut) / $largestShare < $minMultiplier) {
             $validator->errors()->add('start_probability', 'With this cut, the favourite would open below the minimum multiplier.');
         }
     }
