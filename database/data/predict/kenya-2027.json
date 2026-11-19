@@ -1,0 +1,2443 @@
+{
+  "key_prefix": "ke2027",
+  "timezone": "Africa/Nairobi",
+  "countries": [
+    "KE"
+  ],
+  "verified_at": "2026-11-18",
+  "notes": "Converted from plans/local_markets/Kenya_2027_Prediction_Markets_Revised.xlsx and Kenya_2027_Economic_Markets.xlsx. Times are EAT. Fill start_probability (0.01-0.99) before importing; a market or option set without it is skipped. #81 was excluded in the workbook and is not listed.",
+  "markets": [
+    {
+      "id": 1,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Who will win Kenya's 2027 presidential election?",
+      "resolution_criteria": "Select the individual who is finally and lawfully declared elected President of Kenya from the 2027 general election, taking account of any legally required repeat presidential vote. A listed name wins only when that individual is the winner; choose 'Other' for any unlisted person. Use the IEBC presidential declaration and any binding Supreme Court decision that supersedes it. If the election has been annulled and no legally effective replacement result yet exists, keep settlement pending instead of using an annulled result.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://klrc.go.ke/index.php/constitution-of-kenya/128-chapter-nine-the-executive/130-part-2-the-president-and-deputy-president/306-138-procedure-at-presidential-election",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "william-ruto",
+          "name": "William Ruto",
+          "image_url": "https://upload.wikimedia.org/wikipedia/commons/b/b3/William_Saomei_Ruto_official_portrait.jpg",
+          "image_license": "Direct image/Commons or official; check source credit",
+          "start_probability": 0.51
+        },
+        {
+          "key": "kalonzo-musyoka",
+          "name": "Kalonzo Musyoka",
+          "image_url": "https://upload.wikimedia.org/wikipedia/commons/2/20/KALONZO_MUSYOKA.JPG",
+          "image_license": "Direct image/Commons or official; check source credit",
+          "start_probability": 0.12
+        },
+        {
+          "key": "rigathi-gachagua",
+          "name": "Rigathi Gachagua",
+          "image_url": "https://socialsciences.uonbi.ac.ke/sites/default/files/2022-09/Rigathi_Gachagua_Potrait.jpg",
+          "image_license": "University hosted; verify reuse permission",
+          "start_probability": 0.03
+        },
+        {
+          "key": "fred-matiang-i",
+          "name": "Fred Matiang'i",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.06
+        },
+        {
+          "key": "edwin-sifuna",
+          "name": "Edwin Sifuna",
+          "image_url": "https://pbs.twimg.com/profile_images/1562020504684445697/PbWjxZHX_400x400.jpg",
+          "image_license": "Direct publisher image; confirm reuse permission",
+          "start_probability": 0.2
+        },
+        {
+          "key": "martha-karua",
+          "name": "Martha Karua",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.02
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.06
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Will William Ruto win the 2027 presidential election?",
+      "resolution_criteria": "Answer YES only if William Ruto is the legally elected President resulting from Kenya's 2027 presidential election; otherwise answer NO once another candidate's win is legally effective. Determine the result from the IEBC presidential declaration, including a fresh election if required by law, and any binding Supreme Court orders. A poll lead, party endorsement or provisional tally does not count. If a court sets aside the result and the lawful final outcome is not yet known, settlement remains pending.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://klrc.go.ke/index.php/constitution-of-kenya/128-chapter-nine-the-executive/130-part-2-the-president-and-deputy-president/306-138-procedure-at-presidential-election",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/b/b3/William_Saomei_Ruto_official_portrait.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.52
+    },
+    {
+      "id": 3,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Will the United Opposition presidential candidate defeat William Ruto in the 2027 election?",
+      "resolution_criteria": "Answer YES if the candidate formally nominated as the United Opposition's single joint presidential nominee is the legally declared winner of Kenya's 2027 presidential election and William Ruto is not the winner. Answer NO if Ruto wins, another candidate wins or no single joint United Opposition candidate is formally documented. Identify the joint nominee using the coalition's signed designation and final IEBC nomination records; determine the winner through IEBC and binding court orders. A mere endorsement by one opposition politician is insufficient.",
+      "resolution_source": "ORPP / relevant parties for designation; IEBC for nominees or elected seats; courts for final results",
+      "references": [
+        "https://klrc.go.ke/index.php/constitution-of-kenya/128-chapter-nine-the-executive/130-part-2-the-president-and-deputy-president/306-138-procedure-at-presidential-election",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.35
+    },
+    {
+      "id": 4,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Will the 2027 presidential election go to a second round?",
+      "resolution_criteria": "Answer YES if IEBC formally determines that a second (fresh) presidential election is required under Article 138(5) because no candidate satisfied the constitutional first-round winning requirements. Answer NO if the presidential election ends without such a constitutionally required second round. Evidence is an official IEBC decision/notice and final presidential results, read together with Article 138. Do not confuse a court-ordered repetition of the entire election after annulment with an Article 138 runoff; a legal challenge alone is not a second round.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://klrc.go.ke/index.php/constitution-of-kenya/128-chapter-nine-the-executive/130-part-2-the-president-and-deputy-president/306-138-procedure-at-presidential-election",
+        "https://klrc.go.ke/index.php/constitution-of-kenya/128-chapter-nine-the-executive/130-part-2-the-president-and-deputy-president/306-138-procedure-at-presidential-election"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.12
+    },
+    {
+      "id": 5,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "How many presidential candidates will appear on the 2027 ballot?",
+      "resolution_criteria": "Count the distinct presidential candidates on IEBC's final official list of validly nominated persons who actually appear on the 10 August 2027 presidential ballot. Match the count to 2, 3, 4, 5, or '6 or more'; do not count running mates, disqualified nominees, withdrawn names removed from the ballot, or political parties. Consult IEBC gazette/nomination notices and the final ballot record. If the polling date changes by an official order, apply the same test to the lawful general-election presidential ballot.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://klrc.go.ke/index.php/constitution-of-kenya/128-chapter-nine-the-executive/130-part-2-the-president-and-deputy-president/306-138-procedure-at-presidential-election",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "2",
+          "name": "2",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "3",
+          "name": "3",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.12
+        },
+        {
+          "key": "4",
+          "name": "4",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.25
+        },
+        {
+          "key": "5",
+          "name": "5",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.22
+        },
+        {
+          "key": "6-or-more",
+          "name": "6 or more",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.36
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Will the 2027 presidential election be challenged at the Supreme Court?",
+      "resolution_criteria": "Answer YES only if a petition formally challenging the validity of the 2027 presidential election is filed in the Supreme Court of Kenya within the time permitted by Article 140(1), measured from IEBC's declaration of the President-elect. Answer NO if no such petition is officially filed within that statutory period. Use the Supreme Court registry/case record, not media predictions, threatened lawsuits, lower-court cases, or an election petition that was merely drafted. Filing counts even if the petition is later dismissed.",
+      "resolution_source": "Supreme Court of Kenya case registry (Article 140)",
+      "references": [
+        "https://klrc.go.ke/index.php/constitution-of-kenya/128-chapter-nine-the-executive/130-part-2-the-president-and-deputy-president/308-140-questions-as-to-validity-of-presidential-election",
+        "https://www.judiciary.go.ke/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.85
+    },
+    {
+      "id": 7,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Who will be the United Opposition's joint presidential candidate?",
+      "resolution_criteria": "Determine the one presidential aspirant formally selected and jointly endorsed as the 2027 nominee of the coalition publicly identifying itself as the United Opposition. Require an attributable, signed or officially issued collective decision by its participating parties, corroborated by IEBC nomination when applicable. Select the named option if listed, 'Other' for another person, or 'No joint candidate' if no single joint endorsement exists before the 2027 general election. Separately announced candidates from different opposition parties do not constitute one jointly selected nominee.",
+      "resolution_source": "ORPP / relevant parties for designation; IEBC for nominees or elected seats; courts for final results",
+      "references": [
+        "https://orpp.or.ke/mergers_coalitions_coalition_political_parties/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "kalonzo-musyoka",
+          "name": "Kalonzo Musyoka",
+          "image_url": "https://upload.wikimedia.org/wikipedia/commons/2/20/KALONZO_MUSYOKA.JPG",
+          "image_license": "Direct image/Commons or official; check source credit",
+          "start_probability": 0.29
+        },
+        {
+          "key": "rigathi-gachagua",
+          "name": "Rigathi Gachagua",
+          "image_url": "https://socialsciences.uonbi.ac.ke/sites/default/files/2022-09/Rigathi_Gachagua_Potrait.jpg",
+          "image_license": "University hosted; verify reuse permission",
+          "start_probability": 0.05
+        },
+        {
+          "key": "fred-matiang-i",
+          "name": "Fred Matiang'i",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.1
+        },
+        {
+          "key": "edwin-sifuna",
+          "name": "Edwin Sifuna",
+          "image_url": "https://pbs.twimg.com/profile_images/1562020504684445697/PbWjxZHX_400x400.jpg",
+          "image_license": "Direct publisher image; confirm reuse permission",
+          "start_probability": 0.3
+        },
+        {
+          "key": "martha-karua",
+          "name": "Martha Karua",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.02
+        },
+        {
+          "key": "eugene-wamalwa",
+          "name": "Eugene Wamalwa",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.02
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.02
+        },
+        {
+          "key": "no-joint-candidate",
+          "name": "No joint candidate",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.2
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Will the United Opposition announce its first joint presidential candidate by 31 December 2026?",
+      "resolution_criteria": "Answer YES if the United Opposition, through an official collective announcement by its constituent parties or authorized joint organ, publicly names its first single joint presidential candidate no later than 23:59 EAT on 31 December 2026. Answer NO if no qualifying collective announcement was made by then. Check original time-stamped releases, signed minutes, verified official channels and corroborating contemporaneous reporting. An individual politician's personal declaration, an unconfirmed rumour or an announcement first made in 2027 does not satisfy the 2026 deadline.",
+      "resolution_source": "ORPP / relevant parties for designation; IEBC for nominees or elected seats; courts for final results",
+      "references": [
+        "https://orpp.or.ke/mergers_coalitions_coalition_political_parties/",
+        "https://www.iebc.or.ke/uploads/resources/tpFfOlBLRh.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2026-12-31 23:59",
+      "resolution_deadline_at": "2027-01-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.07
+    },
+    {
+      "id": 9,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Will the United Opposition announce its first joint presidential candidate during 2027?",
+      "resolution_criteria": "Answer YES only if the United Opposition's first formally jointly endorsed presidential candidate is publicly announced on a date from 1 January through 31 December 2027 inclusive (EAT). Answer NO if the first valid joint announcement was in 2026 or earlier, or none occurred in 2027. Require an attributable collective statement by participating parties or their authorized joint organ; media speculation and unilateral candidate declarations do not qualify. A 2027 repetition of an earlier valid announcement is not the first announcement.",
+      "resolution_source": "ORPP / relevant parties for designation; IEBC for nominees or elected seats; courts for final results",
+      "references": [
+        "https://orpp.or.ke/mergers_coalitions_coalition_political_parties/",
+        "https://www.iebc.or.ke/uploads/resources/tpFfOlBLRh.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2028-01-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.7
+    },
+    {
+      "id": 10,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Will the United Opposition remain united until election day?",
+      "resolution_criteria": "Answer YES if the parties that jointly formed the identifiable United Opposition presidential alliance remain signatories to its common presidential endorsement through the start of polling on 10 August 2027 and none publicly withdraws to back a competing presidential nominee. Answer NO if any original constituent party formally withdraws, repudiates the joint nominee or backs a competing presidential candidate before polling. Use signed coalition records, official party decisions and dated joint statements. If no identifiable joint alliance forms, answer NO rather than treating absence of conflict as unity.",
+      "resolution_source": "ORPP / relevant parties for designation; IEBC for nominees or elected seats; courts for final results",
+      "references": [
+        "https://orpp.or.ke/mergers_coalitions_coalition_political_parties/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.35
+    },
+    {
+      "id": 11,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Will more than one United Opposition leader contest the presidency in 2027?",
+      "resolution_criteria": "Answer YES if at least two distinct leaders of parties publicly belonging to the 2027 United Opposition alliance are each on IEBC's final presidential ballot as separate presidential candidates. Answer NO if zero or one qualifying leader is on that ballot. Identify qualifying leaders from the parties' official leadership records and coalition membership records, rather than from media labels; identify actual candidacies from IEBC final nominations, not expressions of interest. A presidential running mate is not a separate presidential candidate.",
+      "resolution_source": "ORPP / relevant parties for designation; IEBC for nominees or elected seats; courts for final results",
+      "references": [
+        "https://orpp.or.ke/mergers_coalitions_coalition_political_parties/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.4
+    },
+    {
+      "id": 12,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Will the United Opposition contest the 2027 presidential election under the Ukombozi coalition or a new coalition?",
+      "resolution_criteria": "Select 'Ukombozi' if the 2027 United Opposition fields its single joint presidential candidate under a coalition formally identified in relevant ORPP/IEBC documents as Ukombozi. Select 'New coalition' if the candidate is jointly fielded under a different formally constituted coalition. Select 'No joint coalition' if no joint coalition officially fields one presidential candidate. Decide from ORPP coalition agreements and the legally effective IEBC nomination records, not from campaign nicknames or media shorthand. A changed public slogan without a changed formal coalition registration does not create a new coalition.",
+      "resolution_source": "ORPP / relevant parties for designation; IEBC for nominees or elected seats; courts for final results",
+      "references": [
+        "https://orpp.or.ke/mergers_coalitions_coalition_political_parties/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "ukombozi",
+          "name": "Ukombozi",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.25
+        },
+        {
+          "key": "new-coalition",
+          "name": "New coalition",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.5
+        },
+        {
+          "key": "no-joint-coalition",
+          "name": "No joint coalition",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.25
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Who will be the United Opposition's presidential running mate?",
+      "resolution_criteria": "Identify the person formally nominated on the IEBC presidential ticket as running mate to the United Opposition's single jointly endorsed presidential nominee for the 2027 election. Select the listed name, 'Other' if the person is unlisted, or 'No joint candidate' if the opposition has not produced one formal joint presidential nomination. Use the actual IEBC presidential/running-mate nomination and supporting coalition endorsement. An informal favourite, possible pick or running mate of a separate opposition candidate does not qualify.",
+      "resolution_source": "ORPP / relevant parties for designation; IEBC for nominees or elected seats; courts for final results",
+      "references": [
+        "https://orpp.or.ke/mergers_coalitions_coalition_political_parties/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "rigathi-gachagua",
+          "name": "Rigathi Gachagua",
+          "image_url": "https://socialsciences.uonbi.ac.ke/sites/default/files/2022-09/Rigathi_Gachagua_Potrait.jpg",
+          "image_license": "University hosted; verify reuse permission",
+          "start_probability": 0.15
+        },
+        {
+          "key": "edwin-sifuna",
+          "name": "Edwin Sifuna",
+          "image_url": "https://pbs.twimg.com/profile_images/1562020504684445697/PbWjxZHX_400x400.jpg",
+          "image_license": "Direct publisher image; confirm reuse permission",
+          "start_probability": 0.15
+        },
+        {
+          "key": "martha-karua",
+          "name": "Martha Karua",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "kalonzo-musyoka",
+          "name": "Kalonzo Musyoka",
+          "image_url": "https://upload.wikimedia.org/wikipedia/commons/2/20/KALONZO_MUSYOKA.JPG",
+          "image_license": "Direct image/Commons or official; check source credit",
+          "start_probability": 0.2
+        },
+        {
+          "key": "fred-matiang-i",
+          "name": "Fred Matiang'i",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.15
+        },
+        {
+          "key": "eugene-wamalwa",
+          "name": "Eugene Wamalwa",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "no-joint-candidate",
+          "name": "No joint candidate",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.2
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Who will be William Ruto's running mate in 2027?",
+      "resolution_criteria": "Identify the person formally listed by IEBC as William Ruto's deputy-presidential running mate on his legally accepted 2027 presidential nomination. Select that person if named, or 'Other' for any unlisted nominee. Select 'Ruto does not contest' if Ruto does not appear on IEBC's final presidential ballot. Use the final nomination documents and amendments legally accepted before polling; speeches about possible running mates do not decide the market. If a formally substituted running mate is accepted by IEBC, the last legally effective nomination controls.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/b/b3/William_Saomei_Ruto_official_portrait.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "kithure-kindiki",
+          "name": "Kithure Kindiki",
+          "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Kithure_Kindiki.jpg",
+          "image_license": "Direct image/Commons or official; check source credit",
+          "start_probability": 0.49
+        },
+        {
+          "key": "anne-waiguru",
+          "name": "Anne Waiguru",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.03
+        },
+        {
+          "key": "wycliffe-oparanya",
+          "name": "Wycliffe Oparanya",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.06
+        },
+        {
+          "key": "musalia-mudavadi",
+          "name": "Musalia Mudavadi",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "moses-wetang-ula",
+          "name": "Moses Wetang'ula",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.02
+        },
+        {
+          "key": "gladys-wanga",
+          "name": "Gladys Wanga",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.06
+        },
+        {
+          "key": "hassan-joho",
+          "name": "Hassan Joho",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.07
+        },
+        {
+          "key": "oburu-oginga",
+          "name": "Oburu Oginga",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "mwangi-kiunjuri",
+          "name": "Mwangi Kiunjuri",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.02
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.1
+        },
+        {
+          "key": "ruto-does-not-contest",
+          "name": "Ruto does not contest",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Will Kenya have a female Deputy President after the 2027 election?",
+      "resolution_criteria": "Answer YES if the first person constitutionally sworn into the office of Deputy President as part of the presidential administration produced by the 2027 general election is a woman; answer NO if that person is not a woman. Identify the officeholder from the official swearing-in record, gazette and judicial decisions where applicable. A woman merely appearing as a running mate, a woman nominated for a different office, or an interim appointment before the post-election administration is sworn in does not qualify.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.08
+    },
+    {
+      "id": 16,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Will William Ruto announce his 2027 presidential running mate by 31 December 2026?",
+      "resolution_criteria": "Answer YES if William Ruto or an officially authorized campaign/party channel publicly and unequivocally identifies the person selected as his 2027 presidential running mate on or before 31 December 2026 at 23:59 EAT. Answer NO if the first qualifying selection announcement occurs later or never. Evidence must name the person and the role, with a reliable dated recording, release or statement. Discussions, shortlists, unconfirmed press reports and an announcement made only by a prospective running mate are insufficient.",
+      "resolution_source": "Dated official candidate/coalition announcements; IEBC/ORPP for corroboration",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.iebc.or.ke/uploads/resources/tpFfOlBLRh.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/b/b3/William_Saomei_Ruto_official_portrait.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2026-12-31 23:59",
+      "resolution_deadline_at": "2027-01-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.05
+    },
+    {
+      "id": 17,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Will William Ruto announce his 2027 presidential running mate in 2027?",
+      "resolution_criteria": "Answer YES if the first explicit, authorized public announcement by William Ruto or his campaign identifying his chosen 2027 presidential running mate occurs between 1 January and 31 December 2027 inclusive. Answer NO if the first qualifying announcement was made in 2026 or earlier, or none is made during 2027. Use dated original speeches, official releases or verified campaign announcements. A routine reaffirmation in 2027 of a running mate already officially named in 2026 is not a first announcement.",
+      "resolution_source": "Dated official candidate/coalition announcements; IEBC/ORPP for corroboration",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.iebc.or.ke/uploads/resources/tpFfOlBLRh.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/b/b3/William_Saomei_Ruto_official_portrait.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2028-01-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.88
+    },
+    {
+      "id": 18,
+      "category": "politics",
+      "group": "Presidency / opposition",
+      "question": "Will the United Opposition announce its presidential candidate and running mate at the same event?",
+      "resolution_criteria": "Answer YES only if the United Opposition's first formal public naming of its single joint 2027 presidential nominee and its first formal public naming of that nominee's chosen running mate take place during one and the same identifiable event. Answer NO if the people are first named at different events, or if no joint presidential ticket is formally announced. Check primary event footage, dated joint releases and IEBC nominations. Sharing a calendar day is insufficient if the announcements were at separate events.",
+      "resolution_source": "ORPP / relevant parties for designation; IEBC for nominees or elected seats; courts for final results",
+      "references": [
+        "https://orpp.or.ke/mergers_coalitions_coalition_political_parties/",
+        "https://www.iebc.or.ke/uploads/resources/tpFfOlBLRh.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.35
+    },
+    {
+      "id": 19,
+      "category": "politics",
+      "group": "National Assembly / Senate",
+      "question": "Which political party will win the most National Assembly seats in 2027?",
+      "resolution_criteria": "Count every elected member of the 2027 National Assembly by the party shown on their successful election ticket, covering 290 constituency MPs and 47 elected county Woman Representatives (337 elected seats total). Exclude 12 party-list nominees and the Speaker. The party with the highest combined count wins; 'Other' covers any unlisted party. Use IEBC final seat declarations and legally effective judgments. If two parties finish tied for first with no tie option offered, do not arbitrarily award a winner; flag for an agreed tie-settlement procedure.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Interior_of_Kenya_National_Assembly.jpg/1024px-Interior_of_Kenya_National_Assembly.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "uda",
+          "name": "UDA",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.6
+        },
+        {
+          "key": "odm",
+          "name": "ODM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.12
+        },
+        {
+          "key": "wiper",
+          "name": "Wiper",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.04
+        },
+        {
+          "key": "dcp",
+          "name": "DCP",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.1
+        },
+        {
+          "key": "jubilee",
+          "name": "Jubilee",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.03
+        },
+        {
+          "key": "lmm",
+          "name": "LMM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.06
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "category": "politics",
+      "group": "National Assembly / Senate",
+      "question": "Will the United Opposition secure a majority in the National Assembly in 2027?",
+      "resolution_criteria": "Answer YES if the parties formally documented as members of the United Opposition jointly hold at least 175 of the 349 National Assembly member positions (290 constituency, 47 county Woman Representative and 12 nominated) at the first post-2027-election sitting; otherwise answer NO. Allocate elected seats from IEBC declarations and nominated seats from official gazettes. Count a member only with the coalition to which their party formally belongs at that sitting; do not assume all anti-government MPs are alliance members. A Speaker is not an additional voting member.",
+      "resolution_source": "ORPP / relevant parties for designation; IEBC for nominees or elected seats; courts for final results",
+      "references": [
+        "https://orpp.or.ke/mergers_coalitions_coalition_political_parties/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Interior_of_Kenya_National_Assembly.jpg/1024px-Interior_of_Kenya_National_Assembly.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.25
+    },
+    {
+      "id": 21,
+      "category": "politics",
+      "group": "National Assembly / Senate",
+      "question": "Will LMM win more National Assembly seats than ODM in 2027?",
+      "resolution_criteria": "Answer YES only if the number of directly elected 2027 National Assembly seats won on an LMM party ticket is strictly greater than the number won on an ODM ticket; otherwise answer NO, including a tie. Count the 290 constituency seats and 47 county Woman Representative seats, excluding nominated members. Use IEBC final declarations and effective electoral court orders. Attribute each winner to the official party printed on the winning ticket; neither allied parties nor independent winners are added to a party's tally.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Interior_of_Kenya_National_Assembly.jpg/1024px-Interior_of_Kenya_National_Assembly.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.2
+    },
+    {
+      "id": 22,
+      "category": "politics",
+      "group": "National Assembly / Senate",
+      "question": "Will 15 or more independent candidates win at least 15 elected National Assembly seats in 2027?",
+      "resolution_criteria": "Answer YES if at least 15 different candidates officially standing as independents are declared winners of at least 15 constituency seats in the 2027 National Assembly election; otherwise answer NO. Count only the 290 directly elected constituency MP seats, not county Woman Representative positions, nominated MPs or later party defections. Use the IEBC declaration and gazetted results, amended for any final judicial determination. Each winning constituency and independent officeholder counts once; a candidate merely seeking election as an independent does not count.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Interior_of_Kenya_National_Assembly.jpg/1024px-Interior_of_Kenya_National_Assembly.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.35
+    },
+    {
+      "id": 23,
+      "category": "politics",
+      "group": "National Assembly / Senate",
+      "question": "Will any single political party win more than half of the 290 constituency seats in 2027?",
+      "resolution_criteria": "Answer YES if one and the same registered political party wins at least 146 of the 290 constituency MP seats at Kenya's 2027 general election. Answer NO if every individual party wins 145 or fewer. Count only IEBC-declared constituency winners by their ballot party, excluding the 47 county Woman Representatives, 12 nominated members and independent winners. Do not aggregate multiple allied parties into one party. Include legally effective election-petition corrections to the declared constituency results.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Interior_of_Kenya_National_Assembly.jpg/1024px-Interior_of_Kenya_National_Assembly.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.15
+    },
+    {
+      "id": 24,
+      "category": "politics",
+      "group": "National Assembly / Senate",
+      "question": "Which political party will win the most elected Senate seats in 2027?",
+      "resolution_criteria": "Count the 47 senators directly elected by counties at the 2027 general election. Attribute each winner to the party named on their IEBC nomination/election declaration; exclude the 20 nominated/special Senate seats. The party winning the greatest number of those 47 elected seats is the result; use 'Other' for an unlisted party. Official IEBC declarations and legally effective court decisions govern. In a first-place tie, the provided options lack 'Tie', so settlement should be held for a documented tie rule rather than selecting a party arbitrarily.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://tukio.co.ke/wp-content/uploads/2024/10/Senate1.jpg",
+      "image_license": "Direct publisher image; confirm reuse permission",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "uda",
+          "name": "UDA",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.55
+        },
+        {
+          "key": "odm",
+          "name": "ODM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.12
+        },
+        {
+          "key": "wiper",
+          "name": "Wiper",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "dcp",
+          "name": "DCP",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.12
+        },
+        {
+          "key": "jubilee",
+          "name": "Jubilee",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.03
+        },
+        {
+          "key": "lmm",
+          "name": "LMM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.06
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.07
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "category": "politics",
+      "group": "National Assembly / Senate",
+      "question": "Will the United Opposition win a majority of the 47 elected Senate seats in 2027?",
+      "resolution_criteria": "Answer YES if candidates elected to the 47 county Senate seats on tickets of parties formally comprising the United Opposition win 24 or more elected seats in 2027; otherwise answer NO. Identify alliance membership from official coalition documents effective on election day, not a subjective label 'opposition'. Exclude 16 nominated women senators and four other special-seat nominees. Use IEBC Senate election declarations and legally final court orders; a Senator defecting after the election does not retroactively change the elected-ticket count.",
+      "resolution_source": "ORPP / relevant parties for designation; IEBC for nominees or elected seats; courts for final results",
+      "references": [
+        "https://orpp.or.ke/mergers_coalitions_coalition_political_parties/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://tukio.co.ke/wp-content/uploads/2024/10/Senate1.jpg",
+      "image_license": "Direct publisher image; confirm reuse permission",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.3
+    },
+    {
+      "id": 26,
+      "category": "politics",
+      "group": "National Assembly / Senate",
+      "question": "Which political coalition will control the Senate after the 2027 election?",
+      "resolution_criteria": "Determine which formal political coalition, if any, holds at least 34 of the Senate's 67 member positions at the first Senate sitting following the 2027 election (47 elected county senators and 20 nominated/special-seat senators; exclude the Speaker). Select 'Kenya Kwanza', 'United Opposition' or 'New coalition' according to the actual registered membership agreements at that sitting. Select 'No coalition majority' if none meets 34. Use IEBC results, gazetted nominations and ORPP coalition records. Do not treat an informal voting arrangement as a registered coalition.",
+      "resolution_source": "ORPP / relevant parties for designation; IEBC for nominees or elected seats; courts for final results",
+      "references": [
+        "https://orpp.or.ke/mergers_coalitions_coalition_political_parties/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://tukio.co.ke/wp-content/uploads/2024/10/Senate1.jpg",
+      "image_license": "Direct publisher image; confirm reuse permission",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "kenya-kwanza",
+          "name": "Kenya Kwanza",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.4
+        },
+        {
+          "key": "united-opposition",
+          "name": "United Opposition",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.25
+        },
+        {
+          "key": "new-coalition",
+          "name": "New coalition",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.15
+        },
+        {
+          "key": "no-coalition-majority",
+          "name": "No coalition majority",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.2
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "category": "politics",
+      "group": "National Assembly / Senate",
+      "question": "Will independent candidates win at least 5 elected Senate seats or more in 2027?",
+      "resolution_criteria": "Answer YES if at least five of the 47 county senators elected in 2027 stood and won as formally registered independent candidates; otherwise answer NO. IEBC's final county Senate winner declarations and nomination records determine independence and the count. Do not include senators nominated from party lists, independent aspirants who lose, or members who leave parties only after the election. Apply final effective court-ordered revisions to a seat's declared winner before closing settlement.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://tukio.co.ke/wp-content/uploads/2024/10/Senate1.jpg",
+      "image_license": "Direct publisher image; confirm reuse permission",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.08
+    },
+    {
+      "id": 28,
+      "category": "politics",
+      "group": "Nationwide party performance",
+      "question": "Which political party will win the most elected County Assembly seats (MCAs) in 2027?",
+      "resolution_criteria": "Across Kenya's 1,450 directly elected County Assembly ward seats in the 2027 general election, count winners by their ballot political party using final IEBC declarations. The registered party with the highest elected MCA seat total wins; 'Other' covers any unlisted party. Exclude nominated MCAs and independent MCA winners from party totals. Use legally operative election results after any successful petitions. A tie for the largest count cannot be forced into a single listed-party option and needs a pre-published tie rule.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "uda",
+          "name": "UDA",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.58
+        },
+        {
+          "key": "odm",
+          "name": "ODM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.14
+        },
+        {
+          "key": "wiper",
+          "name": "Wiper",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.04
+        },
+        {
+          "key": "dcp",
+          "name": "DCP",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.11
+        },
+        {
+          "key": "jubilee",
+          "name": "Jubilee",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.03
+        },
+        {
+          "key": "lmm",
+          "name": "LMM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "category": "politics",
+      "group": "Nationwide party performance",
+      "question": "Which political party will win the most elected Member of parliament seats (MPs) in 2027?",
+      "resolution_criteria": "Count the 290 directly elected constituency Members of the National Assembly (commonly called constituency MPs) in the 2027 general election, by the registered party on each winning ballot. Do not count the 47 county Woman Representatives, elected senators, the 12 nominated National Assembly members or independents toward any party. The party with the highest constituency-MP tally wins, with 'Other' for an unlisted party. Resolve with IEBC results and any legally effective election petitions; a first-place tie requires an agreed tie procedure.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Interior_of_Kenya_National_Assembly.jpg/1024px-Interior_of_Kenya_National_Assembly.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "uda",
+          "name": "UDA",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.6
+        },
+        {
+          "key": "odm",
+          "name": "ODM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.12
+        },
+        {
+          "key": "wiper",
+          "name": "Wiper",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.04
+        },
+        {
+          "key": "dcp",
+          "name": "DCP",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.1
+        },
+        {
+          "key": "jubilee",
+          "name": "Jubilee",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.03
+        },
+        {
+          "key": "lmm",
+          "name": "LMM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.06
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "category": "politics",
+      "group": "Nationwide party performance",
+      "question": "Which political party will win the most County Woman Representative seats in 2027?",
+      "resolution_criteria": "Count only the 47 county Woman Representative seats directly elected to the National Assembly in 2027. Attribute each declared winner to the political party on her successful IEBC ticket; nominated seats and constituency MPs do not count. Choose the listed party with the highest total or 'Other' for an unlisted party. Use final IEBC county winner declarations and effective court judgments. If two or more parties are tied for the most Woman Representative seats, the available options do not provide a tie choice and settlement must await an agreed tie rule.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Interior_of_Kenya_National_Assembly.jpg/1024px-Interior_of_Kenya_National_Assembly.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "uda",
+          "name": "UDA",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.55
+        },
+        {
+          "key": "odm",
+          "name": "ODM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.13
+        },
+        {
+          "key": "wiper",
+          "name": "Wiper",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "dcp",
+          "name": "DCP",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.1
+        },
+        {
+          "key": "jubilee",
+          "name": "Jubilee",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.03
+        },
+        {
+          "key": "lmm",
+          "name": "LMM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.06
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.08
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "category": "politics",
+      "group": "Nationwide party performance",
+      "question": "Which political party will have the most elected governors after the 2027 election?",
+      "resolution_criteria": "Count the winners of the 47 county Governor races at Kenya's 2027 general election. Attribute each successful governor to the registered party shown on the winning IEBC nomination; an independent governor is not added to any party. The party winning the largest number of governorships wins; use 'Other' for an unlisted party. Apply legally effective court orders or ordered repeat results where a declaration changes. A first-place tie across parties requires an explicitly documented tie settlement rule.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "uda",
+          "name": "UDA",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.55
+        },
+        {
+          "key": "odm",
+          "name": "ODM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.15
+        },
+        {
+          "key": "wiper",
+          "name": "Wiper",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "dcp",
+          "name": "DCP",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.1
+        },
+        {
+          "key": "jubilee",
+          "name": "Jubilee",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.03
+        },
+        {
+          "key": "lmm",
+          "name": "LMM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.07
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "category": "politics",
+      "group": "Nationwide party performance",
+      "question": "Which political party will have the most elected senetors after the 2027 election?",
+      "resolution_criteria": "For all 47 counties, count the persons elected as senators in the 2027 general election and group them by the political party under which each won. Exclude the 20 nominated/special-seat senators, and do not allocate independents to political parties. Select the party with the largest directly elected Senate delegation, or 'Other' if unlisted. Use signed IEBC results, gazette notices and any final operative court orders. If multiple parties tie for first, the provided choices do not name a tie and settlement must use an agreed tie procedure.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://tukio.co.ke/wp-content/uploads/2024/10/Senate1.jpg",
+      "image_license": "Direct publisher image; confirm reuse permission",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "uda",
+          "name": "UDA",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.55
+        },
+        {
+          "key": "odm",
+          "name": "ODM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.12
+        },
+        {
+          "key": "wiper",
+          "name": "Wiper",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "dcp",
+          "name": "DCP",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.12
+        },
+        {
+          "key": "jubilee",
+          "name": "Jubilee",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.03
+        },
+        {
+          "key": "lmm",
+          "name": "LMM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.06
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.07
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Who will win the Nairobi Governor election in 2027?",
+      "resolution_criteria": "Select the person finally and legally elected Governor of Nairobi City County at the 2027 general election. Choose the exact listed candidate if that person wins or 'Other' if a different person wins. Use IEBC's Nairobi governor result declaration, gazette notice and any binding election-petition order or repeat-election outcome. Candidate registration, opinion polls, concession speeches and early tally leads are not enough to settle. If a result is annulled before a replacement becomes legally final, settlement remains pending.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nairobi_City_Skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "johnson-sakaja",
+          "name": "Johnson Sakaja",
+          "image_url": "https://upload.wikimedia.org/wikipedia/commons/1/13/Sakaja_in_2024.jpg",
+          "image_license": "Direct image/Commons or official; check source credit",
+          "start_probability": 0.2
+        },
+        {
+          "key": "babu-owino",
+          "name": "Babu Owino",
+          "image_url": "https://businesstimes.co.ke/wp-content/uploads/2025/10/Babu-Owino-pic.png",
+          "image_license": "Direct publisher image; confirm reuse permission",
+          "start_probability": 0.25
+        },
+        {
+          "key": "james-gakuya",
+          "name": "James Gakuya",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.12
+        },
+        {
+          "key": "ronald-karauri",
+          "name": "Ronald Karauri",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "george-aladwa",
+          "name": "George Aladwa",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.06
+        },
+        {
+          "key": "agnes-kagure",
+          "name": "Agnes Kagure",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.07
+        },
+        {
+          "key": "margaret-wanjiru",
+          "name": "Margaret Wanjiru",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.04
+        },
+        {
+          "key": "tony-gachoka",
+          "name": "Tony Gachoka",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.02
+        },
+        {
+          "key": "geoffrey-ruku",
+          "name": "Geoffrey Ruku",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.02
+        },
+        {
+          "key": "geoffrey-mosiria",
+          "name": "Geoffrey Mosiria",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.07
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.1
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Will Johnson Sakaja be re-elected Nairobi Governor in 2027?",
+      "resolution_criteria": "Answer YES if Johnson Sakaja is finally and legally elected Governor of Nairobi City County in the 2027 election; otherwise answer NO after a different candidate's election is legally effective. Verify the outcome from the IEBC Nairobi governor result and any controlling court ruling or rerun. The word 're-elected' refers to his return to the governorship through the 2027 contest, not the party ticket under which he seeks it. Neither nomination nor a polling lead is sufficient.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/1/13/Sakaja_in_2024.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.2
+    },
+    {
+      "id": 36,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Will Babu Owino be elected Nairobi Governor in 2027?",
+      "resolution_criteria": "Answer YES if Babu Owino is the final lawful winner of the Nairobi City County Governor election in 2027; otherwise answer NO when a different candidate's winning result is legally effective. Use the official IEBC county governor declaration and any final judicial order affecting that result. Babu Owino merely entering the race, receiving endorsements or winning a party primary does not qualify. A by-election or appointment to another office is not a gubernatorial election win.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://businesstimes.co.ke/wp-content/uploads/2025/10/Babu-Owino-pic.png",
+      "image_license": "Direct publisher image; confirm reuse permission",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.25
+    },
+    {
+      "id": 37,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Will James Gakuya be elected Nairobi Governor in 2027?",
+      "resolution_criteria": "Answer YES only if James Gakuya is legally elected Nairobi City County Governor through the 2027 general election or its legally required replacement election. Answer NO if another candidate is the final winner. Check the Nairobi governor IEBC declaration/gazette and any binding court decisions. An expression of interest, party nomination, coalition endorsement or lead in an unofficial tally does not meet the standard for election. Where the announced result is annulled, wait for the lawful replacement result.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nairobi_City_Skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.12
+    },
+    {
+      "id": 38,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Will Geoffrey Mosiria be elected Nairobi Governor in 2027?",
+      "resolution_criteria": "Answer YES only if Geoffrey Mosiria becomes the legally declared winner of the Nairobi City County Governor election arising from Kenya's 2027 general election. Answer NO if a different person wins. Determine the outcome from IEBC's Nairobi gubernatorial final declaration and any superseding court determination. A campaign announcement, popular online poll, party primary or deputy-governor nomination does not count as winning the county governorship. Keep an annulled result unsettled pending its lawful replacement.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nairobi_City_Skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.07
+    },
+    {
+      "id": 39,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Which political party will win the Nairobi Governor seat in 2027?",
+      "resolution_criteria": "Identify the registered political party on the legally successful Nairobi City County governor's 2027 IEBC election ticket, using the final Nairobi governor declaration. Select the party if named, or 'Other' for an unlisted party or an independent winner (no independent option was provided). Do not use the winning politician's earlier affiliation, endorsements or the party of a running mate. Legally accepted ticket changes before polling control. If a court overturns the gubernatorial result, use the eventual legally effective winning ticket.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nairobi_City_Skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "uda",
+          "name": "UDA",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.18
+        },
+        {
+          "key": "odm",
+          "name": "ODM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.22
+        },
+        {
+          "key": "dcp",
+          "name": "DCP",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.15
+        },
+        {
+          "key": "wiper",
+          "name": "Wiper",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.04
+        },
+        {
+          "key": "jubilee",
+          "name": "Jubilee",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "lmm",
+          "name": "LMM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.15
+        },
+        {
+          "key": "the-mwananchi-party",
+          "name": "The Mwananchi Party",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.08
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.13
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Who will win the Nairobi Senate seat in 2027?",
+      "resolution_criteria": "Select the person legally elected to the single Nairobi City County Senate seat in the 2027 general election. Use IEBC's Nairobi Senator declaration and any legally operative election-petition decisions or repeat-election result. Choose the listed name if that person is the winner; 'Other' includes every unlisted candidate, including an incumbent who was not named as an option. Opinion polls, online popularity votes, party nominations and informal concessions do not decide the election. If an annulment leaves no lawful winner, delay settlement.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nairobi_City_Skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "winnie-odinga",
+          "name": "Winnie Odinga",
+          "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/d1/Winnie_Odinga.jpg",
+          "image_license": "Direct image/Commons or official; check source credit",
+          "start_probability": 0.25
+        },
+        {
+          "key": "phelix-odiwuor-jalang-o",
+          "name": "Phelix Odiwuor (Jalang'o)",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.15
+        },
+        {
+          "key": "reuben-ndolo",
+          "name": "Reuben Ndolo",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.08
+        },
+        {
+          "key": "krg-the-don",
+          "name": "KRG The Don",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "cecil-miller",
+          "name": "Cecil Miller",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.07
+        },
+        {
+          "key": "ken-babu",
+          "name": "Ken Babu",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.35
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Will Winnie Odinga win the Nairobi Senate seat in 2027?",
+      "resolution_criteria": "Answer YES if Winnie Odinga is finally and legally elected senator for Nairobi City County at the 2027 election; otherwise answer NO once a different candidate is officially the lawful winner. Verify the Nairobi Senate result using the IEBC declaration, gazette and any controlling court ruling. Merely declaring an intention to run, appearing on the ballot or leading an opinion poll is not election. Do not count an appointment or a different county's Senate seat.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/d1/Winnie_Odinga.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.25
+    },
+    {
+      "id": 42,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Will Phelix Odiwuor (Jalang'o) win the Nairobi Senate seat in 2027?",
+      "resolution_criteria": "Answer YES only if Phelix Odiwuor (Jalang'o) is the final lawful winner of the Nairobi City County elected Senate seat in the 2027 general election. Answer NO if someone else wins. Check official IEBC Nairobi Senate results and any superseding court decisions. Running as a Senate candidate, holding or winning a National Assembly seat, party nomination, or reported election-night lead does not establish a Nairobi Senate win. If the result is lawfully annulled, await the replacement determination.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nairobi_City_Skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.15
+    },
+    {
+      "id": 43,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Will KRG The Don win the Nairobi Senate seat in 2027?",
+      "resolution_criteria": "Answer YES if KRG The Don is lawfully elected as Nairobi City County Senator in the 2027 general election; otherwise answer NO after another candidate's victory is legally final. The authoritative record is the IEBC Nairobi Senate result declaration and any binding election-petition judgment or repeat-election declaration. Celebrity status, a social-media poll, political endorsement or a declaration of intention is not equivalent to election. An unresolved or overturned declaration is not a final result.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nairobi_City_Skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.05
+    },
+    {
+      "id": 45,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Who will win the Nairobi Woman Representative seat in 2027?",
+      "resolution_criteria": "Identify the winner of Nairobi City County's single elected Woman Representative seat to the National Assembly in 2027. Select her listed name if provided, or 'Other' if any unlisted person lawfully wins. Use IEBC's Nairobi County Woman Representative declaration and any final court-ordered correction or repeat result. Do not count a nominated female member of Parliament or a woman elected in a Nairobi constituency as the county Woman Representative. Campaign lists and polls are non-binding.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nairobi_City_Skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "esther-passaris",
+          "name": "Esther Passaris",
+          "image_url": "https://parliament.go.ke/sites/default/files/2022-09/mini_cropped%20nairobi.jpg",
+          "image_license": "Direct image/Commons or official; check source credit",
+          "start_probability": 0.25
+        },
+        {
+          "key": "millicent-omanga",
+          "name": "Millicent Omanga",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.2
+        },
+        {
+          "key": "karen-nyamu",
+          "name": "Karen Nyamu",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.15
+        },
+        {
+          "key": "tabitha-mutinda",
+          "name": "Tabitha Mutinda",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.07
+        },
+        {
+          "key": "faith-nguthu",
+          "name": "Faith Nguthu",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "chibeka-matara",
+          "name": "Chibeka Matara",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.23
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Will Esther Passaris retain her Nairobi Woman Representative seat in 2027?",
+      "resolution_criteria": "Answer YES if Esther Passaris is lawfully re-elected Nairobi City County Woman Representative at the 2027 general election; otherwise answer NO when another person's election is legally effective. Use the specific IEBC Nairobi county Woman Representative declaration and any controlling election petition or rerun. This concerns only the one county-wide Woman Representative seat, not an elected constituency MP seat, nominated MP seat or a separate political appointment. A party primary win does not qualify.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://parliament.go.ke/sites/default/files/2022-09/mini_cropped%20nairobi.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.25
+    },
+    {
+      "id": 47,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Will Karen Nyamu win the Nairobi Woman Representative seat in 2027?",
+      "resolution_criteria": "Answer YES only if Karen Nyamu is legally elected the Nairobi City County Woman Representative at the 2027 general election or its lawful replacement contest. Answer NO if another person wins. Verify with the IEBC county-wide Woman Representative declaration, gazette and any superseding court judgment. Being nominated to the Senate or appearing on another office's ballot is not a Nairobi Woman Representative win. Neither polling forecasts nor party endorsements are settlement evidence.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nairobi_City_Skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.15
+    },
+    {
+      "id": 48,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Which political party will win the most Nairobi parliamentary constituency seats in 2027?",
+      "resolution_criteria": "Count 2027 winners of the 17 directly elected Nairobi City County National Assembly constituency seats by the party under which each is declared elected. The party with the highest total wins; select 'Other' for an unlisted party. Do not include Nairobi's separately elected county Woman Representative, nominated MPs, Senate or county-assembly seats. Use IEBC constituency-by-constituency declarations and final operative court corrections. An equal highest total between parties requires a pre-agreed tie procedure.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nairobi_City_Skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "uda",
+          "name": "UDA",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.3
+        },
+        {
+          "key": "odm",
+          "name": "ODM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.35
+        },
+        {
+          "key": "wiper",
+          "name": "Wiper",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.03
+        },
+        {
+          "key": "dcp",
+          "name": "DCP",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.1
+        },
+        {
+          "key": "jubilee",
+          "name": "Jubilee",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.04
+        },
+        {
+          "key": "lmm",
+          "name": "LMM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.13
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Will ODM win at least 9 of Nairobi's 17 parliamentary constituency seats in 2027?",
+      "resolution_criteria": "Answer YES if ODM wins at least nine of Nairobi City's 17 directly elected National Assembly constituency seats in the 2027 general election; otherwise answer NO. Determine each constituency winner and ballot party from final IEBC declarations and applicable court decisions. Do not add Woman Representative seats, MCAs, Senate seats, or seats won by coalition partner parties to ODM's tally. Nine seats qualifies exactly; eight or fewer does not.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nairobi_City_Skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.2
+    },
+    {
+      "id": 50,
+      "category": "politics",
+      "group": "Nairobi",
+      "question": "Which political party will win the most Nairobi County Assembly ward seats in 2027?",
+      "resolution_criteria": "Count the winners of all Nairobi City County ward-level elected MCA positions in 2027, assigning each winner to the political party stated on the successful IEBC nomination. The party with the highest number of Nairobi elected MCA seats wins; use 'Other' for an unlisted party. Exclude county-appointed/nominated assembly members and independent winners from the parties' totals. Use final ward-by-ward IEBC declarations and any effective court rulings. A first-place tie requires a published tie rule.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://orpp.or.ke/fully-registered-political-parties-2/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nairobi_City_Skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "uda",
+          "name": "UDA",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.32
+        },
+        {
+          "key": "odm",
+          "name": "ODM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.33
+        },
+        {
+          "key": "wiper",
+          "name": "Wiper",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.03
+        },
+        {
+          "key": "dcp",
+          "name": "DCP",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.1
+        },
+        {
+          "key": "jubilee",
+          "name": "Jubilee",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.04
+        },
+        {
+          "key": "lmm",
+          "name": "LMM",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.13
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "category": "politics",
+      "group": "Mombasa",
+      "question": "Who will win the Mombasa Governor election in 2027?",
+      "resolution_criteria": "Select the person legally elected Governor of Mombasa County at the 2027 general election, including any legally required replacement election. A listed candidate wins only if personally declared the final winner; choose 'Other' for every unlisted winning person. Use the IEBC Mombasa governor declaration, gazette and binding electoral court decisions. An incumbent's plan to run again, a party's endorsement, poll rankings or provisional tallies do not determine the winner. Settlement stays pending if a governing court order annuls the declaration.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Mombasa_skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "abdulswamad-shariff-nassir",
+          "name": "Abdulswamad Shariff Nassir",
+          "image_url": "https://nyjbuhvfbjutcfbphchh.supabase.co/storage/v1/object/public/media/people/e46e1f30-4c97-4b06-8dce-f0781ab81eca-profile-1751642976069.jpg",
+          "image_license": "Direct publisher image; confirm reuse permission",
+          "start_probability": 0.45
+        },
+        {
+          "key": "hassan-omar",
+          "name": "Hassan Omar",
+          "image_url": "https://nation.africa/resource/image/3928714/portrait_ratio1x1/1600/1600/ee4c2bd8370132d2b098b7d57481ac03/WN/hassan-omar.jpg",
+          "image_license": "Direct publisher image; confirm reuse permission",
+          "start_probability": 0.2
+        },
+        {
+          "key": "suleiman-shahbal",
+          "name": "Suleiman Shahbal",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.08
+        },
+        {
+          "key": "mohamed-ali-moha-jicho-pevu",
+          "name": "Mohamed Ali (Moha Jicho Pevu)",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.07
+        },
+        {
+          "key": "ali-mbogo",
+          "name": "Ali Mbogo",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.08
+        },
+        {
+          "key": "hezron-awiti",
+          "name": "Hezron Awiti",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.04
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.08
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "category": "politics",
+      "group": "Mombasa",
+      "question": "Who will win the Mombasa Senate election in 2027?",
+      "resolution_criteria": "Select the person legally elected Senator for Mombasa County at the 2027 general election. Choose the named person if listed, or 'Other' if the final winning candidate is unlisted. Verify IEBC's Mombasa Senate declaration and any legally effective election-petition judgment or fresh-election outcome. The list of possibilities is not an official final nominee register: being named in an aspirant directory or obtaining a party nomination does not determine the result. Do not confuse the elected county senator with nominated senators.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Mombasa_skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "mohamed-faki-mwinyihaji",
+          "name": "Mohamed Faki Mwinyihaji",
+          "image_url": "https://streamlinefeed.tech/storage/v1/object/public/media/people/10f5f2b9-2801-4c74-ba10-1673480d5f18-profile-1752225589469.jpg",
+          "image_license": "Direct publisher image; confirm reuse permission",
+          "start_probability": 0.3
+        },
+        {
+          "key": "mgeni-mboto-hassan",
+          "name": "Mgeni Mboto Hassan",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.08
+        },
+        {
+          "key": "salim-bakari-mwinyi",
+          "name": "Salim Bakari Mwinyi",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.07
+        },
+        {
+          "key": "ali-kubo",
+          "name": "Ali Kubo",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.06
+        },
+        {
+          "key": "ali-ganzala",
+          "name": "Ali Ganzala",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.05
+        },
+        {
+          "key": "hamisi-mwaguya",
+          "name": "Hamisi Mwaguya",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.08
+        },
+        {
+          "key": "bernard-william",
+          "name": "Bernard William",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.04
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "image_url": null,
+          "image_license": null,
+          "start_probability": 0.32
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "category": "politics",
+      "group": "Mombasa",
+      "question": "Will Abdulswamad Shariff Nassir be re-elected Mombasa Governor in 2027?",
+      "resolution_criteria": "Answer YES if Abdulswamad Shariff Nassir is the final lawful winner of the Mombasa County Governor election in 2027; otherwise answer NO when another candidate legally wins. 'Re-elected' means winning that governorship again through the 2027 contest, regardless of his party ticket. Use the IEBC Mombasa governor declaration and any superseding court judgment or fresh result. Endorsements, opinion polls, a party primary win and unofficial tallies do not count.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://nyjbuhvfbjutcfbphchh.supabase.co/storage/v1/object/public/media/people/e46e1f30-4c97-4b06-8dce-f0781ab81eca-profile-1751642976069.jpg",
+      "image_license": "Direct publisher image; confirm reuse permission",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.45
+    },
+    {
+      "id": 54,
+      "category": "politics",
+      "group": "Mombasa",
+      "question": "Will Hassan Omar win the Mombasa Governor election in 2027?",
+      "resolution_criteria": "Answer YES if Hassan Omar is finally and legally declared elected Governor of Mombasa County following the 2027 general election; otherwise answer NO when another candidate is the lawful winner. Verify using IEBC's Mombasa Governor declaration and any binding court orders or rerun result. Prior service as a senator, membership of a political party, a nomination, a poll lead or a statement of interest does not amount to winning the 2027 Mombasa governorship.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://nation.africa/resource/image/3928714/portrait_ratio1x1/1600/1600/ee4c2bd8370132d2b098b7d57481ac03/WN/hassan-omar.jpg",
+      "image_license": "Direct publisher image; confirm reuse permission",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.2
+    },
+    {
+      "id": 55,
+      "category": "politics",
+      "group": "Mombasa",
+      "question": "Will Ali Mbogo win the Mombasa Governor election in 2027?",
+      "resolution_criteria": "Answer YES if Ali Mbogo lawfully wins the Mombasa County Governor election in 2027; answer NO when a different candidate's win is legally effective. Evidence must be the final IEBC Mombasa gubernatorial declaration and any election-petition rulings that override it. If the result is annulled, use the outcome of the lawful new contest rather than an annulled tally. An announcement of candidacy, party primary or informal projection does not meet the win condition.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Mombasa_skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.08
+    },
+    {
+      "id": 56,
+      "category": "politics",
+      "group": "Mombasa",
+      "question": "Will Hamisi Mwaguya win the Mombasa Senate election in 2027?",
+      "resolution_criteria": "Answer YES only if Hamisi Mwaguya is legally elected as the county senator for Mombasa in the 2027 general election; otherwise answer NO when a different person lawfully wins. Consult IEBC's Mombasa Senate final election declaration and any binding petition or replacement-election decision. A campaign launch, appearance in a candidate directory, or favourable online vote is not an elected Senate seat. Nominated Senate appointments are excluded from this county-specific election.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Mombasa_skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.08
+    },
+    {
+      "id": 57,
+      "category": "politics",
+      "group": "Mombasa",
+      "question": "Will Mohamed Faki Mwinyihaji retain his Mombasa Senate seat in 2027?",
+      "resolution_criteria": "Answer YES if Mohamed Faki Mwinyihaji legally retains the directly elected Mombasa County Senate seat through the 2027 general election. Answer NO if another candidate lawfully wins. Resolve from IEBC's county Senate result, official gazette and controlling court decisions, including a repeat contest if one is legally necessary. Incumbency at the start of 2027, party endorsement or nomination to a different Senate seat does not satisfy retaining the elected county seat.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://streamlinefeed.tech/storage/v1/object/public/media/people/10f5f2b9-2801-4c74-ba10-1673480d5f18-profile-1752225589469.jpg",
+      "image_license": "Direct publisher image; confirm reuse permission",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.3
+    },
+    {
+      "id": 58,
+      "category": "politics",
+      "group": "Mombasa",
+      "question": "Will Charles Mghenyi win the Mombasa Senate election in 2027?",
+      "resolution_criteria": "Answer YES if Charles Mghenyi is legally declared the elected Senator for Mombasa County at Kenya's 2027 general election; otherwise answer NO when another person lawfully wins. Use IEBC's signed Mombasa Senate result and any binding court outcome or fresh election result. Being included in a prospective-candidate poll, making a public statement or contesting unsuccessfully does not qualify. If a result is annulled before a lawful replacement is determined, settlement should remain pending.",
+      "resolution_source": "IEBC returning officers / final gazetted results; binding election court orders",
+      "references": [
+        "https://www.iebc.or.ke/",
+        "https://www.kenyalaw.org/kl/fileadmin/pdfdownloads/TheConstitutionOfKenya.pdf"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Mombasa_skyline.jpg",
+      "image_license": "Direct image/Commons or official; check source credit",
+      "close_at": "2027-08-07 23:59",
+      "resolution_deadline_at": "2027-12-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.08
+    },
+    {
+      "id": 73,
+      "category": "economy",
+      "group": "Kenya economy / EPRA fuel",
+      "question": "Will the official maximum price of diesel in Nairobi exceed KSh 232 per litre in December 2027?",
+      "resolution_criteria": "Use only EPRA's maximum permitted retail pump price in KSh per litre for Nairobi for diesel (AGO) in the national schedule whose effective period begins 15 December 2027 (ordinarily ending 14 January 2028). Ignore other towns, individual station prices, and the EPRA schedule valid 1–14 December. Answer YES strictly if the Nairobi price is greater than KSh 232.00; answer NO if it is equal to or less than KSh 232.00. Use the legally effective EPRA price schedule, incorporating an official correction of that same period if issued; do not select a later pricing period. If no legally applicable Nairobi price is published for that period, do not guess: suspend for adjudication or void under published platform rules. Do not settle from leaked drafts, forward projections or press speculation.",
+      "resolution_source": "Energy & Petroleum Regulatory Authority (EPRA)",
+      "references": [
+        "https://www.epra.go.ke/sites/default/files/2026-11/FINAL%20EPRA%20PRESS%20RELEASE-%20NOVEMBER%202026%20SIGNED.pdf",
+        "https://www.epra.go.ke/pump-prices"
+      ],
+      "image_url": "https://energy-news-network.com/app/uploads/2026/04/Screenshot-2026-04-21-172829.png",
+      "image_license": "Direct URL; image license/reuse must be checked. Generic Kenya flag where no safe brand image available.",
+      "close_at": "2027-07-31 23:59",
+      "resolution_deadline_at": "2028-01-15 23:59",
+      "gate": null,
+      "gate_note": "REVIEW – early close",
+      "start_probability": 0.4
+    },
+    {
+      "id": 74,
+      "category": "economy",
+      "group": "Kenya economy / EPRA fuel",
+      "question": "Will the official maximum price of kerosene in Nairobi exceed KSh 224 per litre in December 2027?",
+      "resolution_criteria": "Use only EPRA's maximum permitted retail pump price in KSh per litre for Nairobi for kerosene (IK) in the national schedule whose effective period begins 15 December 2027 (ordinarily ending 14 January 2028). Ignore other towns, individual station prices, and the EPRA schedule valid 1–14 December. Answer YES strictly if the Nairobi price is greater than KSh 224.00; answer NO if it is equal to or less than KSh 224.00. Use the legally effective EPRA price schedule, incorporating an official correction of that same period if issued; do not select a later pricing period. If no legally applicable Nairobi price is published for that period, do not guess: suspend for adjudication or void under published platform rules. Do not settle from leaked drafts, forward projections or press speculation.",
+      "resolution_source": "Energy & Petroleum Regulatory Authority (EPRA)",
+      "references": [
+        "https://www.epra.go.ke/sites/default/files/2026-11/FINAL%20EPRA%20PRESS%20RELEASE-%20NOVEMBER%202026%20SIGNED.pdf",
+        "https://www.epra.go.ke/pump-prices"
+      ],
+      "image_url": "https://energy-news-network.com/app/uploads/2026/04/Screenshot-2026-04-21-172829.png",
+      "image_license": "Direct URL; image license/reuse must be checked. Generic Kenya flag where no safe brand image available.",
+      "close_at": "2027-07-31 23:59",
+      "resolution_deadline_at": "2028-01-15 23:59",
+      "gate": null,
+      "gate_note": "REVIEW – early close",
+      "start_probability": 0.38
+    },
+    {
+      "id": 75,
+      "category": "economy",
+      "group": "Kenya economy / EPRA fuel",
+      "question": "Will the official maximum price of super petrol in Nairobi exceed KSh 231 per litre in December 2027?",
+      "resolution_criteria": "Use only EPRA's maximum permitted retail pump price in KSh per litre for Nairobi for super petrol (PMS) in the national schedule whose effective period begins 15 December 2027 (ordinarily ending 14 January 2028). Ignore other towns, individual station prices, and the EPRA schedule valid 1–14 December. Answer YES strictly if the Nairobi price is greater than KSh 231.00; answer NO if it is equal to or less than KSh 231.00. Use the legally effective EPRA price schedule, incorporating an official correction of that same period if issued; do not select a later pricing period. If no legally applicable Nairobi price is published for that period, do not guess: suspend for adjudication or void under published platform rules. Do not settle from leaked drafts, forward projections or press speculation.",
+      "resolution_source": "Energy & Petroleum Regulatory Authority (EPRA)",
+      "references": [
+        "https://www.epra.go.ke/sites/default/files/2026-11/FINAL%20EPRA%20PRESS%20RELEASE-%20NOVEMBER%202026%20SIGNED.pdf",
+        "https://www.epra.go.ke/pump-prices"
+      ],
+      "image_url": "https://energy-news-network.com/app/uploads/2026/04/Screenshot-2026-04-21-172829.png",
+      "image_license": "Direct URL; image license/reuse must be checked. Generic Kenya flag where no safe brand image available.",
+      "close_at": "2027-07-31 23:59",
+      "resolution_deadline_at": "2028-01-15 23:59",
+      "gate": null,
+      "gate_note": "REVIEW – early close",
+      "start_probability": 0.4
+    },
+    {
+      "id": 77,
+      "category": "economy",
+      "group": "Kenya economy / staple food",
+      "question": "Will the national average price of a 2kg packet of fortified maize flour exceed KSh 200 in June 2027?",
+      "resolution_criteria": "Determine the national average retail price in Kenyan shillings of the exact KNBS commodity 'Fortified Maize flour', quantity 2 kilograms, for calendar month June 2027, using KNBS's national CPI/commodity-price series (not sifted maize flour, loose maize flour, a single shop or county). Answer YES only if the June 2027 figure is strictly greater than KSh 200.00; a value of KSh 200.00 or below is NO. Use the figure in the first official June 2027 release, subject to a written KNBS correction published within 30 days of that release. If the line is withdrawn or not comparable because of methodology changes, pause for an independent documented ruling rather than substituting a different commodity.",
+      "resolution_source": "Kenya National Bureau of Statistics (KNBS)",
+      "references": [
+        "https://cpiexplorer.knbs.or.ke/",
+        "https://www.knbs.or.ke/cpi-and-inflation-rates/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct URL; image license/reuse must be checked. Generic Kenya flag where no safe brand image available.",
+      "close_at": "2027-03-31 23:59",
+      "resolution_deadline_at": "2027-08-15 23:59",
+      "gate": null,
+      "gate_note": "REVIEW – early close",
+      "start_probability": 0.25
+    },
+    {
+      "id": 78,
+      "category": "economy",
+      "group": "Kenya economy / tax collection",
+      "question": "Will KRA collect more than KSh 3.268 trillion in revenue during the 2026/27 financial year?",
+      "resolution_criteria": "Use KRA's final published TOTAL REVENUE COLLECTIONS for its 2026/27 financial year covering 1 July 2026 through 30 June 2027, on the same reporting basis as KRA's published KSh 3.268 trillion collection target (including all collection categories counted toward that target). Do not confuse KRA collections with wider National Treasury revenue estimates, gross GDP tax figures, Appropriation-in-Aid, or an amended collection target. YES if final comparable total exceeds KSh 3,268,000,000,000; NO if equal or lower. Use KRA's FY2026/27 annual performance announcement or its annual report, and a subsequent formal correction if it specifically revises FY2026/27 final collections. If KRA reports only incompatible collection measures, halt settlement pending formal interpretation; never infer from monthly totals.",
+      "resolution_source": "Kenya Revenue Authority (KRA), FY2026/27 official annual collection statement",
+      "references": [
+        "https://www.kra.go.ke/news-center/press-release/2412-kra-hits-one-trillion-mark%2C-records-historic-achievements-in-october-2026",
+        "https://www.kra.go.ke/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct URL; image license/reuse must be checked. Generic Kenya flag where no safe brand image available.",
+      "close_at": "2026-11-30 23:59",
+      "resolution_deadline_at": "2027-10-31 23:59",
+      "gate": "hold",
+      "gate_note": "HOLD – enhanced insider review",
+      "start_probability": 0.25
+    },
+    {
+      "id": 79,
+      "category": "economy",
+      "group": "Kenya economy / company earnings",
+      "question": "Will Kenya Airways report a net profit for the 2027 financial year?",
+      "resolution_criteria": "Use Kenya Airways PLC consolidated audited financial statements for the financial year from 1 January through 31 December 2027. Test consolidated profit/(loss) AFTER tax for the year in KSh, not revenue, EBITDA, operating profit, profit before tax, company-only separate accounts or a quarterly statement. YES if 2027 consolidated after-tax profit is strictly positive; NO if it is zero or negative. If the first released figures are subsequently restated in audited financials within 90 days, use the corrected audited number. Suspend settlement until the annual audited result is issued (likely in 2028); do not settle from preliminary estimates.",
+      "resolution_source": "Kenya Airways PLC audited consolidated annual financial statements",
+      "references": [
+        "https://corporate.kenya-airways.com/en/investors-shareholders/financial-results/",
+        "https://corporate.kenya-airways.com/en/news-press-release/2026/august/kenya-airways-revenue-rises/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct URL; image license/reuse must be checked. Generic Kenya flag where no safe brand image available.",
+      "close_at": "2026-12-31 23:59",
+      "resolution_deadline_at": "2028-07-31 23:59",
+      "gate": null,
+      "gate_note": "REVIEW – early close",
+      "start_probability": 0.08
+    },
+    {
+      "id": 80,
+      "category": "economy",
+      "group": "Kenya economy / company earnings",
+      "question": "Will Kenya Power record an annual net profit exceeding KSh 30 billion for the financial year ending June 2027?",
+      "resolution_criteria": "Use the consolidated PROFIT AFTER TAX ('profit for the year') of Kenya Power and Lighting Company PLC for the twelve months ended 30 June 2027, in Kenya shillings. YES strictly if above KSh 30,000,000,000; NO if KSh 30 billion or less. Do not use revenue, operating profit, pre-tax profit, dividend, interim results or a different reporting year. Wait for final audited FY2027 annual statements and apply a formal audit restatement issued within 90 days. If earnings cannot be unambiguously determined, pause settlement rather than taking media estimates.",
+      "resolution_source": "Kenya Power and Lighting Company PLC audited consolidated annual financial statements",
+      "references": [
+        "https://www.kplc.co.ke/investor-relations",
+        "https://newsroom.kplc.co.ke/articles/kenya-power-posts-kshs2499-billion-profit-after-tax-on-the-back-of-higher-electricity-revenue-and-reduction-in-finance-costs"
+      ],
+      "image_url": "https://kplc.co.ke/storage/01JDVYK89WYR3GF378AQ88TQ8F.jpg",
+      "image_license": "Direct URL; image license/reuse must be checked. Generic Kenya flag where no safe brand image available.",
+      "close_at": "2026-11-30 23:59",
+      "resolution_deadline_at": "2028-03-31 23:59",
+      "gate": null,
+      "gate_note": "REVIEW – early close",
+      "start_probability": 0.25
+    },
+    {
+      "id": 82,
+      "category": "economy",
+      "group": "Kenya economy / company earnings",
+      "question": "Will Safaricom Group report a net profit exceeding KSh 110 billion for the financial year ending March 2027?",
+      "resolution_criteria": "Use Safaricom PLC's AUDITED GROUP consolidated line 'profit for the year' (profit AFTER tax) for 1 April 2026–31 March 2027 in KSh. Include its consolidated Kenya/Ethiopia operations and minority shareholders, as the total group profit for year; do not substitute profit attributable to owners of the parent, Kenya-only profit, EBIT, EBITDA or profit before tax. YES if strictly greater than KSh 110,000,000,000; NO if equal or below. Settle only when audited FY2027 group results are publicly disclosed; use a formal audit correction issued within 90 days. No interim results or leaked figures can settle the market.",
+      "resolution_source": "Safaricom PLC audited consolidated annual financial statements",
+      "references": [
+        "https://www.safaricom.co.ke/investor-relations",
+        "https://www.kenyanews.go.ke/safaricom-group-net-income-rises-35-9-per-cent-to-sh58-2-billion-in-half-year-results/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct URL; image license/reuse must be checked. Generic Kenya flag where no safe brand image available.",
+      "close_at": "2026-11-30 23:59",
+      "resolution_deadline_at": "2027-08-31 23:59",
+      "gate": "hold",
+      "gate_note": "HOLD – enhanced insider review",
+      "start_probability": 0.62
+    },
+    {
+      "id": 83,
+      "category": "economy",
+      "group": "Kenya economy / company earnings",
+      "question": "Will Equity Group report a net profit exceeding KSh 25 billion for the financial year ending December 2027?",
+      "resolution_criteria": "Use Equity Group Holdings PLC's total consolidated PROFIT AFTER TAX ('profit for the year') for 1 January–31 December 2027, not Equity Bank Kenya subsidiary profit, profit before tax or profit attributable only to owners if those differ. YES if strictly greater than KSh 25,000,000,000; NO otherwise. Settle from the first published audited FY2027 consolidated annual report, subject to any formally announced audit correction within 90 days. Do not rely on forecasts or quarterly disclosures. CRITICAL: the original KSh25bn threshold is historically remote from recent group earnings; do not activate this market until the creator approves its betting line.",
+      "resolution_source": "Equity Group Holdings PLC audited consolidated annual financial statements",
+      "references": [
+        "https://equitygroupholdings.com/equity-group-records-historic-results-reporting-a-55-growth-in-profit-after-tax-of-kshs-75-5-billion-underscoring-the-success-of-its-strategic-transformation/",
+        "https://equitygroupholdings.com/equity-group-delivers-strong-q3-2026-results-as-regional-scale-digital-leadership-and-balance-sheet-strength-support-sustained-growth/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct URL; image license/reuse must be checked. Generic Kenya flag where no safe brand image available.",
+      "close_at": "2026-12-31 23:59",
+      "resolution_deadline_at": "2028-06-30 23:59",
+      "gate": "hold",
+      "gate_note": "HOLD – threshold review",
+      "start_probability": 0.97
+    },
+    {
+      "id": 84,
+      "category": "economy",
+      "group": "Kenya economy / company earnings",
+      "question": "Will KCB Group report a net profit exceeding KSh 80 billion for the financial year ending December 2027?",
+      "resolution_criteria": "Use KCB Group PLC's audited consolidated total profit after tax for year ended 31 December 2027 (not KCB Bank Kenya Ltd stand-alone net profit, group pre-tax profit, revenue or dividends). YES only if strictly greater than KSh 80,000,000,000; NO if equal or less. Official FY2027 consolidated annual release prevails over press estimates, and a formal audit correction issued within 90 days controls. If no audited annual accounts are available, keep pending rather than using unaudited results.",
+      "resolution_source": "KCB Group PLC audited consolidated annual financial statements",
+      "references": [
+        "https://www.kcbgroup.com/investor-relations",
+        "https://kcbgroup.com/financial-statements"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct URL; image license/reuse must be checked. Generic Kenya flag where no safe brand image available.",
+      "close_at": "2026-12-31 23:59",
+      "resolution_deadline_at": "2028-06-30 23:59",
+      "gate": null,
+      "gate_note": "REVIEW – early close",
+      "start_probability": 0.35
+    },
+    {
+      "id": 85,
+      "category": "economy",
+      "group": "Kenya economy / company earnings",
+      "question": "Will Co-operative Bank Group report a net profit exceeding KSh 40 billion for the financial year ending December 2027?",
+      "resolution_criteria": "Use the audited CONSOLIDATED group profit AFTER TAX in Co-operative Bank of Kenya Ltd accounts for 1 January–31 December 2027; not the bank-only figure, profit before tax, operating income or dividends. YES if more than KSh 40,000,000,000; NO if exactly KSh40bn or less. Base settlement on final audited annual financial statements; formal correction published within 90 days prevails. Suspend if a clear comparable consolidated group line cannot be verified.",
+      "resolution_source": "Co-operative Bank of Kenya Ltd audited consolidated annual financial statements",
+      "references": [
+        "https://www.co-opbank.co.ke/investor-relations/press-releases/",
+        "https://www.co-opbank.co.ke/wp-content/uploads/2026/05/2025-Co-op-Bank-Integrated-Report-Web.pdf"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct URL; image license/reuse must be checked. Generic Kenya flag where no safe brand image available.",
+      "close_at": "2026-12-31 23:59",
+      "resolution_deadline_at": "2028-06-30 23:59",
+      "gate": null,
+      "gate_note": "REVIEW – early close",
+      "start_probability": 0.55
+    },
+    {
+      "id": 86,
+      "category": "economy",
+      "group": "Kenya economy / company earnings",
+      "question": "Will KenGen report a net profit exceeding KSh 12 billion for the financial year ending June 2027?",
+      "resolution_criteria": "Use KenGen PLC consolidated audited profit AFTER tax ('profit for the year') for the financial year ended 30 June 2027. YES only if strictly greater than KSh 12,000,000,000; NO if exactly that or less. Do not substitute operating profit, profit before tax, EBITDA, dividends or revenue. The FY2027 audited statement (or a formal restatement within 90 days) is the controlling evidence. Wait until actual results are released; do not use company guidance or forecast announcements.",
+      "resolution_source": "Kenya Electricity Generating Company PLC (KenGen) audited consolidated annual financial statements",
+      "references": [
+        "https://www.kengen.co.ke/investor-relations/financial-information/",
+        "https://www.kengen.co.ke/kengen-revenue-rises-6-4-as-record-electricity-demand-drives-growth/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct URL; image license/reuse must be checked. Generic Kenya flag where no safe brand image available.",
+      "close_at": "2026-11-30 23:59",
+      "resolution_deadline_at": "2028-03-31 23:59",
+      "gate": null,
+      "gate_note": "REVIEW – early close",
+      "start_probability": 0.2
+    },
+    {
+      "id": 87,
+      "category": "economy",
+      "group": "Kenya economy / company earnings",
+      "question": "Will East African Breweries report a net profit exceeding KSh 20 billion for the financial year ending June 2027?",
+      "resolution_criteria": "Use East African Breweries PLC consolidated audited profit AFTER tax (profit for the financial year ended 30 June 2027), incorporating all consolidated subsidiaries, denominated in KSh. YES if strictly greater than KSh 20,000,000,000; NO if KSh20bn or less. Exclude group revenue, EBITDA, EBIT, profit before tax, special dividend amounts, and subsidiary-only results. The audited FY2027 accounts control, subject to a correction formally published within 90 days. Never settle from projections or leaked internal figures.",
+      "resolution_source": "East African Breweries PLC (EABL) audited consolidated annual financial statements",
+      "references": [
+        "https://www.eabl.com/investors/financial-results",
+        "https://africanfinancials.com/document/tz-eabl-2026-ab-00/"
+      ],
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/1280px-Flag_of_Kenya.svg.png",
+      "image_license": "Direct URL; image license/reuse must be checked. Generic Kenya flag where no safe brand image available.",
+      "close_at": "2026-11-30 23:59",
+      "resolution_deadline_at": "2027-11-30 23:59",
+      "gate": null,
+      "gate_note": "REVIEW – early close",
+      "start_probability": 0.55
+    }
+  ]
+}

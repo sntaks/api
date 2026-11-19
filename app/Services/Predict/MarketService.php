@@ -4,6 +4,7 @@ namespace App\Services\Predict;
 
 use App\Exceptions\PolymarketUnavailable;
 use App\Models\PredictBet;
+use App\Models\PredictEvent;
 use App\Models\PredictExposure;
 use App\Models\PredictLmsrState;
 use App\Models\PredictMarket;
@@ -50,9 +51,12 @@ class MarketService
      * A custom pool market as a draft. Amounts arrive in KES and rates as fractions; they are stored in minor
      * units and basis points; omitted pool terms take the config defaults.
      *
+     * An option of a question with more than two answers is one binary market under a custom $event. A market
+     * loaded from a file carries a stable $externalId so a rerun finds it instead of creating it again.
+     *
      * @param  array<string, mixed>  $data
      */
-    public function createCustom(array $data, string $adminUser): PredictMarket
+    public function createCustom(array $data, string $adminUser, ?PredictEvent $event = null, ?string $externalId = null): PredictMarket
     {
         $engine = $data['engine'] ?? PredictMarket::ENGINE_POOL;
         unset($data['engine']);
@@ -63,9 +67,11 @@ class MarketService
             $data['liquidity'] ??= config('predict.lmsr.liquidity');
         }
 
-        return DB::transaction(function () use ($data, $adminUser, $engine) {
+        return DB::transaction(function () use ($data, $adminUser, $engine, $event, $externalId) {
             $market = PredictMarket::create([
                 'source' => PredictMarket::SOURCE_CUSTOM,
+                'predict_event_id' => $event?->id,
+                'external_market_id' => $externalId,
                 'engine' => $engine,
                 'product_id' => $this->context->productFor($engine)->id,
                 'round_reference' => 'predict-'.Str::lower((string) Str::ulid()),
@@ -114,6 +120,16 @@ class MarketService
 
             return PredictResult::ok(['market' => $locked]);
         });
+    }
+
+    /**
+     * The custom event that groups the option markets of one question, found by its external id on a rerun.
+     *
+     * @param  array{title: string, description?: ?string, image_url?: ?string, category: string, ends_at?: mixed}  $data
+     */
+    public function customEvent(string $externalId, array $data): PredictEvent
+    {
+        return PredictEvent::firstOrCreate(['source' => PredictMarket::SOURCE_CUSTOM, 'external_event_id' => $externalId], $data);
     }
 
     /**
