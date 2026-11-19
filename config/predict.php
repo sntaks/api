@@ -31,8 +31,8 @@ return [
         'KE' => ['currency' => 'KES', 'timezone' => 'Africa/Nairobi'],
     ],
 
-    // Categories our licence allows (confirmed 2026-11-10). Economy and crypto are not allowed.
-    'categories' => ['sport', 'entertainment', 'politics'],
+    // Categories our licence allows (confirmed 2026-11-10; economy allowed from 2026-11-19). Crypto is not allowed.
+    'categories' => ['sport', 'entertainment', 'politics', 'economy'],
 
     'pool' => [
         // Share of the losing side's money the house keeps (decided 2026-11-13; was 10% of the whole pool)
