@@ -101,6 +101,11 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute($limit(20, $request))->by($caller($request));
         });
 
+        // The GMS dashboard (/stats/dashboard, /stats/games, /stats/liability): its own budget, so it never starves finance reports.
+        RateLimiter::for('stats-dashboard', function (Request $request) use ($caller, $limit) {
+            return Limit::perMinute($limit((int) config('stats.rate_limit_per_minute'), $request))->by('stats-dashboard:'.$caller($request));
+        });
+
         // Shop systems are limited per shop API key, so one busy shop never slows another.
         RateLimiter::for('shop', function (Request $request) use ($caller) {
             return Limit::perMinute((int) config('bet_shops.rate_limits.requests'))->by('shop:'.$caller($request));

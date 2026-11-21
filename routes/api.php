@@ -62,6 +62,7 @@ use App\Http\Controllers\api\v1\ResponsibleGamblingController;
 use App\Http\Controllers\api\v1\ShopController;
 use App\Http\Controllers\api\v1\ShopWithdrawalController;
 use App\Http\Controllers\api\v1\StatsController;
+use App\Http\Controllers\api\v1\StatsDashboardController;
 use App\Http\Controllers\api\v1\StkCallbackController;
 use App\Http\Controllers\api\v1\StkDepositController;
 use App\Http\Controllers\api\v1\StkLoadController;
@@ -254,6 +255,13 @@ Route::prefix('/v1')->group(function () {
             Route::get('/withdrawals', [ShopController::class, 'withdrawals']);
             Route::post('/withdrawals/{withdrawalId}/pay', [ShopController::class, 'payWithdrawal'])->middleware(['idempotency.required', 'idempotency']);
             Route::post('/withdrawals/{withdrawalId}/reject', [ShopController::class, 'rejectWithdrawal'])->middleware('idempotency');
+        });
+
+        // Stats dashboard for GMS: all games and products, read from the daily rollups; a budget apart from finance
+        Route::middleware('throttle:stats-dashboard')->group(function () {
+            Route::get('/stats/dashboard', [StatsDashboardController::class, 'dashboard']);
+            Route::get('/stats/games', [StatsDashboardController::class, 'games']);
+            Route::get('/stats/liability', [StatsDashboardController::class, 'liability']);
         });
 
         // Stats routes

@@ -12,6 +12,12 @@
             <directory>tests/Feature</directory>
         </testsuite>
     </testsuites>
+    <groups>
+        <exclude>
+            <!-- Opt-in performance checks: run them with the perf group -->
+            <group>perf</group>
+        </exclude>
+    </groups>
     <source>
         <include>
             <directory>app</directory>
