@@ -7357,6 +7357,131 @@ Accept: application/json</pre></div>
 }</pre></div>
 </div></div>
 
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/stats/players</span><span class="endpoint-desc">Acquisition, activity, retention, churn, stake bands and channels</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">60/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;"><code>registrations</code> are sign-ups in the range, per <code>group_by</code> bucket (platform-wide: the filters do not change them). <code>first_deposit_conversion</code>: of the customers registered in the range, those whose first deposit or bet shop load came within 1, 7 or 30 days (the registration day is day 1); only customers registered long enough ago to have had the whole window are <code>eligible</code>. <code>active</code> has distinct players per day, per calendar week (from Monday) and per calendar month. <code>retention_cohorts</code> groups the customers registered in the range by registration week; <code>week_N</code> is the percentage of the cohort that played in the Nth week after it, <code>null</code> until that week is over. <code>churn</code> counts players active in the 30 days before the last 30 days ending on <code>to</code> who did not play in those last 30 days. <code>stake_bands</code> groups active players by the cash they staked (under 100, 100–1k, 1k–10k, 10k–100k, 100k+). <code>channel</code> is the channel the game sent with each wager (<code>unspecified</code> when none); Kadi stakes are <code>bet_shop</code> or <code>game_server</code>; <code>player_days</code> counts a player once per product and day. With <code>product</code> or <code>game</code>, activity, cohorts, churn, bands and channels cover only that product or game.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>from, to, period, group_by, exclude_test</td><td>&nbsp;</td><td><span class="optional">Optional</span></td><td>As for /stats/dashboard</td></tr>
+<tr><td>product, game</td><td>string</td><td><span class="optional">Optional</span></td><td>One product code, or every product of one game code</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "range": {"from": "2026-10-01", "to": "2026-10-24", "timezone": "Africa/Nairobi"},
+    "registrations": {"total": 1, "series": [{"date": "2026-10-05", "registrations": 1}]},
+    "first_deposit_conversion": {"registered": 1,
+      "within_1_days": {"eligible": 1, "converted": 1, "rate": 100.00},
+      "within_7_days": {"eligible": 1, "converted": 1, "rate": 100.00},
+      "within_30_days": {"eligible": 0, "converted": 0, "rate": null}},
+    "active": {"daily": [{"date": "2026-10-20", "players": 2}], "weekly": [{"date": "2026-10-19", "players": 2}], "monthly": [{"date": "2026-10", "players": 2}]},
+    "retention_cohorts": [{"week": "2026-10-05", "registered": 1, "weeks": {"week_1": 100.00, "week_2": null, "…": "…", "week_8": null}}],
+    "churn": {"previous_active": 2, "churned": 1, "rate": 50.00, "previous": {"from": "2026-08-26", "to": "2026-09-24"}, "current": {"from": "2026-09-25", "to": "2026-10-24"}},
+    "stake_bands": {"under_100": {"players": 1, "stakes": 20.00}, "100_1k": {"players": 1, "stakes": 200.00}, "1k_10k": {"players": 0, "stakes": 0.00}, "10k_100k": {"players": 0, "stakes": 0.00}, "100k_plus": {"players": 0, "stakes": 0.00}},
+    "channel": [{"channel": "unspecified", "entries": 2, "stakes": 200.00, "player_days": 2}, {"channel": "web", "entries": 1, "stakes": 20.00, "player_days": 1}],
+    "generated_at": "2026-10-25T12:00:00+03:00", "warnings": [], "notes": ["…"]
+  }
+}</pre></div>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/stats/players/top</span><span class="endpoint-desc">Top players by turnover, GGR, deposits, net loss or wins</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">60/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">The only stats answer with player ids. <code>turnover</code> is cash stakes (settled to the house for house-banked products, staked into games for Kadi), <code>payouts</code> cash winnings and <code>net_loss</code> = turnover − payouts. <code>ggr</code> is what the house kept on house-banked products; Kadi house cuts cannot be tied to one player and add nothing to it. <code>wins</code> counts won house-banked bets and Kadi payouts. <code>deposits</code> and <code>withdrawals</code> (B2C paid) are the player's whole wallet whatever the filter; with a filter only players who played that product or game are listed. <code>display_name</code> follows the public display rule. <code>last_active</code> is the player's last day of play on or before <code>to</code>.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>from, to, period, exclude_test, product, game</td><td>&nbsp;</td><td><span class="optional">Optional</span></td><td>As for /stats/dashboard</td></tr>
+<tr><td>sort</td><td>string</td><td><span class="optional">Optional</span></td><td>turnover (default), ggr, deposits, net_loss or wins</td></tr>
+<tr><td>limit</td><td>integer</td><td><span class="optional">Optional</span></td><td>1 to 100, default 20</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "range": {"from": "2026-10-01", "to": "2026-10-24", "timezone": "Africa/Nairobi"},
+    "sort": "turnover",
+    "players": [{"customer_id": 2, "player_no": "48213905", "display_name": "Alice W.", "turnover": 200.00, "payouts": 0.00, "net_loss": 200.00, "ggr": 200.00,
+                 "wins": 0, "deposits": 0.00, "withdrawals": 100.00, "games_played": 1, "last_active": "2026-10-20"}],
+    "generated_at": "2026-10-25T12:00:00+03:00", "warnings": [], "notes": ["…"]
+  }
+}</pre></div>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/stats/promotions</span><span class="endpoint-desc">Promotion cost by type and product, and players reached</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">60/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;"><code>by_type</code>: <code>signup_bonus</code> (and any other promotion credit) at its gross cost including excise duty, <code>free_bet_winnings</code> and <code>wager_bonus</code> (the bonus on a winning wager, such as a multi-bet bonus) as paid by the house, and <code>referral_payout</code> when a referral withdrawal completed are costs. <code>free_bet_value</code> (face value of free bets settled) and <code>referral_bonus</code> (bonuses earned in referral wallets) are shown with <code>is_cost</code> false. All are net of reversals, on the day they were made. <code>totals.cost</code> equals the income statement's promotions + wager_promotions + referral_payouts; per product, free_bet_winnings + wager_bonus equal the product's <code>promotions</code> in /stats/dashboard. <code>players</code> are distinct customers who received it, <code>cost_per_active_player</code> is cost over the active players of the range. With <code>product</code> or <code>game</code> only that product's free bets and wager bonuses count.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>from, to, period, group_by, exclude_test, product, game</td><td>&nbsp;</td><td><span class="optional">Optional</span></td><td>As for /stats/dashboard</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "range": {"from": "2026-10-01", "to": "2026-10-24", "timezone": "Africa/Nairobi"},
+    "totals": {"cost": 120.00, "players_reached": 2, "active_players": 2, "cost_per_active_player": 60.00},
+    "by_type": [{"type": "free_bet_value", "scope": "product", "is_cost": false, "amount": 10.00, "items": 1, "players": 1},
+                {"type": "free_bet_winnings", "scope": "product", "is_cost": true, "amount": 40.00, "items": 1, "players": 1},
+                {"type": "referral_payout", "scope": "platform", "is_cost": true, "amount": 30.00, "items": 1, "players": 1},
+                {"type": "signup_bonus", "scope": "platform", "is_cost": true, "amount": 50.00, "items": 1, "players": 1}],
+    "by_product": [{"product": "slots_fruit", "game": "slots", "free_bet_value": 10.00, "free_bet_winnings": 40.00, "wager_bonus": 0.00, "cost": 40.00, "players": 1}],
+    "series": [{"date": "2026-10-05", "cost": 50.00}],
+    "generated_at": "2026-10-25T12:00:00+03:00", "warnings": [], "notes": ["…"]
+  }
+}</pre></div>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/stats/payments</span><span class="endpoint-desc">Deposits, STK pushes, withdrawals, held withdrawals and bet shop cash</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">60/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Platform-wide: <code>product</code> or <code>game</code> is refused with 422 <code>product_filter_not_supported</code>. Each event is counted when its outcome was known. <code>deposits</code> are paybill payments credited to a wallet (as the dashboard's deposits), with <code>unmatched</code> apart, by day and by hour (Nairobi). <code>stk_push</code>: pushes sent, <code>completed</code> when the deposit arrived, with the average seconds it took; M-Pesa does not say why a push was not completed. <code>withdrawals</code>: <code>requested</code> by request time, <code>paid</code> and <code>failed</code> by when M-Pesa answered, <code>failed.by_reason</code> grouping M-Pesa's failure text (insufficient_funds, invalid_account, timeout, declined, other; the result code is not stored), <code>avg_seconds_to_complete</code> from request to answer, and <code>pending_now</code> right now. <code>held_withdrawals</code> are those at or above the approval threshold: requested, decided (approved, rejected, cancelled) with the average wait, and <code>awaiting_now</code>. <code>bet_shops</code>: loads (gross), reversed loads and cash-outs paid at shops with the average time to pay.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>from, to, period, group_by, exclude_test</td><td>&nbsp;</td><td><span class="optional">Optional</span></td><td>As for /stats/dashboard</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "range": {"from": "2026-10-01", "to": "2026-10-24", "timezone": "Africa/Nairobi"},
+    "deposits": {"count": 1, "amount": 500.00, "average": 500.00, "unmatched": {"count": 0, "amount": 0.00},
+                 "by_day": [{"date": "2026-10-05", "count": 1, "amount": 500.00}], "by_hour": [{"hour": 8, "count": 1, "amount": 500.00}]},
+    "stk_push": {"count": 2, "amount": 140.00, "completed": {"count": 1, "amount": 100.00}, "not_completed": {"count": 1, "amount": 40.00},
+                 "success_rate": 50.00, "avg_seconds_to_complete": 60.00},
+    "withdrawals": {"requested": {"count": 2, "amount": 170.00}, "paid": {"count": 1, "amount": 100.00, "average": 100.00},
+                    "failed": {"count": 1, "amount": 70.00, "by_reason": {"invalid_account": {"count": 1, "amount": 70.00}}},
+                    "failure_rate": 50.00, "avg_seconds_to_complete": 210.00, "pending_now": {"count": 0, "amount": 0.00},
+                    "by_day": [{"date": "2026-10-20", "count": 1, "amount": 100.00}], "by_hour": [{"hour": 9, "count": 1, "amount": 100.00}]},
+    "held_withdrawals": {"threshold": 20000.00, "requested": {"count": 2, "amount": 55000.00},
+                         "decided": {"approved": {"count": 1, "amount": 25000.00}, "rejected": {"count": 0, "amount": 0.00}, "cancelled": {"count": 0, "amount": 0.00}},
+                         "avg_wait_seconds": 7200.00, "awaiting_now": {"count": 1, "amount": 30000.00, "oldest_since": "2026-10-20T09:00:00+03:00"}},
+    "bet_shops": {"loads": {"count": 1, "amount": 300.00}, "loads_reversed": {"count": 0, "amount": 0.00}, "cash_outs": {"count": 1, "amount": 80.00, "avg_seconds_to_pay": 600.00}},
+    "generated_at": "2026-10-25T12:00:00+03:00", "warnings": [], "notes": ["…"]
+  }
+}</pre></div>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/stats/export/{report}</span><span class="endpoint-desc">A stats answer as CSV</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">60/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Takes the query of the endpoint it comes from and streams UTF-8 CSV. <code>stats-games</code>: the by_product rows of /stats/games; <code>stats-players-top</code>: /stats/players/top (limit default 100); <code>stats-promotions</code>: the by_type rows of /stats/promotions; <code>stats-payments</code>: deposits and withdrawals paid per day (platform-wide, refuses a product filter). An unknown report is a 404.</p></div>
+<div class="endpoint-section"><h4>Path Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>report</td><td>string</td><td><span class="required">Required</span></td><td>stats-games, stats-players-top, stats-promotions or stats-payments</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>customer_id,player_no,display_name,turnover,payouts,net_loss,ggr,wins,deposits,withdrawals,games_played,last_active
+2,48213905,"Alice W.",200,0,200,200,0,0,100,1,2026-10-20</pre></div>
+</div></div>
+
 </div>
 
 
@@ -9334,7 +9459,7 @@ var sectionTitles = {
     'financial': { title: 'Financial Operations', desc: 'STK Push for coin loads, gifts and emoji; stored B2C balance' },
     'bets-admin': { title: 'Bets (All Games)', desc: 'A player\'s bet history, and searching, inspecting and voiding bets in GMS' },
     'stats': { title: 'Statistics', desc: 'Signups, games played, retention and today\'s house income' },
-    'stats-dashboard': { title: 'Stats Dashboard', desc: 'Players, activity, trends and open liability across every game and product, for the GMS dashboard' },
+    'stats-dashboard': { title: 'Stats Dashboard', desc: 'Players, activity, retention, promotions, payments and open liability across every game and product, for the GMS dashboard' },
     'bet-shops': { title: 'Bet Shops', desc: 'Physical shops, their keys, float, cash loads and cash withdrawals' },
     'shop-system': { title: 'Shop System', desc: 'The routes a bet shop till calls with its shop key' },
     'predict': { title: 'Prediction Markets', desc: 'Yes or no pool markets in KES: market pages, estimates, bets, and GMS market management' },
