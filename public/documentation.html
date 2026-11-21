@@ -397,6 +397,7 @@
         <ul>
             <li><a href="#bets-admin" data-section="bets-admin"><span class="nav-icon">&#129534;</span> <span>Bets (All Games)</span></a></li>
             <li><a href="#stats" data-section="stats"><span class="nav-icon">&#128200;</span> <span>Statistics</span></a></li>
+            <li><a href="#stats-dashboard" data-section="stats-dashboard"><span class="nav-icon">&#128202;</span> <span>Stats Dashboard</span></a></li>
         </ul>
         <div class="nav-section">Bet Shops</div>
         <ul>
@@ -7250,6 +7251,115 @@ Accept: application/json</pre></div>
 </div>
 
 
+<!-- STATS DASHBOARD SECTION -->
+
+<div class="doc-section" data-section="stats-dashboard">
+<button class="expand-all" onclick="toggleAll('stats-dashboard')">Expand / Collapse All</button>
+<div class="callback-note">Read-only statistics across every game and product (Kadi games, tournaments and jackpots, sportsbook, prediction markets, slots, scratch cards, crash) for the GMS dashboard. <strong>Full keys only</strong>: site, game and shop keys get 403. Rate-limited to 60 requests/minute per key, a budget apart from the finance reports. Days are Nairobi days, times ISO 8601, amounts KES with 2 decimals. Query parameters are those of the <a href="#" data-section="finance-overview" style="color:var(--accent-blue)">finance reports</a> (<code>from</code>, <code>to</code>, <code>group_by</code> = day, week or month, <code>exclude_test</code> default true, <code>product</code>, <code>game</code>, up to 366 days) with the same validation.<br><br>
+<strong>Definitions</strong> (also in each answer's <code>notes</code>): <code>bets</code> are wagers settled won or lost, <code>voids</code> wagers settled void; for the Kadi rake products bets are game and competition entries. <code>turnover</code> is cash stakes settled to the house (free bets are not turnover; their face value is <code>free_bet_value</code>); for Kadi it is the stakes players put into games and competitions, less refunds. <code>payouts</code> are cash winnings before winnings tax (<code>null</code> for rake products). <code>ggr</code> = turnover − payouts for house-banked products and the house cut for rake products. <code>hold</code> = ggr / turnover and <code>rtp</code> = payouts / house-banked turnover, both in percent, <code>null</code> when nothing was staked. <code>promotions</code> are bonuses and free-bet winnings paid on wagers; <code>net</code> = ggr − promotions. Everything is net of reversals, counted on the day the reversal was made. <code>players</code> are distinct customers with at least one wager or Kadi entry in the range.<br><br>
+<strong>Same money as finance</strong>: per product, <code>ggr</code>, <code>promotions</code>, <code>net</code> and <code>winnings_tax_withheld</code> equal <a href="#" data-section="finance-statements" style="color:var(--accent-blue)">/finance/income-statement</a> <code>by_product</code>, and for house-banked products bets, voids, turnover, payouts, ggr, rtp and hold equal <a href="#" data-section="finance-statements" style="color:var(--accent-blue)">/finance/house-banked</a>, for the same range, filters and <code>exclude_test</code>. Revenue with no product (gift and emoji sales, untagged house cuts) is in the income statement only.<br><br>
+<strong>Rollups</strong>: answers are read from daily rollup tables. Today is rebuilt before it is read when its rollup is older than 60 seconds; <code>generated_at</code> says when the last day of the range was built. Earlier days are built every night at 02:00; a day that has no complete rollup is built on request (up to 3 per request), and any others are listed in <code>warnings</code> and count as zero until <code>php artisan stats:rebuild --from= --to=</code> is run for them.</div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/stats/dashboard</span><span class="endpoint-desc">Everything the GMS dashboard shows, in one call</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">60/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Totals, a series, one row per game and per product, players and open liability for the range, each compared with a second window. <code>totals</code>, every <code>by_game</code> and <code>by_product</code> row and <code>players</code> carry <code>previous</code> (the same figures over the compare window) and <code>delta_pct</code> (change in percent, <code>null</code> when the previous figure is 0); <code>previous_series</code> is the compare window's series. <code>deposits</code> are wallet deposits and loads received and <code>withdrawals</code> withdrawals paid out, as in <a href="#" data-section="finance-statements" style="color:var(--accent-blue)">/finance/cash-flow</a>; <code>net_cash</code> is its net cash. <code>new_players</code> registered in the range, <code>first_depositors</code> made their first deposit or bet shop load in it and <code>depositing_players</code> made at least one. <code>players.new</code> and <code>players.returning</code> split active players by whether they registered in the range or before; <code>players.active</code> counts the last day, the last 7 days and the last 30 days ending on <code>to</code>; <code>cross_game</code> counts active players by how many games (not products) they played. <code>liability</code> is open exposure now, see <a href="#" data-section="stats-dashboard" style="color:var(--accent-blue)">/stats/liability</a>. With <code>product</code> or <code>game</code> the platform-wide figures (deposits, withdrawals, net_cash, new_players, first_depositors, depositing_players) are <code>null</code>.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>from, to, group_by, exclude_test</td><td>&nbsp;</td><td><span class="optional">Optional</span></td><td>See the finance common parameters. Default today.</td></tr>
+<tr><td>period</td><td>string</td><td><span class="optional">Optional</span></td><td>today, yesterday, 7d, 30d, this_month, last_month or this_year, instead of from and to (not with them)</td></tr>
+<tr><td>compare</td><td>string</td><td><span class="optional">Optional</span></td><td>previous_period (default: the same number of days just before) or same_period_last_year</td></tr>
+<tr><td>product, game</td><td>string</td><td><span class="optional">Optional</span></td><td>One product code, or every product of one game code</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "range": {"from": "2026-11-01", "to": "2026-11-16", "timezone": "Africa/Nairobi"},
+    "compare": {"mode": "previous_period", "from": "2026-10-16", "to": "2026-10-31", "timezone": "Africa/Nairobi"},
+    "totals": {"bets": 1200, "voids": 14, "turnover": 250000.00, "payouts": 205000.00, "ggr": 48000.00, "hold": 19.20, "rtp": 85.42,
+               "avg_stake": 208.33, "free_bet_value": 500.00, "promotions": 3000.00, "net": 45000.00, "winnings_tax_withheld": 1800.00,
+               "deposits": 300000.00, "withdrawals": 180000.00, "net_cash": 112000.00,
+               "active_players": 540, "new_players": 120, "first_depositors": 80, "depositing_players": 410,
+               "previous": {"bets": 1100, "…": "…"}, "delta_pct": {"bets": 9.09, "…": "…"}},
+    "series": [{"date": "2026-11-01", "ggr": 3000.00, "turnover": 15000.00, "net": 2800.00, "deposits": 20000.00, "withdrawals": 11000.00, "active_players": 210, "new_players": 8}],
+    "previous_series": [{"date": "2026-10-16", "…": "…"}],
+    "by_game": [{"game": "sportsbook", "products": ["sportsbook", "sportsbook_jackpot", "sportsbook_live"], "bets": 600, "players": 300,
+                 "voids": 10, "turnover": 150000.00, "payouts": 130000.00, "ggr": 20000.00, "hold": 13.33, "rtp": 86.67, "avg_stake": 250.00,
+                 "free_bet_value": 0.00, "promotions": 1000.00, "net": 19000.00, "winnings_tax_withheld": 1500.00,
+                 "series": [{"date": "2026-11-01", "ggr": 1200.00, "players": 90}], "previous": {"…": "…"}, "delta_pct": {"…": "…"}}],
+    "by_product": [{"product": "sportsbook_live", "game": "sportsbook", "revenue_model": "house_banked", "bets": 200, "players": 120,
+                    "voids": 4, "turnover": 50000.00, "payouts": 44000.00, "ggr": 6000.00, "hold": 12.00, "rtp": 88.00, "avg_stake": 250.00,
+                    "free_bet_value": 0.00, "promotions": 300.00, "net": 5700.00, "winnings_tax_withheld": 600.00,
+                    "open_wagers": 35, "open_stakes": 9000.00, "open_potential_payout": 41000.00, "previous": {"…": "…"}, "delta_pct": {"…": "…"}},
+                   {"product": "kadi", "game": "kadi", "revenue_model": "rake", "bets": 900, "players": 260, "voids": 0, "turnover": 90000.00,
+                    "payouts": null, "ggr": 4500.00, "hold": 5.00, "rtp": null, "…": "…"}],
+    "players": {"active": {"day": 210, "week": 400, "month": 540}, "new": 100, "returning": 440, "cross_game": {"1": 400, "2": 110, "3_plus": 30},
+                "previous": {"…": "…"}, "delta_pct": {"…": "…"}},
+    "liability": {"open_wagers": 80, "open_stakes": 20000.00, "open_potential_payout": 95000.00,
+                  "by_product": [{"product": "sportsbook_live", "open_stakes": 9000.00, "open_potential_payout": 41000.00}]},
+    "generated_at": "2026-11-16T12:00:00+03:00",
+    "warnings": [],
+    "notes": ["…definitions…"]
+  }
+}</pre></div>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/stats/games</span><span class="endpoint-desc">Each product with its series, and an hourly heatmap</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">60/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">One row per product played in the range (the <code>by_product</code> figures of the dashboard, without comparison), each with a <code>series</code> by <code>group_by</code> of bets, players, turnover, payouts, ggr, hold and rtp. <code>hourly_heatmap</code> has 168 cells, weekday <code>mon</code>–<code>sun</code> by hour 0–23 in Nairobi time, for the whole platform, the game or the product filtered: <code>stakes</code> placed in that hour (wager stakes and Kadi stakes when they were placed, not when settled, so it does not add up to turnover), <code>players</code> the sum over the days of distinct players in that hour, and <code>avg_players</code> per such weekday in the range.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>from, to, group_by, exclude_test</td><td>&nbsp;</td><td><span class="optional">Optional</span></td><td>As for /stats/dashboard; <code>period</code> works too</td></tr>
+<tr><td>product, game</td><td>string</td><td><span class="optional">Optional</span></td><td>One product code, or every product of one game code</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "range": {"from": "2026-11-10", "to": "2026-11-16", "timezone": "Africa/Nairobi"},
+    "by_product": [{"product": "scratch_50", "game": "scratch", "revenue_model": "house_banked", "bets": 2, "players": 1, "voids": 0,
+                    "turnover": 100.00, "payouts": 100.00, "ggr": 0.00, "hold": 0.00, "rtp": 100.00, "avg_stake": 50.00, "free_bet_value": 0.00,
+                    "promotions": 0.00, "net": 0.00, "winnings_tax_withheld": 10.00,
+                    "series": [{"date": "2026-11-10", "bets": 2, "players": 1, "turnover": 100.00, "payouts": 100.00, "ggr": 0.00, "hold": 0.00, "rtp": 100.00}]}],
+    "hourly_heatmap": [{"weekday": "mon", "hour": 0, "stakes": 0.00, "players": 0, "avg_players": 0.00}, {"weekday": "mon", "hour": 1, "…": "…"}],
+    "generated_at": "2026-11-16T12:00:00+03:00",
+    "warnings": [],
+    "notes": ["…"]
+  }
+}</pre></div>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/stats/liability</span><span class="endpoint-desc">Open exposure per product right now</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">60/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Wagers placed and not settled yet, read live: <code>open_wagers</code>, <code>open_stakes</code> (cash), <code>open_free_bet_value</code> and <code>open_potential_payout</code>, per product and in all. For prediction markets (<code>potential_payout_basis</code> = <code>worst_side</code>) the potential payout is, per market, what the house would pay if the side that costs it most wins (pool markets at the current pool multiplier, capped at the market maximum payout; fixed-odds and LMSR bets at the odds they were taken at), summed over markets. For other products (<code>reported</code>) it adds up the <code>potential_payout</code> the game sent in the wager <code>metadata</code>, and <code>wagers_with_potential_payout</code> says how many open wagers carried one. <code>top_positions</code> are the 10 largest open wagers by potential payout (by stake when none is known), without player details. A wager whose settlement was reversed is open again. Takes no dates.</p></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>product, game, exclude_test</td><td>&nbsp;</td><td><span class="optional">Optional</span></td><td>As for /stats/dashboard</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{
+  "success": true,
+  "data": {
+    "generated_at": "2026-11-16T12:00:00+03:00",
+    "open_wagers": 2, "open_stakes": 400.00, "open_free_bet_value": 0.00, "open_potential_payout": 558.00,
+    "by_product": [{"product": "predict_pool", "game": "predict", "open_wagers": 2, "open_stakes": 400.00, "open_free_bet_value": 0.00,
+                    "open_potential_payout": 558.00, "potential_payout_basis": "worst_side", "wagers_with_potential_payout": 2}],
+    "top_positions": [{"reference": "kadi-bet-2", "product": "predict_pool", "stake": 300.00, "free_bet_amount": 0.00, "potential_payout": 558.00,
+                       "predict_market_id": 12, "side": "no", "placed_at": "2026-11-16T11:58:00+03:00"}],
+    "notes": ["…"]
+  }
+}</pre></div>
+</div></div>
+
+</div>
+
+
 <!-- STATS SECTION -->
 
 <div class="doc-section" data-section="stats">
@@ -9224,6 +9334,7 @@ var sectionTitles = {
     'financial': { title: 'Financial Operations', desc: 'STK Push for coin loads, gifts and emoji; stored B2C balance' },
     'bets-admin': { title: 'Bets (All Games)', desc: 'A player\'s bet history, and searching, inspecting and voiding bets in GMS' },
     'stats': { title: 'Statistics', desc: 'Signups, games played, retention and today\'s house income' },
+    'stats-dashboard': { title: 'Stats Dashboard', desc: 'Players, activity, trends and open liability across every game and product, for the GMS dashboard' },
     'bet-shops': { title: 'Bet Shops', desc: 'Physical shops, their keys, float, cash loads and cash withdrawals' },
     'shop-system': { title: 'Shop System', desc: 'The routes a bet shop till calls with its shop key' },
     'predict': { title: 'Prediction Markets', desc: 'Yes or no pool markets in KES: market pages, estimates, bets, and GMS market management' },

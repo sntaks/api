@@ -620,6 +620,56 @@ class FinanceReportService
     }
 
     /**
+     * The figures behind each product row of the income statement and the house-banked report, per day and
+     * product, from the same ledger and settlement queries: revenue (house cuts tagged with the product plus
+     * house-banked GGR), turnover and payouts (house-banked), promotions (bonuses and free-bet winnings),
+     * winnings tax, settlement counts and free-bet face value. Net of reversals, dated when they were made.
+     * The stats rollups (StatsRollupService) are built from this, so their money equals the finance reports.
+     *
+     * @return array<string, array<int, array{bets: int, voids: int, turnover: float, payouts: float, revenue: float, promotions: float, free_bet_value: float, winnings_tax: float}>>
+     */
+    public function productDayFigures(FinanceDateRange $range): array
+    {
+        $rows = [];
+        $add = function (string $day, int $productId, string $figure, int|float $amount) use (&$rows) {
+            $rows[$day][$productId] ??= ['bets' => 0, 'voids' => 0, 'turnover' => 0.0, 'payouts' => 0.0, 'revenue' => 0.0,
+                'promotions' => 0.0, 'free_bet_value' => 0.0, 'winnings_tax' => 0.0];
+            $rows[$day][$productId][$figure] += $amount;
+        };
+
+        foreach ($this->houseCutRows($range) as $row) {
+            if ($row->product_id !== null) {
+                $add($row->day, (int) $row->product_id, 'revenue', (float) $row->amount);
+            }
+        }
+
+        foreach ($this->houseBankedRows($range, null) as $row) {
+            $type = str_replace('_reversal', '', $row->entry_type);
+            $amount = (float) $row->amount;
+
+            if (in_array($type, self::WAGER_PROMOTION_TYPES, true)) {
+                $add($row->day, (int) $row->product_id, 'promotions', -$amount);
+
+                continue;
+            }
+
+            $add($row->day, (int) $row->product_id, 'revenue', $amount);
+            $add($row->day, (int) $row->product_id, $type === 'wager_stake_settled' ? 'turnover' : 'payouts', $type === 'wager_stake_settled' ? $amount : -$amount);
+        }
+
+        foreach ($this->winningsTaxRows($range, null) as $row) {
+            $add($row->day, (int) $row->product_id, 'winnings_tax', (float) $row->amount);
+        }
+
+        foreach ($this->wagerSettlementCountRows($range, null) as $row) {
+            $add($row->day, (int) $row->product_id, $row->outcome === WagerSettlement::OUTCOME_VOID ? 'voids' : 'bets', (int) $row->settled);
+            $add($row->day, (int) $row->product_id, 'free_bet_value', (float) $row->free_bet_value);
+        }
+
+        return $rows;
+    }
+
+    /**
      * Derived house-banked figures in report order. players is left out when not given (series rows).
      *
      * @param  array{bets: int, voids: int, turnover: float, payouts: float, bonuses: float, free_bet_value: float, free_bet_winnings: float, winnings_tax_withheld: float}  $figures

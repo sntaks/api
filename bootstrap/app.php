@@ -99,5 +99,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('predict:sync-prices')->everyTwentySeconds()->withoutOverlapping();
         $schedule->command('predict:sync-resolutions')->everyFiveMinutes()->withoutOverlapping();
         $schedule->command('predict:prune-snapshots')->daily();
+        // Stats dashboard rollups: today every ten minutes, yesterday once it is over (02:00 Nairobi)
+        $schedule->command('stats:rebuild')->everyTenMinutes()->withoutOverlapping();
+        $schedule->command('stats:rebuild --from=yesterday')->dailyAt('02:00')->withoutOverlapping();
     })
     ->create();

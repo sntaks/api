@@ -27,6 +27,9 @@ class FinanceReportRequest extends FormRequest
         'api/v1/finance/income-statement',
         'api/v1/finance/house-banked',
         'api/v1/finance/winnings-tax/charges',
+        'api/v1/stats/dashboard',
+        'api/v1/stats/games',
+        'api/v1/stats/liability',
     ];
 
     /**
