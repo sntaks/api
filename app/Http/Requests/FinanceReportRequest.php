@@ -30,7 +30,15 @@ class FinanceReportRequest extends FormRequest
         'api/v1/stats/dashboard',
         'api/v1/stats/games',
         'api/v1/stats/liability',
+        'api/v1/stats/players',
+        'api/v1/stats/players/top',
+        'api/v1/stats/promotions',
     ];
+
+    /**
+     * The stats CSV exports that take a product or game filter (stats-payments is platform-wide).
+     */
+    public const PRODUCT_FILTERED_STATS_EXPORTS = ['stats-games', 'stats-players-top', 'stats-promotions'];
 
     /**
      * The CSV exports of those reports.
@@ -111,6 +119,10 @@ class FinanceReportRequest extends FormRequest
 
         if ($uri === 'api/v1/finance/export/{report}') {
             return in_array($this->route('report'), self::PRODUCT_FILTERED_EXPORTS, true);
+        }
+
+        if ($uri === 'api/v1/stats/export/{report}') {
+            return in_array($this->route('report'), self::PRODUCT_FILTERED_STATS_EXPORTS, true);
         }
 
         return in_array($uri, self::PRODUCT_FILTERED_ROUTES, true);

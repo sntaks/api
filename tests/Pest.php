@@ -14,6 +14,8 @@ use App\Models\Product;
 use App\Models\WagerRound;
 use App\Models\Wallet;
 use App\Services\LedgerService;
+use App\Services\PlayerTokenService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -321,4 +323,41 @@ function quoteAndBet(object $test, PredictMarket $market, string $side = 'yes', 
     $quoteId = quoteFor($test, $market, $side, $stake, $player)->assertCreated()->json('data.quote.quote_id');
 
     return betWithQuote($test, $market, $quoteId, $side, $stake, $player);
+}
+
+/**
+ * @return array{game: Game, product: Product, key: ApiKey}
+ */
+function statsProduct(string $gameCode, string $productCode, float $taxRate): array
+{
+    $game = Game::factory()->create(['code' => $gameCode]);
+
+    return [
+        'game' => $game,
+        'product' => Product::factory()->create(['game_id' => $game->id, 'code' => $productCode, 'winnings_tax_rate' => $taxRate]),
+        'key' => ApiKey::create(['key' => "game_{$gameCode}_key", 'name' => $gameCode, 'scope' => ApiKey::SCOPE_GAME, 'game_id' => $game->id, 'is_active' => true]),
+    ];
+}
+
+function statsPlay(object $test, Customer $customer, array $product, string $reference, array $payload): void
+{
+    $token = app(PlayerTokenService::class)->issue($customer, $product['game'])->plainTextToken;
+
+    $test->postJson('/api/v1/wagers/instant', array_merge(['product' => $product['product']->code, 'reference' => $reference, 'funding' => 'cash'], $payload),
+        apiHeaders($product['key']->key) + ['Authorization' => 'Bearer '.$token])->assertCreated();
+}
+
+function statsPlace(object $test, Customer $customer, array $product, string $reference, float $stake): void
+{
+    $token = app(PlayerTokenService::class)->issue($customer, $product['game'])->plainTextToken;
+
+    $test->postJson('/api/v1/wagers', ['product' => $product['product']->code, 'reference' => $reference, 'funding' => 'cash', 'stake' => $stake],
+        apiHeaders($product['key']->key) + ['Authorization' => 'Bearer '.$token])->assertCreated();
+}
+
+function statsGet(object $test, string $path, string $query = ''): array
+{
+    Cache::flush();
+
+    return $test->getJson("/api/v1/stats/{$path}?{$query}", $test->headers)->assertOk()->json('data');
 }

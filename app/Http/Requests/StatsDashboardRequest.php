@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Services\FinanceDateRange;
+use App\Services\Stats\StatsPlayersService;
 use App\Services\Stats\StatsRange;
 use Illuminate\Contracts\Validation\ValidationRule;
 
@@ -21,6 +22,8 @@ class StatsDashboardRequest extends FinanceReportRequest
             ...parent::rules(),
             'period' => ['nullable', 'in:'.implode(',', StatsRange::PERIODS), 'prohibits:from,to'],
             'compare' => ['nullable', 'in:'.implode(',', StatsRange::COMPARES)],
+            'sort' => ['nullable', 'in:'.implode(',', StatsPlayersService::SORTS)],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
     }
 

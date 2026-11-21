@@ -2,6 +2,7 @@
 
 namespace App\Services\Stats;
 
+use App\Models\GameTransaction;
 use App\Models\LedgerEntry;
 use App\Models\Product;
 use App\Services\FinanceDateRange;
@@ -21,7 +22,8 @@ use Illuminate\Support\Facades\DB;
  */
 class StatsRollupService
 {
-    public const TABLES = ['stats_daily_product', 'stats_daily_player_product', 'stats_daily_platform', 'stats_daily_depositors', 'stats_hourly_activity', 'stats_daily_players'];
+    public const TABLES = ['stats_daily_product', 'stats_daily_player_product', 'stats_daily_platform', 'stats_daily_depositors', 'stats_hourly_activity', 'stats_daily_players',
+        'stats_daily_player_money', 'stats_daily_player_promotions', 'stats_daily_channels', 'stats_daily_payments'];
 
     /** Ledger entry types that take a Kadi stake from a player wallet; refund gives one back. */
     private const RAKE_STAKE_TYPES = ['game_bet', 'competition_bet'];
@@ -29,7 +31,11 @@ class StatsRollupService
     /** Ledger entry types that put a player's deposit in their wallet (M-Pesa, bet shop load). */
     private const DEPOSIT_TYPES = ['deposit', 'shop_load'];
 
-    public function __construct(private FinanceReportService $finance) {}
+    public function __construct(
+        private FinanceReportService $finance,
+        private StatsPlayerRollup $playerRollup,
+        private StatsPaymentRollup $paymentRollup,
+    ) {}
 
     /**
      * Rebuild every day from $from to $to (inclusive) and return the number of days built.
@@ -137,8 +143,13 @@ class StatsRollupService
         $products = Product::query()->get(['id', 'game_id', 'revenue_model'])->keyBy('id');
         $activity = $this->activityRows($day);
         $depositors = $this->depositorRows($day);
+        $playerRows = $this->playerRollup->build($day, $activity['players'], $products, $testIds);
+        $payments = $this->paymentRollup->build($day, $testIds);
 
         $rows = array_fill_keys(self::TABLES, []);
+        $rows['stats_daily_player_money'] = $playerRows['money'];
+        $rows['stats_daily_player_promotions'] = $playerRows['promotions'];
+        $rows['stats_daily_payments'] = $payments['payments'];
 
         foreach ($activity['players'] as $player) {
             $rows['stats_daily_player_product'][] = [
@@ -196,16 +207,34 @@ class StatsRollupService
             foreach ($this->hourlyRows($activity['hourly'], $products, $excludesTest ? $testIds : []) as $hourly) {
                 $rows['stats_hourly_activity'][] = ['date' => $date, 'excludes_test' => $excludesTest] + $hourly;
             }
+
+            foreach ($this->channelRows($activity['hourly'], $excludesTest ? $testIds : []) as $channel) {
+                $rows['stats_daily_channels'][] = ['date' => $date, 'excludes_test' => $excludesTest] + $channel;
+            }
         }
 
+        // One row per customer with money in or out of their wallet: deposits and loads, and withdrawals paid
+        $cash = [];
         foreach ($depositors as $depositor) {
-            $rows['stats_daily_depositors'][] = [
-                'date' => $date,
-                'customer_id' => (int) $depositor->customer_id,
-                'is_test' => isset($testIds[(int) $depositor->customer_id]),
+            $cash[(int) $depositor->customer_id] = [
                 'deposits' => (int) $depositor->deposits,
                 'amount' => round((float) $depositor->amount, 2),
                 'is_first' => (bool) $depositor->is_first,
+            ];
+        }
+        foreach ($payments['withdrawals'] as $customerId => $paid) {
+            $cash[$customerId] = ($cash[$customerId] ?? ['deposits' => 0, 'amount' => 0.0, 'is_first' => false]) + $paid;
+        }
+        foreach ($cash as $customerId => $figures) {
+            $rows['stats_daily_depositors'][] = [
+                'date' => $date,
+                'customer_id' => $customerId,
+                'is_test' => isset($testIds[$customerId]),
+                'deposits' => $figures['deposits'],
+                'amount' => $figures['amount'],
+                'is_first' => $figures['is_first'],
+                'withdrawals' => $figures['withdrawals'] ?? 0,
+                'withdrawal_amount' => round($figures['withdrawal_amount'] ?? 0.0, 2),
             ];
         }
 
@@ -226,18 +255,20 @@ class StatsRollupService
             ->where('is_tombstone', false)
             ->whereNotNull('customer_id')
             ->whereBetween('placed_at', $window)
-            ->selectRaw('HOUR(placed_at) as hour, product_id, customer_id, COUNT(*) as entries, SUM(stake) as stakes')
-            ->groupByRaw('HOUR(placed_at), product_id, customer_id');
+            ->selectRaw("HOUR(placed_at) as hour, product_id, customer_id, COALESCE(NULLIF(channel, ''), 'unspecified') as channel, COUNT(*) as entries, SUM(stake) as stakes")
+            ->groupByRaw("HOUR(placed_at), product_id, customer_id, COALESCE(NULLIF(channel, ''), 'unspecified')");
 
+        $kadiChannel = "CASE WHEN gt.bet_shop_id IS NOT NULL THEN 'bet_shop' ELSE 'game_server' END";
         $kadi = DB::table('ledger_entries as l')
             ->join('products as p', 'p.id', '=', 'l.product_id')
+            ->leftJoin('game_transactions as gt', fn ($join) => $join->on('gt.id', '=', 'l.referenceable_id')->where('l.referenceable_type', GameTransaction::class))
             ->where('p.revenue_model', Product::REVENUE_RAKE)
             ->where('l.wallet_type', LedgerEntry::WALLET_TYPE_WALLET)
             ->whereIn('l.entry_type', [...self::RAKE_STAKE_TYPES, 'refund'])
             ->whereNotNull('l.customer_id')
             ->whereBetween('l.created_at', $window)
-            ->selectRaw("HOUR(l.created_at) as hour, l.product_id, l.customer_id, SUM(CASE WHEN l.entry_type = 'refund' THEN -1 ELSE 1 END) as entries, SUM(l.debit - l.credit) as stakes")
-            ->groupByRaw('HOUR(l.created_at), l.product_id, l.customer_id');
+            ->selectRaw("HOUR(l.created_at) as hour, l.product_id, l.customer_id, {$kadiChannel} as channel, SUM(CASE WHEN l.entry_type = 'refund' THEN -1 ELSE 1 END) as entries, SUM(l.debit - l.credit) as stakes")
+            ->groupByRaw("HOUR(l.created_at), l.product_id, l.customer_id, {$kadiChannel}");
 
         $hourly = $wagers->unionAll($kadi)->get();
 
@@ -250,6 +281,32 @@ class StatsRollupService
         }
 
         return ['players' => array_values($players), 'hourly' => $hourly->all()];
+    }
+
+    /**
+     * Entries, stakes and distinct players per product and channel: the wager channel the game sent
+     * (unspecified when none), and for Kadi bet_shop (a stake made at a shop) or game_server.
+     *
+     * @param  list<object>  $hourly
+     * @param  array<int, int>  $excluded  Customer ids to leave out (flipped).
+     * @return list<array{product_id: int, channel: string, entries: int, stakes: float, players: int}>
+     */
+    private function channelRows(array $hourly, array $excluded): array
+    {
+        $cells = [];
+        foreach ($hourly as $row) {
+            if (isset($excluded[(int) $row->customer_id])) {
+                continue;
+            }
+
+            $key = $row->product_id.':'.$row->channel;
+            $cells[$key] ??= ['product_id' => (int) $row->product_id, 'channel' => mb_substr((string) $row->channel, 0, 20), 'entries' => 0, 'stakes' => 0.0, 'players' => []];
+            $cells[$key]['entries'] += (int) $row->entries;
+            $cells[$key]['stakes'] += (float) $row->stakes;
+            $cells[$key]['players'][(int) $row->customer_id] = true;
+        }
+
+        return array_values(array_map(fn (array $cell) => [...$cell, 'stakes' => round($cell['stakes'], 2), 'players' => count($cell['players'])], $cells));
     }
 
     /**

@@ -63,6 +63,7 @@ use App\Http\Controllers\api\v1\ShopController;
 use App\Http\Controllers\api\v1\ShopWithdrawalController;
 use App\Http\Controllers\api\v1\StatsController;
 use App\Http\Controllers\api\v1\StatsDashboardController;
+use App\Http\Controllers\api\v1\StatsExportController;
 use App\Http\Controllers\api\v1\StkCallbackController;
 use App\Http\Controllers\api\v1\StkDepositController;
 use App\Http\Controllers\api\v1\StkLoadController;
@@ -262,6 +263,11 @@ Route::prefix('/v1')->group(function () {
             Route::get('/stats/dashboard', [StatsDashboardController::class, 'dashboard']);
             Route::get('/stats/games', [StatsDashboardController::class, 'games']);
             Route::get('/stats/liability', [StatsDashboardController::class, 'liability']);
+            Route::get('/stats/players', [StatsDashboardController::class, 'players']);
+            Route::get('/stats/players/top', [StatsDashboardController::class, 'topPlayers']);
+            Route::get('/stats/promotions', [StatsDashboardController::class, 'promotions']);
+            Route::get('/stats/payments', [StatsDashboardController::class, 'payments']);
+            Route::get('/stats/export/{report}', StatsExportController::class);
         });
 
         // Stats routes
