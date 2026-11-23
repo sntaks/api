@@ -25,6 +25,10 @@ const UNDOCUMENTED_ROUTES = [
     // Playground
     'GET /api/v1/playground', 'POST /api/v1/playground', 'GET /api/v1/playground/{encryptedIdentifier}', 'PUT /api/v1/playground/{encryptedIdentifier}',
     'DELETE /api/v1/playground/{encryptedIdentifier}',
+    // Kadi Jet browser client only (no API key): specified by the Jet client contract and docs/jet.md, not for integrators
+    'GET /api/v1/jet/bootstrap', 'GET /api/v1/jet/snapshot', 'GET /api/v1/jet/rounds', 'GET /api/v1/jet/rounds/{number}', 'GET /api/v1/jet/bets/live',
+    'GET /api/v1/jet/presentation', 'POST /api/v1/jet/session', 'GET /api/v1/jet/me', 'GET /api/v1/jet/bets/history', 'GET /api/v1/jet/operations/{key}',
+    'POST /api/v1/jet/bets', 'POST /api/v1/jet/bets/{bet}/cashout',
 ];
 
 /**
