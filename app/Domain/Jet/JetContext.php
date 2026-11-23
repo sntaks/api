@@ -21,8 +21,23 @@ class JetContext
 
     public function product(): Product
     {
-        return Product::with('game')->where('code', config('jet.product_code'))->first()
-            ?? throw new RuntimeException('Kadi Jet needs the '.config('jet.product_code').' product');
+        return $this->productOrNull() ?? throw new RuntimeException('Kadi Jet needs the '.config('jet.product_code').' product');
+    }
+
+    /**
+     * The product, or null before the catalogue step has created it.
+     */
+    public function productOrNull(): ?Product
+    {
+        return Product::with('game')->where('code', config('jet.product_code'))->first();
+    }
+
+    /**
+     * Whether a new round may start: the product exists and it and its game are active.
+     */
+    public function isAvailable(): bool
+    {
+        return $this->productOrNull()?->isAvailable() ?? false;
     }
 
     public function productCode(): string
