@@ -1,1 +1,11 @@
 secured: true
+workers:
+  - jet
+  - queue
+  - reverb
+  - schedule
+custom_workers:
+  jet:
+    label: Kadi Jet game loop
+    command: php artisan jet:run
+    restart: on-failure
