@@ -37,6 +37,9 @@ return [
         'scheme' => env('JET_REALTIME_SCHEME', 'https'),
     ],
 
+    // The Apache proxy in front of jet.kadi.online: its X-Forwarded-* headers are trusted, no one else's
+    'trusted_proxies' => array_values(array_filter(array_map('trim', explode(',', (string) env('JET_TRUSTED_PROXIES', ''))))),
+
     // Operation results are kept this long; the key's identity is kept for good.
     'operation_ttl_days' => 7,
 ];
