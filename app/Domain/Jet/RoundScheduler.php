@@ -15,7 +15,7 @@ class RoundScheduler
 {
     public const HEARTBEAT_KEY = 'jet:loop:heartbeat';
 
-    public function __construct(private RoundRecoveryService $recovery, private EventPublisher $publisher) {}
+    public function __construct(private RoundRecoveryService $recovery, private EventPublisher $publisher, private JetSettings $settings) {}
 
     public function runOnce(): ?JetRound
     {
@@ -41,7 +41,7 @@ class RoundScheduler
                 }
             } while (! $round->isFinished());
 
-            $until = microtime(true) + (int) config('jet.post_round_pause_seconds');
+            $until = microtime(true) + $this->settings->current()['post_round_pause_seconds'];
 
             while (microtime(true) < $until) {
                 $this->recovery->fenced(fn () => null);
