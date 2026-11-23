@@ -9,7 +9,8 @@ use Illuminate\Support\Str;
 /**
  * The game loop's database lease (one owner, renewed under the fence on every tick) and the tick itself, which
  * resumes the oldest unfinished round from its persisted deadlines. It never creates a round while one is
- * unfinished, and creates none while jet_classic or its game is not available (a running round still finishes).
+ * unfinished, and creates none while jet_classic is missing or it or its game is not available (a running round
+ * still finishes).
  */
 class RoundRecoveryService
 {
@@ -74,7 +75,7 @@ class RoundRecoveryService
             $round = JetRound::whereNotIn('status', JetRound::FINISHED)->oldest('id')->first();
 
             if (! $round) {
-                if (! $create || ! $this->context->product()->isAvailable()) {
+                if (! $create || ! $this->context->isAvailable()) {
                     return null;
                 }
 

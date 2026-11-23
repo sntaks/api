@@ -56,6 +56,16 @@ class JetRun extends Command
                 throw $e;
             } catch (Throwable $e) {
                 Log::error('Jet game loop iteration failed', ['exception' => $e->getMessage()]);
+
+                // A failed tick rolls back its own lease renewal: renew on its own so repeated errors never lapse it
+                try {
+                    $recovery->fenced(fn () => null);
+                } catch (JetException) {
+                    $this->error('Lost the Jet loop lease; exiting so supervisor restarts the loop.');
+
+                    return self::FAILURE;
+                }
+
                 sleep(3);
             }
         }

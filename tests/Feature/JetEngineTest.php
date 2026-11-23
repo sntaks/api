@@ -216,3 +216,17 @@ it('lets the scheduler run under the lease the game loop took', function () {
         ->and(app(RoundScheduler::class)->runOnce())->toBeNull()
         ->and(DB::table('jet_contract_state')->value('loop_owner'))->not->toBeNull();
 });
+
+it('keeps renewing the lease while the jet_classic product does not exist yet', function () {
+    $this->jetProduct->delete();
+    $recovery = app(RoundRecoveryService::class);
+    $recovery->acquire();
+
+    $this->travel(10)->seconds();
+    expect($recovery->tick(true))->toBeNull();
+
+    // Without the renewal the lease would have lapsed 15 s after it was taken
+    $this->travel(10)->seconds();
+    expect($recovery->tick(true))->toBeNull()
+        ->and(JetRound::count())->toBe(0);
+});
