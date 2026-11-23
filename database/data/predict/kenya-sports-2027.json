@@ -1,0 +1,480 @@
+{
+  "key_prefix": "kesport2027",
+  "timezone": "Africa/Nairobi",
+  "countries": [
+    "KE"
+  ],
+  "verified_at": "2026-11-23",
+  "notes": "Converted from the Kadi '25 Kenya-focused sports markets' draft dated 2026-11-23, with ids kept from the draft. #02 was dropped (overlaps #01/#03/#04); #09 is a multi-option event; #16 and #17 were merged into the #16 Kenya Cup event, so #17 is not listed. Times are EAT. Held markets need repricing from the live table on launch day. Image URLs are Wikimedia Special:FilePath redirects: move approved images to our CDN and confirm each licence before publishing. Confirm the London 2027 elite race day before opening #23/#24.",
+  "markets": [
+    {
+      "id": 1,
+      "category": "sport",
+      "group": "AFCON 2027",
+      "question": "Will Harambee Stars win at least one group-stage match at AFCON 2027?",
+      "resolution_criteria": "Answer YES if Kenya wins at least one of its group-stage matches at the AFCON 2027 final tournament (a win in 90 minutes plus stoppage time, or an awarded win); otherwise NO once Kenya's group matches are complete. The final tournament uses the CAF-published format (24 teams; group winners, runners-up and the four best third-placed teams advance to the round of 16). Reaching a round means playing in it; a win after extra time or on penalties counts as advancing. A match awarded by CAF counts with its awarded result. Qualifiers do not count. If the event is cancelled or not completed by 2027-08-16 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "CAF official match reports and results (cafonline.com)",
+      "references": [
+        "https://www.cafonline.com/",
+        "https://www.cafonline.com/afcon2025/news/road-to-east-africa-caf-announces-kick-off-final-and-qualifiers-dates-for-the-totalenergies-caf-africa-cup-of-nations-pamoja-2027/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/LG_Cup_Africa_2011_Kenya_vs_Sudan_(2).jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:LG_Cup_Africa_2011_Kenya_vs_Sudan_(2).jpg (not cleared for commercial use)",
+      "close_at": "2027-05-19 23:59",
+      "resolution_deadline_at": "2027-08-16 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.55
+    },
+    {
+      "id": 3,
+      "category": "sport",
+      "group": "AFCON 2027",
+      "question": "Will Harambee Stars score at least five goals throughout the AFCON 2027 final tournament?",
+      "resolution_criteria": "Answer YES if Kenya scores five or more goals in total across all its AFCON 2027 final-tournament matches, including extra time and awarded scores and excluding penalty shoot-outs; otherwise NO once Kenya is eliminated or the tournament ends. The final tournament uses the CAF-published format (24 teams; group winners, runners-up and the four best third-placed teams advance to the round of 16). Reaching a round means playing in it; a win after extra time or on penalties counts as advancing. A match awarded by CAF counts with its awarded result. Qualifiers do not count. If the event is cancelled or not completed by 2027-08-16 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "CAF official match reports and results (cafonline.com)",
+      "references": [
+        "https://www.cafonline.com/",
+        "https://www.cafonline.com/afcon2025/news/road-to-east-africa-caf-announces-kick-off-final-and-qualifiers-dates-for-the-totalenergies-caf-africa-cup-of-nations-pamoja-2027/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nyayo_stadium.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:Nyayo_stadium.jpg (not cleared for commercial use)",
+      "close_at": "2027-05-19 23:59",
+      "resolution_deadline_at": "2027-08-16 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.22
+    },
+    {
+      "id": 4,
+      "category": "sport",
+      "group": "AFCON 2027",
+      "question": "Will any of the three host nations (Kenya, Uganda or Tanzania) reach the AFCON 2027 semifinals?",
+      "resolution_criteria": "Answer YES if Kenya, Uganda or Tanzania plays in an AFCON 2027 semifinal; otherwise NO once all four semifinalists are known. The final tournament uses the CAF-published format (24 teams; group winners, runners-up and the four best third-placed teams advance to the round of 16). Reaching a round means playing in it; a win after extra time or on penalties counts as advancing. A match awarded by CAF counts with its awarded result. Qualifiers do not count. If the event is cancelled or not completed by 2027-08-16 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "CAF official match reports and results (cafonline.com)",
+      "references": [
+        "https://www.cafonline.com/",
+        "https://www.cafonline.com/afcon2025/news/road-to-east-africa-caf-announces-kick-off-final-and-qualifiers-dates-for-the-totalenergies-caf-africa-cup-of-nations-pamoja-2027/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/A_young_Uganda_Cranes_football_fan.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:A_young_Uganda_Cranes_football_fan.jpg (not cleared for commercial use)",
+      "close_at": "2027-05-19 23:59",
+      "resolution_deadline_at": "2027-08-16 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.12
+    },
+    {
+      "id": 5,
+      "category": "sport",
+      "group": "Kenyan football",
+      "question": "Will Gor Mahia win the 2026/27 SportPesa League?",
+      "resolution_criteria": "Answer YES if Gor Mahia is declared champion of the 2026/27 FKF (SportPesa) Premier League; otherwise NO. Uses the final official league table including its published tie-breaks; points deductions or awarded matches decided before the table is declared final count. If the event is cancelled or not completed by 2027-07-31 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "FKF official final league table (fkfleagues.co.ke)",
+      "references": [
+        "https://www.fkfleagues.co.ke/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/GOR_MAHIA_FC.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:GOR_MAHIA_FC.jpg (not cleared for commercial use)",
+      "close_at": "2026-12-31 23:59",
+      "resolution_deadline_at": "2027-07-31 23:59",
+      "gate": "hold",
+      "gate_note": "Season in progress: reprice start_probability from the live table on launch day, then clear the gate.",
+      "start_probability": 0.35
+    },
+    {
+      "id": 6,
+      "category": "sport",
+      "group": "Kenyan football",
+      "question": "Will AFC Leopards finish above Gor Mahia in the 2026/27 final league standings?",
+      "resolution_criteria": "Answer YES if AFC Leopards finishes in a higher position than Gor Mahia in the final 2026/27 FKF (SportPesa) Premier League table; otherwise NO. Uses the final official league table including its published tie-breaks; points deductions or awarded matches decided before the table is declared final count. If the event is cancelled or not completed by 2027-07-31 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "FKF official final league table (fkfleagues.co.ke)",
+      "references": [
+        "https://www.fkfleagues.co.ke/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/EymaelKasrani.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:EymaelKasrani.jpg (not cleared for commercial use)",
+      "close_at": "2026-12-31 23:59",
+      "resolution_deadline_at": "2027-07-31 23:59",
+      "gate": "hold",
+      "gate_note": "Season in progress: reprice start_probability from the live table on launch day, then clear the gate.",
+      "start_probability": 0.25
+    },
+    {
+      "id": 7,
+      "category": "sport",
+      "group": "Kenyan football",
+      "question": "Will KCB FC finish among the top three teams in the 2026/27 SportPesa League?",
+      "resolution_criteria": "Answer YES if KCB FC finishes 1st, 2nd or 3rd in the final 2026/27 FKF (SportPesa) Premier League table; otherwise NO. Uses the final official league table including its published tie-breaks; points deductions or awarded matches decided before the table is declared final count. If the event is cancelled or not completed by 2027-07-31 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "FKF official final league table (fkfleagues.co.ke)",
+      "references": [
+        "https://www.fkfleagues.co.ke/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nyayo_stadium_from_above.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:Nyayo_stadium_from_above.jpg (not cleared for commercial use)",
+      "close_at": "2026-12-31 23:59",
+      "resolution_deadline_at": "2027-07-31 23:59",
+      "gate": "hold",
+      "gate_note": "Season in progress: reprice start_probability from the live table on launch day, then clear the gate.",
+      "start_probability": 0.45
+    },
+    {
+      "id": 8,
+      "category": "sport",
+      "group": "Kenyan football",
+      "question": "Will Shabana FC finish among the top five teams in the 2026/27 SportPesa League?",
+      "resolution_criteria": "Answer YES if Shabana FC finishes in the top five of the final 2026/27 FKF (SportPesa) Premier League table; otherwise NO. Uses the final official league table including its published tie-breaks; points deductions or awarded matches decided before the table is declared final count. If the event is cancelled or not completed by 2027-07-31 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "FKF official final league table (fkfleagues.co.ke)",
+      "references": [
+        "https://www.fkfleagues.co.ke/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Soccer_Fans.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:Soccer_Fans.jpg (not cleared for commercial use)",
+      "close_at": "2026-12-31 23:59",
+      "resolution_deadline_at": "2027-07-31 23:59",
+      "gate": "hold",
+      "gate_note": "Season in progress: reprice start_probability from the live table on launch day, then clear the gate. Shabana's current position was not confirmed when priced.",
+      "start_probability": 0.25
+    },
+    {
+      "id": 9,
+      "category": "sport",
+      "group": "Kenyan football",
+      "question": "Who will win the 2026/27 FKF Women's Premier League?",
+      "resolution_criteria": "Select the club declared champion of the 2026/27 FKF Women's Premier League. A listed club wins only when it is the champion; choose 'Other' for any unlisted club. Uses the final official league table including its published tie-breaks; points deductions or awarded matches decided before the table is declared final count. If the event is cancelled or not completed by 2027-07-31 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "FKF official final league table (fkfleagues.co.ke)",
+      "references": [
+        "https://www.fkfleagues.co.ke/",
+        "https://www.fkfleagues.co.ke/leagues/fkfpl2627w"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Ladies_football_in_Kilifi_county_Kenya.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:Ladies_football_in_Kilifi_county_Kenya.jpg (not cleared for commercial use)",
+      "close_at": "2026-12-31 23:59",
+      "resolution_deadline_at": "2027-07-31 23:59",
+      "gate": "hold",
+      "gate_note": "Season in progress: reprice start_probability from the live table on launch day, then clear the gate.",
+      "options": [
+        {
+          "key": "police-bullets",
+          "name": "Kenya Police Bullets",
+          "start_probability": 0.5
+        },
+        {
+          "key": "ulinzi-starlets",
+          "name": "Ulinzi Starlets",
+          "start_probability": 0.3
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "start_probability": 0.2
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "category": "sport",
+      "group": "World Athletics Beijing 2027",
+      "question": "Will a Kenyan athlete win gold in the men's 800m at the 2027 World Athletics Championships?",
+      "resolution_criteria": "Answer YES if an athlete representing Kenya wins gold in the men's 800m final; otherwise NO. Resolves NO if no athlete representing Kenya starts the race. Nationality is the country the athlete represents in the official results on race day. If the event is cancelled or not completed by 2027-10-19 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "World Athletics official results, Beijing 2027",
+      "references": [
+        "https://worldathletics.org/competitions/world-athletics-championships/beijing27",
+        "https://worldathletics.org/competitions/world-athletics-championships/beijing27/about-event"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/800m_men_final_Budapest_2023.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:800m_men_final_Budapest_2023.jpg (not cleared for commercial use)",
+      "close_at": "2027-08-09 23:59",
+      "resolution_deadline_at": "2027-10-19 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.4
+    },
+    {
+      "id": 11,
+      "category": "sport",
+      "group": "World Athletics Beijing 2027",
+      "question": "Will Kenya win gold in the men's 3,000m steeplechase at the 2027 World Athletics Championships?",
+      "resolution_criteria": "Answer YES if an athlete representing Kenya wins gold in the men's 3,000m steeplechase final; otherwise NO. Resolves NO if no athlete representing Kenya starts the race. Nationality is the country the athlete represents in the official results on race day. If the event is cancelled or not completed by 2027-10-19 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "World Athletics official results, Beijing 2027",
+      "references": [
+        "https://worldathletics.org/competitions/world-athletics-championships/beijing27",
+        "https://worldathletics.org/competitions/world-athletics-championships/beijing27/about-event"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/High_school_students_compete_in_a_200M_steeplechase_during_their_regional_games.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:High_school_students_compete_in_a_200M_steeplechase_during_their_regional_games.jpg (not cleared for commercial use)",
+      "close_at": "2027-08-09 23:59",
+      "resolution_deadline_at": "2027-10-19 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.15
+    },
+    {
+      "id": 12,
+      "category": "sport",
+      "group": "World Athletics Beijing 2027",
+      "question": "Will Faith Kipyegon win gold in the women's 1,500m at the 2027 World Athletics Championships?",
+      "resolution_criteria": "Answer YES if Faith Kipyegon wins gold in the women's 1,500m final; otherwise NO. Resolves NO if she does not start the final. If the event is cancelled or not completed by 2027-10-19 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "World Athletics official results, Beijing 2027",
+      "references": [
+        "https://worldathletics.org/competitions/world-athletics-championships/beijing27",
+        "https://worldathletics.org/competitions/world-athletics-championships/beijing27/about-event"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Faith_Kipyegon_Oregon_2022.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:Faith_Kipyegon_Oregon_2022.jpg (not cleared for commercial use)",
+      "close_at": "2027-08-09 23:59",
+      "resolution_deadline_at": "2027-10-19 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.5
+    },
+    {
+      "id": 13,
+      "category": "sport",
+      "group": "World Athletics Beijing 2027",
+      "question": "Will a Kenyan athlete win gold in the men's marathon at the 2027 World Athletics Championships?",
+      "resolution_criteria": "Answer YES if an athlete representing Kenya wins gold in the men's marathon; otherwise NO. Resolves NO if no athlete representing Kenya starts the race. Nationality is the country the athlete represents in the official results on race day. If the event is cancelled or not completed by 2027-10-19 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "World Athletics official results, Beijing 2027",
+      "references": [
+        "https://worldathletics.org/competitions/world-athletics-championships/beijing27",
+        "https://worldathletics.org/competitions/world-athletics-championships/beijing27/about-event"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/%C3%89preuve_Marathon_Masculin_Jeux_Olympiques_2024_Route_Pav%C3%A9_Gardes_-_Chaville_(FR92)_-_2024-08-10_-_18.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:%C3%89preuve_Marathon_Masculin_Jeux_Olympiques_2024_Route_Pav%C3%A9_Gardes_-_Chaville_(FR92)_-_2024-08-10_-_18.jpg (not cleared for commercial use)",
+      "close_at": "2027-08-09 23:59",
+      "resolution_deadline_at": "2027-10-19 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.25
+    },
+    {
+      "id": 14,
+      "category": "sport",
+      "group": "World Athletics Beijing 2027",
+      "question": "Will Kenya win at least four gold medals at the 2027 World Athletics Championships?",
+      "resolution_criteria": "Answer YES if Kenya wins four or more gold medals across all disciplines (relays count as one gold each) in the organiser's final medal table; otherwise NO. If the event is cancelled or not completed by 2027-10-19 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "World Athletics official results, Beijing 2027",
+      "references": [
+        "https://worldathletics.org/competitions/world-athletics-championships/beijing27",
+        "https://worldathletics.org/competitions/world-athletics-championships/beijing27/about-event"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Women_5000m_podium_Budapest_22023.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:Women_5000m_podium_Budapest_22023.jpg (not cleared for commercial use)",
+      "close_at": "2027-08-09 23:59",
+      "resolution_deadline_at": "2027-10-19 23:59",
+      "gate": null,
+      "gate_note": "Publish on a different day from #15.",
+      "start_probability": 0.55
+    },
+    {
+      "id": 15,
+      "category": "sport",
+      "group": "World Athletics Beijing 2027",
+      "question": "Will Kenya finish among the top three nations in the official 2027 World Athletics Championships medal table?",
+      "resolution_criteria": "Answer YES if Kenya is placed 1st, 2nd or 3rd in the organiser's final medal table, ranked by its published tie-breaking rules; otherwise NO. If the event is cancelled or not completed by 2027-10-19 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "World Athletics official results, Beijing 2027",
+      "references": [
+        "https://worldathletics.org/competitions/world-athletics-championships/beijing27",
+        "https://worldathletics.org/competitions/world-athletics-championships/beijing27/about-event"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Women%27s_1500m_podium_Beijing_2015.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:Women%27s_1500m_podium_Beijing_2015.jpg (not cleared for commercial use)",
+      "close_at": "2027-08-09 23:59",
+      "resolution_deadline_at": "2027-10-19 23:59",
+      "gate": null,
+      "gate_note": "Publish on a different day from #14.",
+      "start_probability": 0.45
+    },
+    {
+      "id": 16,
+      "category": "sport",
+      "group": "Kenyan rugby",
+      "question": "Who will win the 2026/27 Kenya Cup rugby title?",
+      "resolution_criteria": "Select the club that wins the 2026/27 Kenya Cup final (scheduled 24 April 2027; confirm with KRU). A listed club wins only when it lifts the title; choose 'Other' for any unlisted club. Extra time and any tie-break the KRU applies in the final count. If the event is cancelled or not completed by 2027-05-31 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "Kenya Rugby Union official results (kru.co.ke)",
+      "references": [
+        "https://www.kru.co.ke/",
+        "https://scrummage.co.ke/2026/11/11/2026-27-kenya-cup-fixtures/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/2013_ENTERPRISE_CUP_CHAMPIONS.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:2013_ENTERPRISE_CUP_CHAMPIONS.jpg (not cleared for commercial use)",
+      "close_at": "2027-03-09 23:59",
+      "resolution_deadline_at": "2027-05-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "options": [
+        {
+          "key": "kabras-sugar",
+          "name": "Kabras Sugar RFC",
+          "start_probability": 0.38
+        },
+        {
+          "key": "kcb",
+          "name": "KCB Rugby",
+          "start_probability": 0.35
+        },
+        {
+          "key": "menengai-oilers",
+          "name": "Menengai Oilers",
+          "start_probability": 0.17
+        },
+        {
+          "key": "other",
+          "name": "Other",
+          "start_probability": 0.1
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "category": "sport",
+      "group": "Kenyan rugby",
+      "question": "Will Menengai Oilers reach the 2026/27 Kenya Cup final?",
+      "resolution_criteria": "Answer YES if Menengai Oilers plays in the 2026/27 Kenya Cup final; otherwise NO once both finalists are known. If the event is cancelled or not completed by 2027-05-31 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "Kenya Rugby Union official results (kru.co.ke)",
+      "references": [
+        "https://www.kru.co.ke/",
+        "https://scrummage.co.ke/2026/11/11/2026-27-kenya-cup-fixtures/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/The_Menengai_Cream_kit.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:The_Menengai_Cream_kit.jpg (not cleared for commercial use)",
+      "close_at": "2027-03-09 23:59",
+      "resolution_deadline_at": "2027-05-31 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.35
+    },
+    {
+      "id": 19,
+      "category": "sport",
+      "group": "Kenyan volleyball",
+      "question": "Will Kenya Pipeline defend the women's KVF National League title in 2026/27?",
+      "resolution_criteria": "Answer YES if Kenya Pipeline is declared 2026/27 KVF women's National League champion; otherwise NO. If the event is cancelled or not completed by 2027-08-31 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "Kenya Volleyball Federation official championship declaration (URL to be confirmed)",
+      "references": [
+        "https://www.standardmedia.co.ke/sports/article/2001562547/index.htm"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Players_of_volleyball.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:Players_of_volleyball.jpg (not cleared for commercial use)",
+      "close_at": "2026-12-31 23:59",
+      "resolution_deadline_at": "2027-08-31 23:59",
+      "gate": "hold",
+      "gate_note": "Season in progress: reprice start_probability from the live table on launch day, then clear the gate. Confirm the official KVF results source first.",
+      "start_probability": 0.65
+    },
+    {
+      "id": 20,
+      "category": "sport",
+      "group": "Kenyan volleyball",
+      "question": "Will Kenya Ports Authority defend the men's KVF National League title in 2026/27?",
+      "resolution_criteria": "Answer YES if Kenya Ports Authority is declared 2026/27 KVF men's National League champion; otherwise NO. If the event is cancelled or not completed by 2027-08-31 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "Kenya Volleyball Federation official championship declaration (URL to be confirmed)",
+      "references": [
+        "https://www.standardmedia.co.ke/sports/article/2001562547/index.htm"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Team_volleyball_at_work.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:Team_volleyball_at_work.jpg (not cleared for commercial use)",
+      "close_at": "2026-12-31 23:59",
+      "resolution_deadline_at": "2027-08-31 23:59",
+      "gate": "hold",
+      "gate_note": "Season in progress: reprice start_probability from the live table on launch day, then clear the gate. Confirm the official KVF results source first.",
+      "start_probability": 0.35
+    },
+    {
+      "id": 21,
+      "category": "sport",
+      "group": "Safari Rally Kenya 2027",
+      "question": "Will a Toyota driver win the 2027 WRC Safari Rally Kenya overall classification?",
+      "resolution_criteria": "Answer YES if the winner of the official final overall classification of the 2027 Safari Rally Kenya drives for a Toyota (Toyota Gazoo Racing or any Toyota-entered car in the top class); otherwise NO. Stage results do not count. If the event is cancelled or not completed by 2027-04-20 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "FIA/WRC official final overall classification",
+      "references": [
+        "https://www.wrc.com/en/events/wrc-safari-rally-kenya-2027",
+        "https://www.wrc.com/en/calendar"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/WRC_Safari_Rally_2021_(cropped_2).jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:WRC_Safari_Rally_2021_(cropped_2).jpg (not cleared for commercial use)",
+      "close_at": "2027-02-15 23:59",
+      "resolution_deadline_at": "2027-04-20 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.72
+    },
+    {
+      "id": 22,
+      "category": "sport",
+      "group": "Safari Rally Kenya 2027",
+      "question": "Will the 2027 Safari Rally Kenya winner be the same driver as in 2026 (Takamoto Katsuta)?",
+      "resolution_criteria": "Answer YES if Takamoto Katsuta wins the official final overall classification of the 2027 Safari Rally Kenya; otherwise NO, including if he does not start. If the event is cancelled or not completed by 2027-04-20 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "FIA/WRC official final overall classification",
+      "references": [
+        "https://www.wrc.com/en/events/wrc-safari-rally-kenya-2027",
+        "https://www.wrc.com/en/calendar",
+        "https://media.toyota.co.uk/katsuta-is-king-of-kenya-with-maiden-win-for-toyota-gazoo-racing-world-rally-team/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/WRC_Safari_Rally_2021_(cropped_3).jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:WRC_Safari_Rally_2021_(cropped_3).jpg (not cleared for commercial use)",
+      "close_at": "2027-02-15 23:59",
+      "resolution_deadline_at": "2027-04-20 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.15
+    },
+    {
+      "id": 23,
+      "category": "sport",
+      "group": "London Marathon 2027",
+      "question": "Will a Kenyan athlete win the men's elite race at the 2027 London Marathon?",
+      "resolution_criteria": "Answer YES if an athlete representing Kenya wins the men's elite race; otherwise NO. Resolves NO if no athlete representing Kenya starts the race. Nationality is the country the athlete represents in the official results on race day. If the event is cancelled or not completed by 2027-05-25 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "London Marathon Events official elite results",
+      "references": [
+        "https://www.londonmarathonevents.co.uk/london-marathon",
+        "https://www.londonmarathonevents.co.uk/london-marathon/event-overview"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/2018_London_Marathon_Eliud_Kipchoge.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:2018_London_Marathon_Eliud_Kipchoge.jpg (not cleared for commercial use)",
+      "close_at": "2027-03-23 23:59",
+      "resolution_deadline_at": "2027-05-25 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.55
+    },
+    {
+      "id": 24,
+      "category": "sport",
+      "group": "London Marathon 2027",
+      "question": "Will a Kenyan athlete win the women's elite race at the 2027 London Marathon?",
+      "resolution_criteria": "Answer YES if an athlete representing Kenya wins the women's elite race; otherwise NO. Resolves NO if no athlete representing Kenya starts the race. Nationality is the country the athlete represents in the official results on race day. If the event is cancelled or not completed by 2027-05-25 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "London Marathon Events official elite results",
+      "references": [
+        "https://www.londonmarathonevents.co.uk/london-marathon",
+        "https://www.londonmarathonevents.co.uk/london-marathon/event-overview"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/2024_London_Marathon_-_Joyciline_Jepkosgei.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:2024_London_Marathon_-_Joyciline_Jepkosgei.jpg (not cleared for commercial use)",
+      "close_at": "2027-03-23 23:59",
+      "resolution_deadline_at": "2027-05-25 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.4
+    },
+    {
+      "id": 25,
+      "category": "sport",
+      "group": "Boston Marathon 2027",
+      "question": "Will a Kenyan athlete win the men's elite race at the 2027 Boston Marathon?",
+      "resolution_criteria": "Answer YES if an athlete representing Kenya wins the men's elite race; otherwise NO. Resolves NO if no athlete representing Kenya starts the race. Nationality is the country the athlete represents in the official results on race day. If the event is cancelled or not completed by 2027-05-19 23:59 EAT, the market is void and stakes are refunded. Results are final when the official source publishes them; a change (appeal, disqualification, reclassification) is applied only if the official source publishes it within 7 days of the event, after which the market stays settled.",
+      "resolution_source": "Boston Athletic Association official elite results (baa.org)",
+      "references": [
+        "https://www.baa.org/",
+        "https://www.baa.org/news/2027-boston-marathon-presented-by-bank-of-america-registration-update/"
+      ],
+      "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/2024_Boston_Marathon_in_Natick_GLPCIwQX0AAcfMZ.jpg",
+      "image_license": "Wikimedia Commons; check licence and credit at https://commons.wikimedia.org/wiki/File:2024_Boston_Marathon_in_Natick_GLPCIwQX0AAcfMZ.jpg (not cleared for commercial use)",
+      "close_at": "2027-03-18 23:59",
+      "resolution_deadline_at": "2027-05-19 23:59",
+      "gate": null,
+      "gate_note": null,
+      "start_probability": 0.4
+    }
+  ]
+}
