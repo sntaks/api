@@ -9,6 +9,7 @@ use App\Observers\WalletObserver;
 use App\Services\WalletWebhookService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
@@ -34,6 +35,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(WalletWebhookService $walletWebhookService): void
     {
         Model::unguard();
+
+        // Only the Apache proxy in front of jet.kadi.online is trusted for X-Forwarded-*; none when unset
+        if (config('jet.trusted_proxies') !== []) {
+            TrustProxies::at(config('jet.trusted_proxies'));
+        }
 
         Wallet::observe(WalletObserver::class);
 

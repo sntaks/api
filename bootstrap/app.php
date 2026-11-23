@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AuthenticateJetBroadcast;
 use App\Http\Middleware\AuthenticateJetPlayer;
 use App\Http\Middleware\AuthenticatePlayer;
 use App\Http\Middleware\CheckApiKey;
@@ -30,6 +31,8 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    // Only the Kadi Jet channels exist: /broadcasting/auth takes a game:jet player bearer, no session or CSRF
+    ->withBroadcasting(__DIR__.'/../routes/channels.php', ['middleware' => ['jet.v1', 'throttle:jet-reads', 'jet.broadcast']])
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'apikey.checker' => CheckApiKey::class,
@@ -43,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'player.token' => AuthenticatePlayer::class,
             'jet.v1' => JetV1Response::class,
             'jet.player' => AuthenticateJetPlayer::class,
+            'jet.broadcast' => AuthenticateJetBroadcast::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

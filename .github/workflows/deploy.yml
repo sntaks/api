@@ -70,6 +70,13 @@ jobs:
             # Restart Supervisor worker
             sudo supervisorctl restart kadiapi-worker:*
 
+            # Kadi Jet: Reverb and the game loop, once their supervisor programs exist on the server
+            for program in kadiapi-reverb kadiapi-jet-loop; do
+              if sudo supervisorctl avail | grep -q "^\$program "; then
+                sudo supervisorctl restart \$program
+              fi
+            done
+
             # Bring application back up
             php8.4 artisan up
           "

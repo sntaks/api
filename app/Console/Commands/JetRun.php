@@ -23,10 +23,18 @@ class JetRun extends Command
 
     public function handle(RoundRecoveryService $recovery, RoundScheduler $scheduler): int
     {
-        if (! $recovery->acquire()) {
-            $this->error('Another Jet game loop holds the lease.');
+        // After a restart the stopped loop's lease is still live for up to its lease time: wait it out instead of
+        // failing, so supervisor never gives up on a quick exit
+        $waitUntil = microtime(true) + (int) config('jet.lease_seconds') + 5;
 
-            return self::FAILURE;
+        while (! $recovery->acquire()) {
+            if (microtime(true) >= $waitUntil) {
+                $this->error('Another Jet game loop holds the lease.');
+
+                return self::FAILURE;
+            }
+
+            sleep(1);
         }
 
         $this->info('Jet game loop started.');
