@@ -370,7 +370,7 @@
             <li class="nav-sub"><a href="#comp-wallets" data-section="comp-wallets"><span class="nav-icon">&#8226;</span> <span>Competition Wallets</span></a></li>
             <li class="nav-sub"><a href="#comp-txns" data-section="comp-txns"><span class="nav-icon">&#8226;</span> <span>Competition Entries</span></a></li>
             <li><a href="#sportsbook" data-section="sportsbook"><span class="nav-icon">&#9917;</span> <span>Sportsbook</span></a></li>
-            <li><a href="#crash" data-section="crash"><span class="nav-icon">&#9992;</span> <span>Crash</span></a></li>
+            <li><a href="#jet" data-section="jet"><span class="nav-icon">&#9992;</span> <span>Kadi Jet</span></a></li>
             <li><a href="#slots" data-section="slots"><span class="nav-icon">&#127920;</span> <span>Slots</span></a></li>
             <li><a href="#scratch" data-section="scratch"><span class="nav-icon">&#127903;</span> <span>Scratch Cards</span></a></li>
         </ul>
@@ -444,7 +444,7 @@
 <p>Pick what you are building. Every page lists its endpoints at the top; links can be shared (for example <code>#slots/post-wagers-instant</code> opens that endpoint on the Slots page). Press <code>/</code> to search every endpoint.</p>
 <table class="params-table start-table">
 <tr><th>You are building</th><th>Key</th><th>Read</th></tr>
-<tr><td>A sportsbook, crash, slots or scratch card game server</td><td>Game key, bound to your game, plus a player token</td><td>Your game's page: <a href="#sportsbook" data-section="sportsbook" style="color:var(--accent-blue)">Sportsbook</a>, <a href="#crash" data-section="crash" style="color:var(--accent-blue)">Crash</a>, <a href="#slots" data-section="slots" style="color:var(--accent-blue)">Slots</a> or <a href="#scratch" data-section="scratch" style="color:var(--accent-blue)">Scratch Cards</a>. It lists everything you call, in order. The full rules are in <a href="#launch" data-section="launch" style="color:var(--accent-blue)">Player Sessions</a> and the <a href="#wager-api" data-section="wager-api" style="color:var(--accent-blue)">Wager API</a>.</td></tr>
+<tr><td>A sportsbook, slots or scratch card game server (Kadi Jet runs inside KadiApi and needs no key)</td><td>Game key, bound to your game, plus a player token</td><td>Your game's page: <a href="#sportsbook" data-section="sportsbook" style="color:var(--accent-blue)">Sportsbook</a>, <a href="#slots" data-section="slots" style="color:var(--accent-blue)">Slots</a> or <a href="#scratch" data-section="scratch" style="color:var(--accent-blue)">Scratch Cards</a>. It lists everything you call, in order. The full rules are in <a href="#launch" data-section="launch" style="color:var(--accent-blue)">Player Sessions</a> and the <a href="#wager-api" data-section="wager-api" style="color:var(--accent-blue)">Wager API</a>.</td></tr>
 <tr><td>The kadi game server</td><td>Full key</td><td><a href="#kadi" data-section="kadi" style="color:var(--accent-blue)">Kadi</a> and its pages (game wallets, game bets, competitions)</td></tr>
 <tr><td>The kadi site</td><td>Site key</td><td><a href="#customers" data-section="customers" style="color:var(--accent-blue)">Customers</a>, <a href="#rg" data-section="rg" style="color:var(--accent-blue)">Responsible Gambling</a>, <a href="#promotions" data-section="promotions" style="color:var(--accent-blue)">Promotions</a>, <a href="#referrals" data-section="referrals" style="color:var(--accent-blue)">Referrals</a>, <a href="#deposits" data-section="deposits" style="color:var(--accent-blue)">Deposits</a>, <a href="#withdraws" data-section="withdraws" style="color:var(--accent-blue)">Withdrawals</a>, <a href="#complaints" data-section="complaints" style="color:var(--accent-blue)">Complaints</a>, launching games in <a href="#launch" data-section="launch" style="color:var(--accent-blue)">Player Sessions</a>, and a player's bets in <a href="#bets-admin" data-section="bets-admin" style="color:var(--accent-blue)">Bets</a></td></tr>
 <tr><td>GMS (back office)</td><td>Full key</td><td>Back office, <a href="#games" data-section="games" style="color:var(--accent-blue)">Catalog &amp; Products</a>, <a href="#bet-shops" data-section="bet-shops" style="color:var(--accent-blue)">Bet Shops</a> and Finance Reporting</td></tr>
@@ -718,7 +718,7 @@ game  ── POST /launch-tokens/redeem {token} ──▶ API ── {player_tok
 
 <div class="doc-section" data-section="wager-api">
 <button class="expand-all" onclick="toggleAll('wager-api')">Expand / Collapse All</button>
-<div class="auth-box"><h3>Building a game?</h3><p>Each game page lists, in order, exactly the endpoints that game calls, with notes for that game and its own codes in the examples: <a href="#sportsbook" data-section="sportsbook" style="color:var(--accent-blue)">Sportsbook</a>, <a href="#crash" data-section="crash" style="color:var(--accent-blue)">Crash</a>, <a href="#slots" data-section="slots" style="color:var(--accent-blue)">Slots</a>, <a href="#scratch" data-section="scratch" style="color:var(--accent-blue)">Scratch Cards</a>. This page is the full reference they are built from.</p></div>
+<div class="auth-box"><h3>Building a game?</h3><p>Each game page lists, in order, exactly the endpoints that game calls, with notes for that game and its own codes in the examples: <a href="#sportsbook" data-section="sportsbook" style="color:var(--accent-blue)">Sportsbook</a>, <a href="#slots" data-section="slots" style="color:var(--accent-blue)">Slots</a>, <a href="#scratch" data-section="scratch" style="color:var(--accent-blue)">Scratch Cards</a> (<a href="#jet" data-section="jet" style="color:var(--accent-blue)">Kadi Jet</a> is in-house and calls nothing). This page is the full reference they are built from.</p></div>
 
 <div class="callback-note"><strong>Wagers (house-banked games).</strong> For a game where the house is the other side of every bet (sportsbook, crash, slots, scratch cards). One wallet per player across every game: <code>POST /api/v1/wagers</code> moves the stake into the bet's own escrow, a settlement pays the escrow out to the house or the player, and the house wallet may go negative (it is owner capital). A bet is identified by <code>product</code> + <code>reference</code>, a reference of your choosing (up to 100 characters).
 <pre>place  ──▶ open ──▶ settle v1 (won | lost | void) ──▶ reverse ──▶ open ──▶ settle v2 …
@@ -3874,30 +3874,94 @@ timeout      ── GET /wagers/{ref}?product= ────────▶ what 
 <div class="game-endpoints"></div>
 </div>
 
-<div class="doc-section" data-section="crash">
+<div class="doc-section" data-section="jet">
 <div class="game-intro">
-<p class="game-lead">An Aviator-style game: players bet during a short betting window, then cash out before the plane crashes. Every bet belongs to a <strong>round</strong>, and the whole round is settled in one call when the plane crashes.</p>
-<table class="params-table game-facts"><tr><td>Revenue model</td><td><code>house_banked</code>: the house is the other side of every bet</td></tr><tr><td>Products</td><td><code>crash_classic</code> (the examples on this page)</td></tr><tr><td>Key</td><td>A game key bound to this game (<code>X-API-KEY</code>), plus the player token (<code>Authorization: Bearer</code>) on player routes</td></tr><tr><td>Rate limit</td><td>1,200 wager calls a minute per key, raised with the key multiplier (up to 20&times;); <code>429</code> is retryable</td></tr><tr><td>Settlement</td><td>Per round: the winners in one call (batches of up to 1,000), every other bet loses</td></tr></table>
-<h3 class="game-heading">The flow</h3>
-<pre class="game-flow">kadi           ── launch token ──▶ crash ── POST /launch-tokens/redeem ──▶ player token
-betting window ── POST /wagers {round_reference} ──▶ each bet: stake into escrow
-manual cash-out ─ POST /wagers/{ref}/settle v1 won ─▶ paid at once (optional)
-plane crashes  ── POST /rounds/{ref}/settle {winners} ─▶ winners paid, the rest lost
-round broken   ── POST /rounds/{ref}/void ───────────▶ every open bet refunded</pre>
+<p class="game-lead"><strong>Kadi Jet</strong> is our own crash game: players bet during a short betting window, then cash out before the jet flies away. It runs <strong>inside KadiApi</strong>: the round engine, provably-fair crash points and every bet's money. There is no external game server and no game key to integrate: Kadi launches the player, and GMS manages the game with the endpoints below.</p>
+<table class="params-table game-facts"><tr><td>Revenue model</td><td><code>house_banked</code>: the house is the other side of every bet</td></tr><tr><td>Game / product</td><td><code>jet</code> / <code>jet_classic</code> (stake limits, <code>max_payout</code> and winnings tax rate are the product's, edited with <a href="#" data-section="games" style="color:var(--accent-blue)">PUT /products/{code}</a>)</td></tr><tr><td>Launch URL</td><td><code>https://jet.kadi.online/launch</code></td></tr><tr><td>Money</td><td>Each bet is a wager on <code>jet_classic</code> (round reference = the round number), so it appears in wager search, finance reports and the stats dashboard like any house-banked bet</td></tr><tr><td>GMS key</td><td>A full key (<code>X-API-KEY</code>) for the admin endpoints</td></tr></table>
+<h3 class="game-heading">How a round runs</h3>
+<pre class="game-flow">kadi lobby   ── launch token ──▶ jet.kadi.online/launch ──▶ one-time code ──▶ player session
+betting      ── 25 s window (GMS setting) ──▶ each bet: stake into escrow
+flight       ── manual cash-out ──▶ paid at once at the server's multiplier
+crash        ── auto targets below the crash point win, the rest lose, in one settlement
+broken round ── GMS void ──▶ every open bet refunded</pre>
+<p class="game-lead">A bet's winnings are capped by the product's <code>max_payout</code>: a bet cashes out by itself when stake × multiplier reaches it. An auto cash-out exactly at the crash point loses. Every round's crash point is fixed before betting opens and published as a SHA-256 commitment; the seeds are revealed once the round is settled, so players can verify it.</p>
 </div>
-<h3 class="game-heading">Endpoints this game calls, in order</h3>
-<ol class="game-steps" data-game-name="Crash">
-<li class="game-step" data-endpoint="post-launch-tokens-redeem"><div class="game-step-title">Start the session</div><div class="game-step-note">Once per launch: kadi posts a launch token to your <code>launch_url</code>; trade it for a player token good for 12 hours in your game only. Do not retry on a timeout (the token may already be used): send the player back to kadi to relaunch.</div></li>
-<li class="game-step" data-endpoint="get-me get-me-balance"><div class="game-step-title">Show the player and their balance</div><div class="game-step-note">The player has one wallet across every game. Read the balance again after a bet; <code>wallet_version</code> tells a stale balance from a fresh one.</div></li>
-<li class="game-step" data-endpoint="post-wagers"><div class="game-step-title">Place a bet</div><div class="game-step-note">During the betting window, one call per bet with <code>round_reference</code> = the round id (the round is created on first use). A player may have several bets in a round. Once the round is closed a place answers <code>409 round_closed</code>.</div></li>
-<li class="game-step" data-endpoint="post-wagers-reference-settle"><div class="game-step-title">Pay a manual cash-out at once (optional)</div><div class="game-step-note">To show the money before the round ends: settle that bet <code>won</code> at version 1 with its payout. Leave it out of the round's <code>winners</code>, or send it there with the same payout (it then counts as <code>already_settled</code>).</div></li>
-<li class="game-step" data-endpoint="post-rounds-reference-settle"><div class="game-step-title">Settle the round</div><div class="game-step-note">When the plane crashes: the round's winners with their payouts (auto cash-outs included), at most 1,000 per call. A larger round goes in batches with <code>final: false</code>, then one <code>final: true</code> call, sent only after every batch answered <code>200</code>. Every other open bet loses. Safe to repeat.</div></li>
-<li class="game-step" data-endpoint="post-rounds-reference-void"><div class="game-step-title">Void a broken round</div><div class="game-step-note">The round cannot finish (a server fault before the flight ends): every open bet is refunded and the round is closed. Safe to repeat.</div></li>
-<li class="game-step" data-endpoint="post-wagers-reference-reverse"><div class="game-step-title">Correct a settled bet</div><div class="game-step-note">Rare. Reverse the bet's current version, then settle it on its own at the next version: round calls leave a reopened bet open.</div></li>
-<li class="game-step" data-endpoint="get-wagers-reference"><div class="game-step-title">Find out what happened</div><div class="game-step-note">After a timeout on a place or a settle, before doing anything else.</div></li>
+<h3 class="game-heading">GMS endpoints</h3>
+<ol class="game-steps" data-game-name="Kadi Jet" data-link-only>
+<li class="game-step" data-endpoint="get-jet-admin-health"><div class="game-step-title">Check the engine</div><div class="game-step-note">The game loop's heartbeat, the current round and whether Reverb (realtime) answers.</div></li>
+<li class="game-step" data-endpoint="get-jet-admin-rounds get-jet-admin-rounds-number"><div class="game-step-title">Look at rounds and bets</div><div class="game-step-note">Newest first, with each round's bets, totals and, once settled, its proof.</div></li>
+<li class="game-step" data-endpoint="get-jet-admin-settings put-jet-admin-settings"><div class="game-step-title">Change the round timing or cap</div><div class="game-step-note">Betting window, post-round pause and max multiplier. The house edge is shown but read-only.</div></li>
+<li class="game-step" data-endpoint="post-jet-admin-rounds-number-void"><div class="game-step-title">Void a broken round</div><div class="game-step-note">Only a round that has not crashed: open bets are refunded, bets already cashed out keep their win.</div></li>
 </ol>
-<div class="game-endpoints-head"><h3 class="game-heading">Endpoint details</h3><button class="expand-all" onclick="toggleAll('crash')">Expand / Collapse All</button></div>
-<div class="game-endpoints"></div>
+<button class="expand-all" onclick="toggleAll('jet')">Expand / Collapse All</button>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/jet/admin/settings</span><span class="endpoint-desc">Kadi Jet round settings (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "data": {"house_edge": "0.0300", "betting_window_seconds": 25, "post_round_pause_seconds": 15, "max_multiplier": "5000.00", "acceleration_k": "0.25", "updated_by": "ann", "updated_at": "2026-11-24 12:00:00", "editable": ["betting_window_seconds", "post_round_pause_seconds", "max_multiplier"], "read_only": ["house_edge", "acceleration_k"]}}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-put">PUT</span><span class="endpoint-path">/api/v1/jet/admin/settings</span><span class="endpoint-desc">Change Kadi Jet round settings (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">Send only the fields to change. A round keeps the values it was created with, so a change applies from the next round. <code>house_edge</code> (RTP) and <code>acceleration_k</code> cannot be changed here: sending them answers 422. Every change is audited with its reason.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>betting_window_seconds</td><td>integer</td><td><span class="optional">Optional</span></td><td>5 to 120</td></tr><tr><td>post_round_pause_seconds</td><td>integer</td><td><span class="optional">Optional</span></td><td>3 to 60: how long a finished round stays on screen</td></tr><tr><td>max_multiplier</td><td>number</td><td><span class="optional">Optional</span></td><td>2 to 10000, at most 2 decimals: the highest crash point</td></tr><tr><td>reason</td><td>string</td><td><span class="required">Required</span></td><td>Up to 255 characters</td></tr><tr><td>admin_user</td><td>string</td><td><span class="required">Required</span></td><td>The GMS user making the change</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Settings saved; they apply from the next round", "data": {"house_edge": "0.0300", "betting_window_seconds": 10, "...": "as in GET"}}</pre></div>
+<p class="endpoint-note">Also returns 401 (API key), 422 (validation, including a read-only field), 429 (rate limit): see <a href="#" data-section="errors" style="color:var(--accent-blue)">Error Responses</a>.</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/jet/admin/rounds</span><span class="endpoint-desc">Kadi Jet rounds, newest first (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span></div>
+<div class="endpoint-section"><h4>Query Parameters</h4>
+<table class="params-table"><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>page</td><td>integer</td><td><span class="optional">Optional</span></td><td>Default 1; 50 rounds a page</td></tr><tr><td>status</td><td>string</td><td><span class="optional">Optional</span></td><td><code>scheduled</code>, <code>betting</code>, <code>running</code>, <code>crashed</code>, <code>settled</code>, <code>voiding</code> or <code>voided</code></td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "data": {"items": [{"round_number": 812, "status": "settled", "revision": 6, "server_seed_hash": "8866f4…", "betting_closes_at": "2026-11-24T12:00:25+03:00", "started_at": "2026-11-24T12:00:25+03:00", "acceleration_k": "0.25000000", "crash_multiplier": "6.40", "crashed_at": "2026-11-24T12:00:32+03:00", "server_seed": "…", "client_seed": "…", "nonce": 812, "proof": {"algorithm": "hmac-sha256-52bit-v1", "house_edge": "0.03000000", "max_multiplier_cap": "5000.00"}, "settled_at": "2026-11-24T12:00:33+03:00", "voided_at": null, "void_reason": null, "voided_by": null, "bets_count": 14, "stakes": "2350.00", "payouts": "1890.00"}], "pagination": {"page": 1, "per_page": 50, "total": 812, "last_page": 17}}}</pre></div>
+<p class="endpoint-note">The crash point stays <code>null</code> until the round has crashed, and the seeds until it is settled. <code>payouts</code> is gross (before winnings tax). Also returns 401 (API key), 422 (validation).</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/jet/admin/rounds/{number}</span><span class="endpoint-desc">A Kadi Jet round with its bets (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "data": {"round": {"round_number": 812, "status": "settled", "crash_multiplier": "6.40", "...": "as in the list"}, "totals": {"bets": 2, "stakes": "200.00", "winners": 1, "payouts": "150.00", "tax": "10.00", "net_payouts": "140.00"}, "bets": [{"id": 9001, "customer_id": 44, "display_name": "Jane W.", "wager_reference": "3f1c…", "stake": "100.00", "auto_cashout": "1.50", "cap_multiplier": "5000.00", "cashout_multiplier": "1.50", "payout": "150.00", "tax": "10.00", "net_payout": "140.00", "status": "won", "placed_at": "2026-11-24T12:00:05+03:00", "cashed_out_at": "2026-11-24T12:00:33+03:00"}]}}</pre></div>
+<div class="endpoint-section"><h4>Response (404)</h4>
+<pre>{"success": false, "message": "No round has that number", "code": "round_not_found"}</pre></div>
+<p class="endpoint-note"><code>wager_reference</code> finds the bet's wager (product <code>jet_classic</code>) in wager search. Also returns 401 (API key).</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-post">POST</span><span class="endpoint-path">/api/v1/jet/admin/rounds/{number}/void</span><span class="endpoint-desc">Void a broken Kadi Jet round (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span><span class="tag tag-rate">30/min</span></div>
+<div class="endpoint-section"><h4>Description</h4>
+<p style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;">For a round that cannot finish (scheduled, betting or running). It is taken out of play at once, every open bet is refunded to the player, and bets already cashed out keep their win. Audited with its reason.</p></div>
+<div class="endpoint-section"><h4>Request Body</h4>
+<table class="params-table"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr><tr><td>reason</td><td>string</td><td><span class="required">Required</span></td><td>Up to 255 characters</td></tr><tr><td>admin_user</td><td>string</td><td><span class="required">Required</span></td><td>The GMS user voiding it</td></tr></table></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "message": "Round voided", "data": {"round_number": 813, "status": "voided", "void_reason": "Stuck flight", "voided_by": "gms:ann", "...": "as in the list"}}</pre></div>
+<div class="endpoint-section"><h4>Response (409)</h4>
+<pre>{"success": false, "message": "This round has crashed and is being settled", "code": "round_settling"}</pre></div>
+<p class="endpoint-note"><code>409 round_settling</code>: the round has crashed and the engine is settling it. <code>409 round_finished</code>: already settled or voided. Also returns 401 (API key), 404 (<code>round_not_found</code>), 422 (validation), 429 (rate limit).</p>
+</div></div>
+
+<div class="endpoint">
+<div class="endpoint-header" onclick="toggle(this)"><span class="method method-get">GET</span><span class="endpoint-path">/api/v1/jet/admin/health</span><span class="endpoint-desc">Kadi Jet engine health (GMS)</span><span class="chevron">&#9654;</span></div>
+<div class="endpoint-body">
+<div class="tags"><span class="tag tag-auth">API Key</span></div>
+<div class="endpoint-section"><h4>Response (200)</h4>
+<pre>{"success": true, "data": {"healthy": true, "loop": {"alive": true, "heartbeat_at": "2026-11-24T12:00:40+03:00", "heartbeat_age_seconds": 0, "lease_held": true}, "round": {"round_number": 813, "status": "betting"}, "outbox_pending": 0, "reverb_reachable": true}}</pre></div>
+<p class="endpoint-note"><code>loop.alive</code> is false when the game loop has not reported for 30 seconds. <code>healthy</code> needs the loop alive and Reverb reachable. Also returns 401 (API key).</p>
+</div></div>
 </div>
 
 <div class="doc-section" data-section="slots">
@@ -9463,7 +9527,7 @@ var sectionTitles = {
     'comp-wallets': { title: 'Kadi: Competition Wallets', desc: 'Tournament and jackpot wallets, round payouts, withdrawals, results and awards' },
     'comp-txns': { title: 'Kadi: Competition Entries', desc: 'Competition entries and transaction records' },
     'sportsbook': { title: 'Sportsbook', desc: 'Bet slips placed now and settled when the events are decided' },
-    'crash': { title: 'Crash', desc: 'Bets in rounds, settled in one call when the plane crashes' },
+    'jet': { title: 'Kadi Jet', desc: 'Our in-house crash game: rounds, money and fairness inside KadiApi; GMS settings, rounds, voids and health' },
     'slots': { title: 'Slots', desc: 'One call per spin: the stake and the win in one transaction' },
     'scratch': { title: 'Scratch Cards', desc: 'Cards revealed at once in one call, or bought now and revealed later' },
     'launch': { title: 'Player Sessions', desc: 'Launch tokens, player tokens and what a game may read about its player' },

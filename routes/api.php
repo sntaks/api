@@ -43,6 +43,7 @@ use App\Http\Controllers\api\v1\GameTransactionController;
 use App\Http\Controllers\api\v1\GameWalletController;
 use App\Http\Controllers\api\v1\GameWalletWithdrawController;
 use App\Http\Controllers\api\v1\HouseFundingController;
+use App\Http\Controllers\api\v1\JetAdminController;
 use App\Http\Controllers\api\v1\JetController;
 use App\Http\Controllers\api\v1\JetPlayerController;
 use App\Http\Controllers\api\v1\LaunchTokenController;
@@ -214,6 +215,16 @@ Route::prefix('/v1')->group(function () {
         Route::post('/wagers/{id}/void', [WagerController::class, 'adminVoid'])->middleware('throttle:write');
 
         // Prediction markets as players see them (site key, GMS); drafts are never listed
+        // Kadi Jet for GMS (full key): settings (house edge read-only), rounds, void, engine health. Changes are audited
+        Route::prefix('/jet/admin')->group(function () {
+            Route::get('/settings', [JetAdminController::class, 'settings']);
+            Route::put('/settings', [JetAdminController::class, 'updateSettings'])->middleware('throttle:write');
+            Route::get('/rounds', [JetAdminController::class, 'rounds']);
+            Route::get('/rounds/{number}', [JetAdminController::class, 'round']);
+            Route::post('/rounds/{number}/void', [JetAdminController::class, 'void'])->middleware('throttle:write');
+            Route::get('/health', [JetAdminController::class, 'health']);
+        });
+
         Route::prefix('/predict')->group(function () {
             Route::get('/markets', [PredictMarketController::class, 'index'])->middleware('throttle:predict-read');
             Route::get('/markets/{id}', [PredictMarketController::class, 'show'])->middleware('throttle:predict-read');

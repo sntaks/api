@@ -11,13 +11,13 @@ use RuntimeException;
  */
 class RoundService
 {
-    public function __construct(private ProvablyFairService $provablyFair) {}
+    public function __construct(private ProvablyFairService $provablyFair, private JetSettings $settings) {}
 
     public function createRound(): JetRound
     {
         return JetLock::run(function () {
             $houseEdge = (float) config('jet.house_edge');
-            $cap = (float) config('jet.max_multiplier');
+            $cap = (float) $this->settings->current()['max_multiplier'];
             $k = (float) config('jet.acceleration_k');
 
             if (! is_finite($k) || $k <= 0 || ! is_finite($houseEdge) || $houseEdge < 0 || $houseEdge >= 1 || ! is_finite($cap) || $cap < 1) {
@@ -56,7 +56,7 @@ class RoundService
     {
         return $this->transition($round, JetRound::STATUS_SCHEDULED, fn () => [
             'status' => JetRound::STATUS_BETTING,
-            'betting_closes_at' => now()->addSeconds((int) config('jet.betting_window_seconds')),
+            'betting_closes_at' => now()->addSeconds($this->settings->current()['betting_window_seconds']),
         ]);
     }
 
