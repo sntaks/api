@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Jet\JetException;
 use App\Models\Customer;
 use App\Models\Game;
 use App\Models\Wallet;
@@ -7,6 +8,7 @@ use App\Services\LaunchTokenService;
 use App\Services\PlayerTokenService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Testing\TestResponse;
 
 uses(RefreshDatabase::class);
@@ -105,7 +107,8 @@ it('places a bet once per operation key and needs the key', function () {
     $this->getJson('/api/v1/jet/operations/k1', $headers)->assertOk()->assertJsonPath('bet.id', $placed->json('bet.id'));
 });
 
-it('answers 409 ROUND_CLOSED once the betting window has closed', function () {
+it('answers 409 ROUND_CLOSED once the betting window has closed, without logging it as an error', function () {
+    Exceptions::fake();
     $round = jetBettingRound();
     $this->travelTo($round->betting_closes_at);
 
@@ -113,6 +116,8 @@ it('answers 409 ROUND_CLOSED once the betting window has closed', function () {
         ->assertStatus(409)
         ->assertJsonPath('error.code', 'ROUND_CLOSED')
         ->assertJsonPath('error.retry', 'reconcile');
+
+    Exceptions::assertNotReported(JetException::class);
 });
 
 it('does not let a player cash out another player\'s bet', function () {
