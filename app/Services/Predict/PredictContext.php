@@ -3,9 +3,9 @@
 namespace App\Services\Predict;
 
 use App\Models\ApiKey;
-use App\Models\Game;
 use App\Models\PredictMarket;
 use App\Models\Product;
+use App\Services\GameWagerKey;
 use RuntimeException;
 
 /**
@@ -14,16 +14,11 @@ use RuntimeException;
  */
 class PredictContext
 {
+    public function __construct(private GameWagerKey $gameWagerKey) {}
+
     public function wagerKey(): ApiKey
     {
-        $gameId = Game::idFor((string) config('predict.game_code'));
-        $key = $gameId ? ApiKey::where('game_id', $gameId)->where('scope', ApiKey::SCOPE_GAME)->where('is_active', true)->orderBy('id')->first() : null;
-
-        if (! $key) {
-            throw new RuntimeException('Prediction markets need an active game API key for game '.config('predict.game_code'));
-        }
-
-        return $key;
+        return $this->gameWagerKey->for((string) config('predict.game_code'));
     }
 
     public function productFor(string $engine): Product

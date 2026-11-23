@@ -1,5 +1,9 @@
 <?php
 
+use App\Domain\Jet\BetService as JetBetService;
+use App\Domain\Jet\CashoutService as JetCashoutService;
+use App\Domain\Jet\OperationService as JetOperationService;
+use App\Domain\Jet\RoundService as JetRoundService;
 use App\Models\ApiKey;
 use App\Models\BetShop;
 use App\Models\CompetitionWallet;
@@ -7,6 +11,7 @@ use App\Models\Customer;
 use App\Models\Game;
 use App\Models\GameTransaction;
 use App\Models\GameWallet;
+use App\Models\JetRound;
 use App\Models\PredictExposure;
 use App\Models\PredictMarket;
 use App\Models\PredictOutcome;
@@ -360,4 +365,58 @@ function statsGet(object $test, string $path, string $query = ''): array
     Cache::flush();
 
     return $test->getJson("/api/v1/stats/{$path}?{$query}", $test->headers)->assertOk()->json('data');
+}
+
+/**
+ * Kadi Jet wiring: the `jet` game with its in-process game key, the house-banked `jet_classic` product (10–2,000,
+ * max payout 1,000,000, 20% winnings tax), the house wallet (#1) and a 25 s window over the default config.
+ * Sets $test->jetKey and ->jetProduct.
+ */
+function setUpJet(object $test): void
+{
+    $game = Game::factory()->create(['code' => 'jet', 'status' => Game::STATUS_ACTIVE]);
+    $test->jetKey = ApiKey::create(['key' => 'game_jet_key', 'name' => 'jet', 'scope' => ApiKey::SCOPE_GAME, 'game_id' => $game->id, 'is_active' => true]);
+    $test->jetProduct = Product::factory()->create([
+        'game_id' => $game->id, 'code' => 'jet_classic', 'revenue_model' => Product::REVENUE_HOUSE_BANKED,
+        'min_stake' => 10, 'max_stake' => 2000, 'max_payout' => 1000000, 'winnings_tax_rate' => 0.2,
+    ]);
+    $houseCustomer = Customer::factory()->create(['id' => 1]);
+    Wallet::forceCreate(['id' => 1, 'customer_id' => $houseCustomer->id, 'balance' => 100000]);
+}
+
+/**
+ * A new Jet round in its betting window, with a crash point the test chooses.
+ */
+function jetBettingRound(string $crashMultiplier = '2.00'): JetRound
+{
+    $rounds = app(JetRoundService::class);
+    $round = $rounds->createRound();
+    $round->forceFill(['crash_multiplier' => $crashMultiplier])->save();
+
+    return $rounds->openBetting($round);
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function jetPlace(Customer $player, JetRound $round, string $stake, ?string $autoCashout = null, ?string $key = null): array
+{
+    $key ??= (string) Str::uuid();
+
+    return app(JetOperationService::class)->execute($player, $key, ['type' => 'place', 'round_number' => $round->round_number, 'stake' => $stake, 'auto_cashout' => $autoCashout],
+        fn (string $reference) => app(JetBetService::class)->place($player, $round->round_number, $stake, $autoCashout, $reference));
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function jetCashOut(Customer $player, int $betId, ?string $key = null): array
+{
+    return app(JetOperationService::class)->execute($player, $key ?? (string) Str::uuid(), ['type' => 'cashout', 'bet_id' => $betId],
+        fn () => app(JetCashoutService::class)->cashOut($player, $betId));
+}
+
+function jetBalance(Customer $player): string
+{
+    return number_format((float) Wallet::where('customer_id', $player->id)->value('balance'), 2, '.', '');
 }

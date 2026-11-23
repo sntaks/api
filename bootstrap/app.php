@@ -102,5 +102,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Stats dashboard rollups: today every ten minutes, yesterday once it is over (02:00 Nairobi)
         $schedule->command('stats:rebuild')->everyTenMinutes()->withoutOverlapping();
         $schedule->command('stats:rebuild --from=yesterday')->dailyAt('02:00')->withoutOverlapping();
+        // Kadi Jet: the loop (supervisor, jet:run) queues its own events; these cover a stopped loop
+        $schedule->command('jet:publish-outbox')->everySecond()->withoutOverlapping();
+        $schedule->command('jet:settle-expired')->everyMinute()->withoutOverlapping();
+        $schedule->command('jet:prune')->daily();
     })
     ->create();
