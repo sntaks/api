@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Domain\Jet\RoundRecoveryService;
 use App\Models\ApiKey;
 use App\Models\User;
 use App\Models\Wallet;
@@ -26,7 +27,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // The Jet loop lease belongs to the process: jet:run and its RoundScheduler must share one owner
+        $this->app->singleton(RoundRecoveryService::class);
     }
 
     /**

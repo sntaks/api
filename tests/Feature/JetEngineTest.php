@@ -2,6 +2,7 @@
 
 use App\Domain\Jet\JetException;
 use App\Domain\Jet\RoundRecoveryService;
+use App\Domain\Jet\RoundScheduler;
 use App\Domain\Jet\RoundService;
 use App\Domain\Jet\SettlementService;
 use App\Models\Customer;
@@ -204,4 +205,14 @@ it('runs a round from creation to settlement, and starts none while jet_classic 
     $recovery->acquire();
 
     expect($recovery->tick()->status)->toBe(JetRound::STATUS_SETTLED);
+});
+
+it('lets the scheduler run under the lease the game loop took', function () {
+    config(['jet.post_round_pause_seconds' => 0]);
+    $this->jetProduct->update(['status' => Product::STATUS_SUSPENDED]);
+
+    // As jet:run does: take the lease, then drive rounds through the scheduler
+    expect(app(RoundRecoveryService::class)->acquire())->toBeTrue()
+        ->and(app(RoundScheduler::class)->runOnce())->toBeNull()
+        ->and(DB::table('jet_contract_state')->value('loop_owner'))->not->toBeNull();
 });
