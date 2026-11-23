@@ -8,6 +8,7 @@ use App\Http\Requests\PagedListRequest;
 use App\Http\Requests\StoreGameWalletRequest;
 use App\Http\Requests\UpdateGameWalletRequest;
 use App\Http\Resources\GameWalletResource;
+use App\Models\Product;
 use App\Services\GameWalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,6 +32,10 @@ class GameWalletController extends Controller
      */
     public function store(StoreGameWalletRequest $request): JsonResponse
     {
+        if (! Product::isCodeAvailable(Product::CODE_KADI)) {
+            return response()->json(['error' => 'This product is not taking bets', 'code' => 'product_not_active'], 403);
+        }
+
         $gameWallet = $this->gameWalletService->createGameWallet($request->validated());
 
         return response()->json(['status' => 'success', 'game_wallet_id' => $gameWallet->id, 'game_type' => $gameWallet->game_type], 201);

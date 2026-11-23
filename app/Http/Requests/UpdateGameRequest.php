@@ -14,7 +14,8 @@ class UpdateGameRequest extends FormRequest
     }
 
     /**
-     * The code is fixed: game keys, launch tokens and ledger products refer to it.
+     * The code is fixed: game keys, launch tokens and ledger products refer to it. A status change needs
+     * the reason and the GMS admin, kept in catalog_status_changes.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
@@ -25,6 +26,8 @@ class UpdateGameRequest extends FormRequest
             'launch_url' => ['sometimes', 'required', 'url', 'max:255'],
             'status' => ['sometimes', 'required', 'in:'.implode(',', Game::STATUSES)],
             'sort_order' => ['sometimes', 'required', 'integer', 'min:0'],
+            'reason' => ['required_with:status', 'string', 'min:3', 'max:500'],
+            'admin_user' => ['required_with:status', 'string', 'max:100'],
         ];
     }
 }

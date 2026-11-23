@@ -12,6 +12,7 @@ use App\Http\Controllers\api\v1\BetShopFloatController;
 use App\Http\Controllers\api\v1\BetShopLoadController;
 use App\Http\Controllers\api\v1\C2BBalanceResultController;
 use App\Http\Controllers\api\v1\C2BBalanceTimeoutController;
+use App\Http\Controllers\api\v1\CatalogStatusChangeController;
 use App\Http\Controllers\api\v1\CoinBuyController;
 use App\Http\Controllers\api\v1\CoinController;
 use App\Http\Controllers\api\v1\CoinExchangeController;
@@ -156,11 +157,13 @@ Route::prefix('/v1')->group(function () {
         Route::get('/bet-shops/loads', [BetShopLoadController::class, 'index']);
         Route::get('/bet-shops/withdrawals', [ShopWithdrawalController::class, 'gmsIndex']);
 
-        // Games and products: kadi's lobby lists the active games, GMS manages both
+        // Games and products: kadi's lobby lists the active games and products, GMS manages both (a status change keeps its reason and admin)
         Route::get('/games', [GameCatalogController::class, 'index']);
         Route::put('/games/{code}', [GameCatalogController::class, 'update'])->middleware('throttle:write');
         Route::get('/products', [ProductController::class, 'index']);
         Route::put('/products/{code}', [ProductController::class, 'update'])->middleware('throttle:write');
+        Route::get('/games/{code}/status-changes', [CatalogStatusChangeController::class, 'game']);
+        Route::get('/products/{code}/status-changes', [CatalogStatusChangeController::class, 'product']);
 
         // API keys (GMS): list every key, issue a game's keys (not idempotent on purpose: a stored response would keep the new key for 24 hours)
         Route::get('/api-keys', [ApiKeyController::class, 'index']);

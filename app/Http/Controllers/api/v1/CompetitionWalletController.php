@@ -7,7 +7,9 @@ use App\Http\Requests\PagedListRequest;
 use App\Http\Requests\StoreCompetitionWalletRequest;
 use App\Http\Requests\UpdateCompetitionWalletRequest;
 use App\Http\Resources\CompetitionWalletResource;
+use App\Models\Product;
 use App\Services\CompetitionWalletService;
+use App\Services\ProductResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -29,8 +31,12 @@ class CompetitionWalletController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreCompetitionWalletRequest $request)
+    public function store(StoreCompetitionWalletRequest $request, ProductResolver $products)
     {
+        if (! Product::isCodeAvailable($products->competitionProductCode($request->validated('game_type')))) {
+            return response()->json(['status' => 'This product is not taking bets', 'code' => 'product_not_active'], 403);
+        }
+
         try {
             $competitionWallet = $this->walletService->createCompetitionWallet($request->validated());
 

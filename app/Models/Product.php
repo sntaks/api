@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\ProductFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -87,6 +88,24 @@ class Product extends Model
         }
 
         return self::$ids[$code];
+    }
+
+    /**
+     * Open for new stakes and shown in the lobby: the product and its game are both active.
+     */
+    public function isAvailable(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE && $this->game?->status === Game::STATUS_ACTIVE;
+    }
+
+    public static function isCodeAvailable(string $code): bool
+    {
+        return static::available()->where('code', $code)->exists();
+    }
+
+    public function scopeAvailable(Builder $query): Builder
+    {
+        return $query->where('status', self::STATUS_ACTIVE)->whereRelation('game', 'status', Game::STATUS_ACTIVE);
     }
 
     public function game(): BelongsTo

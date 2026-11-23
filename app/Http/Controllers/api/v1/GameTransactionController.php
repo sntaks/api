@@ -7,6 +7,7 @@ use App\Http\Requests\PagedListRequest;
 use App\Http\Requests\StoreGameTransactionRequest;
 use App\Http\Resources\GameTransactionResource;
 use App\Models\Customer;
+use App\Models\Product;
 use App\Services\GameWalletService;
 use App\Services\PlayerGate;
 use Illuminate\Http\JsonResponse;
@@ -32,6 +33,10 @@ class GameTransactionController extends Controller
      */
     public function store(StoreGameTransactionRequest $request): JsonResponse
     {
+        if (! Product::isCodeAvailable(Product::CODE_KADI)) {
+            return response()->json(['error' => 'This product is not taking bets', 'code' => 'product_not_active'], 403);
+        }
+
         // Only an active player who is not on a break may stake. Same error shape as the route's other refusals.
         $canPlay = $this->gate->canPlay(Customer::withTrashed()->find($request->validated('customer_id')));
         if (! $canPlay->allowed) {

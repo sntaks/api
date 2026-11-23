@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use App\Services\CatalogStatusService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -30,7 +31,7 @@ class ProductController extends Controller
         return ProductResource::collection($products);
     }
 
-    public function update(UpdateProductRequest $request, string $code): JsonResponse
+    public function update(UpdateProductRequest $request, string $code, CatalogStatusService $catalog): JsonResponse
     {
         $product = Product::with('game')->where('code', $code)->first();
 
@@ -38,8 +39,8 @@ class ProductController extends Controller
             return response()->json(['success' => false, 'message' => 'Product not found'], 404);
         }
 
-        $product->update($request->validated());
+        $product = $catalog->update($product, $request->validated(), $this->actorFor($request));
 
-        return response()->json(['success' => true, 'message' => 'Product updated', 'data' => ProductResource::make($product)]);
+        return response()->json(['success' => true, 'message' => 'Product updated', 'data' => ProductResource::make($product->load('game'))]);
     }
 }

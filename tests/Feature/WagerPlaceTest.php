@@ -242,6 +242,13 @@ it('refuses a product that is not active', function () {
     expect(Wager::count())->toBe(0);
 });
 
+it('refuses a product whose game is suspended', function () {
+    $this->game->update(['status' => Game::STATUS_SUSPENDED]);
+
+    placeWager($this)->assertForbidden()->assertJson(['code' => 'product_not_active']);
+    expect(Wager::count())->toBe(0);
+});
+
 it('refuses an excluded player', function () {
     $this->player->exclusions()->create(['type' => 'break', 'duration' => '24h', 'starts_at' => now()->subHour(), 'ends_at' => now()->addDay()]);
 

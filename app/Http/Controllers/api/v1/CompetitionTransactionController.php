@@ -7,9 +7,12 @@ use App\Http\Requests\PagedListRequest;
 use App\Http\Requests\StoreCompetitionTransactionRequest;
 use App\Http\Requests\UpdateCompetitionTransactionRequest;
 use App\Http\Resources\CompetitionTransactionResource;
+use App\Models\CompetitionWallet;
 use App\Models\Customer;
+use App\Models\Product;
 use App\Services\CompetitionWalletService;
 use App\Services\PlayerGate;
+use App\Services\ProductResolver;
 use Illuminate\Support\Facades\Log;
 
 class CompetitionTransactionController extends Controller
@@ -30,8 +33,14 @@ class CompetitionTransactionController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreCompetitionTransactionRequest $request)
+    public function store(StoreCompetitionTransactionRequest $request, ProductResolver $products)
     {
+        $gameType = CompetitionWallet::whereKey($request->validated('competition_wallet_id'))->value('game_type');
+
+        if (! Product::isCodeAvailable($products->competitionProductCode($gameType))) {
+            return response()->json(['status' => 'This product is not taking bets', 'code' => 'product_not_active'], 403);
+        }
+
         // Only an active player who is not on a break may stake. Same error shape as the route's other refusals.
         $canPlay = $this->gate->canPlay(Customer::withTrashed()->find($request->validated('customer_id')));
         if (! $canPlay->allowed) {
