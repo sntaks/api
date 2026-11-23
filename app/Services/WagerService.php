@@ -43,7 +43,7 @@ class WagerService
             return $this->replayOrConflict($existing, $player, $data);
         }
 
-        if ($product->status !== Product::STATUS_ACTIVE) {
+        if (! $product->isAvailable()) {
             return WagerResult::refused('product_not_active', 'This product is not taking bets', 403);
         }
 
@@ -203,7 +203,7 @@ class WagerService
             return $this->instantReplayOrConflict($existing, $player, $data);
         }
 
-        if ($product->status !== Product::STATUS_ACTIVE) {
+        if (! $product->isAvailable()) {
             return WagerResult::refused('product_not_active', 'This product is not taking bets', 403);
         }
 

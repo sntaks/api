@@ -141,11 +141,18 @@ class ProductResolver
         return $gameType === null ? null : (int) $gameType;
     }
 
+    /**
+     * The product of a kadi competition: game_type 1 is a tournament, 2 a jackpot. An unknown type counts as a tournament.
+     */
+    public function competitionProductCode(mixed $gameType): string
+    {
+        return (int) $gameType === 2 ? Product::CODE_KADI_JACKPOT : Product::CODE_KADI_TOURNAMENT;
+    }
+
     private function competitionProductId(mixed $gameType): ?int
     {
         return match ((int) $gameType) {
-            1 => Product::idFor(Product::CODE_KADI_TOURNAMENT),
-            2 => Product::idFor(Product::CODE_KADI_JACKPOT),
+            1, 2 => Product::idFor($this->competitionProductCode($gameType)),
             default => $this->unknownCompetitionType($gameType),
         };
     }

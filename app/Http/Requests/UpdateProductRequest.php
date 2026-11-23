@@ -16,7 +16,7 @@ class UpdateProductRequest extends FormRequest
 
     /**
      * The code, game and revenue model are fixed: ledger entries and finance reports refer to them.
-     * A null limit means no limit.
+     * A null limit means no limit. A status change needs the reason and the GMS admin.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
@@ -29,6 +29,8 @@ class UpdateProductRequest extends FormRequest
             'max_stake' => ['sometimes', 'nullable', 'numeric', 'gt:0', 'decimal:0,2'],
             'max_payout' => ['sometimes', 'nullable', 'numeric', 'gt:0', 'decimal:0,2'],
             'winnings_tax_rate' => ['sometimes', 'required', 'numeric', 'between:0,1', 'decimal:0,4'],
+            'reason' => ['required_with:status', 'string', 'min:3', 'max:500'],
+            'admin_user' => ['required_with:status', 'string', 'max:100'],
         ];
     }
 

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateGameRequest;
 use App\Http\Resources\GameResource;
 use App\Models\Game;
+use App\Models\Product;
+use App\Services\CatalogStatusService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -16,7 +18,8 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 class GameCatalogController extends Controller
 {
     /**
-     * Active games by default, in lobby order, each with its products. ?status=all lists every game.
+     * Active games by default, in lobby order, each with its active products (what kadi offers).
+     * ?status=all lists every game with every product.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -25,7 +28,10 @@ class GameCatalogController extends Controller
         ])['status'] ?? Game::STATUS_ACTIVE;
 
         $games = Game::query()
-            ->with(['products' => fn ($query) => $query->orderBy('id')->with('game')])
+            ->with(['products' => fn ($query) => $query
+                ->when($status === Game::STATUS_ACTIVE, fn ($query) => $query->where('status', Product::STATUS_ACTIVE))
+                ->orderBy('id')
+                ->with('game')])
             ->when($status !== 'all', fn ($query) => $query->where('status', $status))
             ->orderBy('sort_order')
             ->orderBy('id')
@@ -34,7 +40,7 @@ class GameCatalogController extends Controller
         return GameResource::collection($games);
     }
 
-    public function update(UpdateGameRequest $request, string $code): JsonResponse
+    public function update(UpdateGameRequest $request, string $code, CatalogStatusService $catalog): JsonResponse
     {
         $game = Game::where('code', $code)->first();
 
@@ -42,7 +48,7 @@ class GameCatalogController extends Controller
             return response()->json(['success' => false, 'message' => 'Game not found'], 404);
         }
 
-        $game->update($request->validated());
+        $game = $catalog->update($game, $request->validated(), $this->actorFor($request));
 
         return response()->json(['success' => true, 'message' => 'Game updated', 'data' => GameResource::make($game->load('products.game'))]);
     }
