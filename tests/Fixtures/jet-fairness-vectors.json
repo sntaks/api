@@ -1,0 +1,154 @@
+[
+  {
+    "round_number": 70,
+    "status": "settled",
+    "revision": 5,
+    "server_seed_hash": "8866f4d30b1ee1720d456321b0704df3e336151d632024d7a454e8a56d9f5112",
+    "betting_closes_at": "2026-11-09T12:00:00Z",
+    "started_at": "2026-11-09T12:00:00Z",
+    "crashed_at": "2026-11-09T12:00:10Z",
+    "acceleration_k": "0.25000000",
+    "crash_multiplier": "1.01",
+    "server_seed": "m6-server-0",
+    "client_seed": "m6-client-0",
+    "nonce": 0,
+    "proof": {
+      "algorithm": "hmac-sha256-52bit-v1",
+      "house_edge": "0.03000000",
+      "max_multiplier_cap": "1.01"
+    }
+  },
+  {
+    "round_number": 71,
+    "status": "settled",
+    "revision": 5,
+    "server_seed_hash": "778828213b71f8aeb9ef02738a50cd8309be0587ae206c8945110d719b2bb223",
+    "betting_closes_at": "2026-11-09T12:00:00Z",
+    "started_at": "2026-11-09T12:00:00Z",
+    "crashed_at": "2026-11-09T12:00:10Z",
+    "acceleration_k": "0.25000000",
+    "crash_multiplier": "3.65",
+    "server_seed": "m6-server-1",
+    "client_seed": "m6-client-1",
+    "nonce": 1,
+    "proof": {
+      "algorithm": "hmac-sha256-52bit-v1",
+      "house_edge": "0.00000000",
+      "max_multiplier_cap": "5000.00"
+    }
+  },
+  {
+    "round_number": 72,
+    "status": "settled",
+    "revision": 5,
+    "server_seed_hash": "8e5aa869360395059f4e7d6b5b8e67827e612d96f2b3bb860ea529333105c3d6",
+    "betting_closes_at": "2026-11-09T12:00:00Z",
+    "started_at": "2026-11-09T12:00:00Z",
+    "crashed_at": "2026-11-09T12:00:10Z",
+    "acceleration_k": "0.25000000",
+    "crash_multiplier": "1.01",
+    "server_seed": "m6-server-2",
+    "client_seed": "m6-client-2",
+    "nonce": 2,
+    "proof": {
+      "algorithm": "hmac-sha256-52bit-v1",
+      "house_edge": "0.10000000",
+      "max_multiplier_cap": "1.01"
+    }
+  },
+  {
+    "round_number": 73,
+    "status": "settled",
+    "revision": 5,
+    "server_seed_hash": "e6803fbc8fa26686caf096f2260caabf2d945497df763445266c0fa64ec1cc35",
+    "betting_closes_at": "2026-11-09T12:00:00Z",
+    "started_at": "2026-11-09T12:00:00Z",
+    "crashed_at": "2026-11-09T12:00:10Z",
+    "acceleration_k": "0.25000000",
+    "crash_multiplier": "1.00",
+    "server_seed": "m6-server-3",
+    "client_seed": "m6-client-3",
+    "nonce": 3,
+    "proof": {
+      "algorithm": "hmac-sha256-52bit-v1",
+      "house_edge": "0.50000000",
+      "max_multiplier_cap": "5000.00"
+    }
+  },
+  {
+    "round_number": 74,
+    "status": "settled",
+    "revision": 5,
+    "server_seed_hash": "50ae6e93d7a583fffbd360779b3f5fe099bd29d5c6060ec35999aec83ab3eb0f",
+    "betting_closes_at": "2026-11-09T12:00:00Z",
+    "started_at": "2026-11-09T12:00:00Z",
+    "crashed_at": "2026-11-09T12:00:10Z",
+    "acceleration_k": "0.25000000",
+    "crash_multiplier": "1.44",
+    "server_seed": "m6-server-4",
+    "client_seed": "m6-client-4",
+    "nonce": 4,
+    "proof": {
+      "algorithm": "hmac-sha256-52bit-v1",
+      "house_edge": "0.03000000",
+      "max_multiplier_cap": "5000.00"
+    }
+  },
+  {
+    "round_number": 75,
+    "status": "settled",
+    "revision": 5,
+    "server_seed_hash": "cb5aade8a23e69673fc6b72555098602a6357e67ef4378c2852bf65a23abc4be",
+    "betting_closes_at": "2026-11-09T12:00:00Z",
+    "started_at": "2026-11-09T12:00:00Z",
+    "crashed_at": "2026-11-09T12:00:10Z",
+    "acceleration_k": "0.25000000",
+    "crash_multiplier": "1.99",
+    "server_seed": "m6-server-5",
+    "client_seed": "m6-client-5",
+    "nonce": 5,
+    "proof": {
+      "algorithm": "hmac-sha256-52bit-v1",
+      "house_edge": "0.00000000",
+      "max_multiplier_cap": "5000.00"
+    }
+  },
+  {
+    "round_number": 76,
+    "status": "settled",
+    "revision": 5,
+    "server_seed_hash": "1de7c71c8c061a390ced334f589bfb3bc6767bcb782a264ed1cdc750a0f8e469",
+    "betting_closes_at": "2026-11-09T12:00:00Z",
+    "started_at": "2026-11-09T12:00:00Z",
+    "crashed_at": "2026-11-09T12:00:10Z",
+    "acceleration_k": "0.25000000",
+    "crash_multiplier": "1.03",
+    "server_seed": "m6-server-6",
+    "client_seed": "m6-client-6",
+    "nonce": 6,
+    "proof": {
+      "algorithm": "hmac-sha256-52bit-v1",
+      "house_edge": "0.10000000",
+      "max_multiplier_cap": "5000.00"
+    }
+  },
+  {
+    "round_number": 77,
+    "status": "settled",
+    "revision": 5,
+    "server_seed_hash": "2476f2a4c12caa94c2d48b680e2ad83d99f012272537aae789c106d1f0806b52",
+    "betting_closes_at": "2026-11-09T12:00:00Z",
+    "started_at": "2026-11-09T12:00:00Z",
+    "crashed_at": "2026-11-09T12:00:10Z",
+    "acceleration_k": "0.25000000",
+    "crash_multiplier": "1.00",
+    "server_seed": "m6-server-7",
+    "client_seed": "m6-client-7",
+    "nonce": 7,
+    "proof": {
+      "algorithm": "hmac-sha256-52bit-v1",
+      "house_edge": "0.50000000",
+      "max_multiplier_cap": "5000.00"
+    }
+  }
+]
