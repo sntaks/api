@@ -2,6 +2,7 @@
 
 namespace App\Domain\Jet;
 
+use Illuminate\Http\JsonResponse;
 use RuntimeException;
 
 /**
@@ -16,5 +17,10 @@ class JetException extends RuntimeException
     public function __construct(public readonly string $errorCode, public readonly int $status, public readonly string $retry = 'correct_request', public readonly array $extra = [])
     {
         parent::__construct($errorCode);
+    }
+
+    public function render(): JsonResponse
+    {
+        return response()->json(['error' => ['code' => $this->errorCode, 'retry' => $this->retry, ...$this->extra]], $this->status);
     }
 }

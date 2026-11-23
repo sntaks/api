@@ -1,13 +1,17 @@
 <?php
 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\JetLaunchController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\UserController;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
-
-use App\Http\Controllers\AuthController;
-
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 Route::get('/', function () {
     abort(404, 'Not Found');
@@ -57,3 +61,14 @@ Route::middleware(['auth', 'session.checker'])->group(function () {
 });
 */
 
+// Kadi Jet launch (https://jet.kadi.online/launch through the proxy): no session, cookie or CSRF token, the
+// launch token is the credential and works once
+Route::post('/jet/launch', JetLaunchController::class)
+    ->withoutMiddleware([
+        ValidateCsrfToken::class,
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        AddQueuedCookiesToResponse::class,
+        EncryptCookies::class,
+    ])
+    ->middleware('throttle:jet-session');

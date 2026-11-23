@@ -27,6 +27,16 @@ return [
     // How long the game loop's database lease lasts without a renewal.
     'lease_seconds' => 15,
 
+    // A launch's one-time code must be exchanged for the player token within this time
+    'session_code_ttl_seconds' => 60,
+
+    // Public WebSocket settings the browser connects with (through the jet.kadi.online proxy)
+    'realtime' => [
+        'host' => env('JET_REALTIME_HOST', 'jet.kadi.online'),
+        'port' => (int) env('JET_REALTIME_PORT', 443),
+        'scheme' => env('JET_REALTIME_SCHEME', 'https'),
+    ],
+
     // Operation results are kept this long; the key's identity is kept for good.
     'operation_ttl_days' => 7,
 ];

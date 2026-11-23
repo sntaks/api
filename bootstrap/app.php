@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AuthenticateJetPlayer;
 use App\Http\Middleware\AuthenticatePlayer;
 use App\Http\Middleware\CheckApiKey;
 use App\Http\Middleware\CheckUserRole;
@@ -7,6 +8,7 @@ use App\Http\Middleware\CheckUserSession;
 use App\Http\Middleware\DecryptIdentifier;
 use App\Http\Middleware\EnsureIdempotency;
 use App\Http\Middleware\EnsureShopKey;
+use App\Http\Middleware\JetV1Response;
 use App\Http\Middleware\LogRequests;
 use App\Http\Middleware\RequireIdempotencyKey;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -39,6 +41,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'shop.key' => EnsureShopKey::class,
             'log.requests' => LogRequests::class,
             'player.token' => AuthenticatePlayer::class,
+            'jet.v1' => JetV1Response::class,
+            'jet.player' => AuthenticateJetPlayer::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

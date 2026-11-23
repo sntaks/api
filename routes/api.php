@@ -43,6 +43,8 @@ use App\Http\Controllers\api\v1\GameTransactionController;
 use App\Http\Controllers\api\v1\GameWalletController;
 use App\Http\Controllers\api\v1\GameWalletWithdrawController;
 use App\Http\Controllers\api\v1\HouseFundingController;
+use App\Http\Controllers\api\v1\JetController;
+use App\Http\Controllers\api\v1\JetPlayerController;
 use App\Http\Controllers\api\v1\LaunchTokenController;
 use App\Http\Controllers\api\v1\PlayerSessionController;
 use App\Http\Controllers\api\v1\PlaygroundController;
@@ -571,5 +573,33 @@ Route::prefix('/v1')->group(function () {
         // Kizuka C2B Endpoints
         Route::post('/km/c2b/confirm', ConfirmationController::class);
         Route::post('/km/c2b/validate', ValidationController::class);
+    });
+});
+
+/*
+ * Kadi Jet browser API (https://jet.kadi.online proxies /api/v1/jet here). No API key: the player's bearer is
+ * a game:jet player token from the launch code exchange. M1 error shape on every response.
+ */
+Route::prefix('/v1/jet')->middleware(['jet.v1'])->group(function () {
+    Route::middleware(['jet.player:optional', 'throttle:jet-reads'])->group(function () {
+        Route::get('/bootstrap', [JetController::class, 'bootstrap']);
+        Route::get('/snapshot', [JetController::class, 'snapshot']);
+    });
+
+    Route::middleware('throttle:jet-reads')->group(function () {
+        Route::get('/rounds', [JetController::class, 'rounds']);
+        Route::get('/rounds/{number}', [JetController::class, 'round']);
+        Route::get('/bets/live', [JetController::class, 'liveBets']);
+    });
+
+    Route::get('/presentation', [JetController::class, 'presentation'])->middleware('throttle:jet-presentation');
+    Route::post('/session', [JetPlayerController::class, 'session'])->middleware('throttle:jet-session');
+
+    Route::middleware('jet.player')->group(function () {
+        Route::get('/me', [JetPlayerController::class, 'me'])->middleware('throttle:jet-reads');
+        Route::get('/bets/history', [JetPlayerController::class, 'history'])->middleware('throttle:jet-reads');
+        Route::get('/operations/{key}', [JetPlayerController::class, 'operation'])->middleware('throttle:jet-reads');
+        Route::post('/bets', [JetPlayerController::class, 'place'])->middleware('throttle:jet-actions');
+        Route::post('/bets/{bet}/cashout', [JetPlayerController::class, 'cashout'])->middleware('throttle:jet-actions');
     });
 });
