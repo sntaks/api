@@ -115,9 +115,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Shop systems are limited per shop API key, so one busy shop never slows another.
-        // Kadi Jet browser routes (no API key): reads per IP, money per player token (a hash, never the token)
-        RateLimiter::for('jet-reads', fn (Request $request) => Limit::perMinute(120)->by('ip:'.$request->ip()));
-        RateLimiter::for('jet-presentation', fn (Request $request) => Limit::perMinute(600)->by('ip:'.$request->ip()));
+        // Kadi Jet browser routes (no API key): reads per IP, with ceilings sized for many players behind one
+        // CGNAT address (throttle runs before jet.player, so no validated player exists yet); money per player
+        // token (a hash, never the token)
+        RateLimiter::for('jet-reads', fn (Request $request) => Limit::perMinute((int) config('jet.rate_limits.reads_per_ip'))->by('ip:'.$request->ip()));
+        RateLimiter::for('jet-presentation', fn (Request $request) => Limit::perMinute((int) config('jet.rate_limits.presentation_per_ip'))->by('ip:'.$request->ip()));
         RateLimiter::for('jet-actions', fn (Request $request) => Limit::perMinute(30)->by('player:'.hash('sha256', (string) ($request->bearerToken() ?? $request->ip()))));
         RateLimiter::for('jet-session', fn (Request $request) => Limit::perMinute(10)->by('ip:'.$request->ip()));
 

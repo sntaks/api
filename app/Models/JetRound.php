@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Domain\Jet\PresentationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 /**
  * One Kadi Jet round. Everything about it, the crash point included, is fixed when it is created; the server
@@ -31,6 +33,14 @@ class JetRound extends Model
     protected $guarded = ['id'];
 
     protected $hidden = ['server_seed'];
+
+    /**
+     * Every round write drops the presentation cache once it commits, so pollers see transitions straight away.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn () => DB::afterCommit(PresentationService::forget(...)));
+    }
 
     protected function casts(): array
     {

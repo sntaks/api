@@ -385,6 +385,16 @@ function setUpJet(object $test): void
 }
 
 /**
+ * Authorization header with a live game:jet player token.
+ *
+ * @return array{Authorization: string}
+ */
+function jetBearer(Customer $player): array
+{
+    return ['Authorization' => 'Bearer '.app(PlayerTokenService::class)->issue($player, Game::where('code', 'jet')->sole())->plainTextToken];
+}
+
+/**
  * A new Jet round in its betting window, with a crash point the test chooses.
  */
 function jetBettingRound(string $crashMultiplier = '2.00'): JetRound
