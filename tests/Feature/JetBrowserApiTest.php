@@ -38,11 +38,6 @@ function jetCodeFrom(TestResponse $launch): string
     return $match[1];
 }
 
-function jetBearer(Customer $player): array
-{
-    return ['Authorization' => 'Bearer '.app(PlayerTokenService::class)->issue($player, Game::where('code', 'jet')->sole())->plainTextToken];
-}
-
 it('launches with a one-time code and never puts the player token in the page', function () {
     $launch = jetLaunch($this, jetLaunchToken($this->player))->assertOk()->assertHeader('Cache-Control', 'no-store, private');
     $code = jetCodeFrom($launch);

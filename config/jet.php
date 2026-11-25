@@ -16,10 +16,10 @@ return [
 
     'max_multiplier' => (float) env('JET_MAX_MULTIPLIER', 5000),
 
-    'betting_window_seconds' => (int) env('JET_BETTING_WINDOW_SECONDS', 25),
+    'betting_window_seconds' => (int) env('JET_BETTING_WINDOW_SECONDS', 10),
 
     // How long a finished round stays on screen before the next betting window opens.
-    'post_round_pause_seconds' => (int) env('JET_POST_ROUND_PAUSE_SECONDS', 15),
+    'post_round_pause_seconds' => (int) env('JET_POST_ROUND_PAUSE_SECONDS', 4),
 
     // M(t) = e^(k·t)
     'acceleration_k' => (float) env('JET_ACCELERATION_K', 0.25),
@@ -39,6 +39,16 @@ return [
 
     // The Apache proxy in front of jet.kadi.online: its X-Forwarded-* headers are trusted, no one else's
     'trusted_proxies' => array_values(array_filter(array_map('trim', explode(',', (string) env('JET_TRUSTED_PROXIES', ''))))),
+
+    // GET /presentation serves the latest round's row from the cache for at most this long (round saves drop it)
+    'presentation_cache_ms' => (int) env('JET_PRESENTATION_CACHE_MS', 250),
+
+    // Per-minute request limits. Many players share one IP behind mobile CGNAT and café Wi-Fi, so the per-IP
+    // ceilings are sized for about 50 players on one address (presentation: 50 × 240/min + headroom).
+    'rate_limits' => [
+        'presentation_per_ip' => (int) env('JET_PRESENTATION_LIMIT_PER_IP', 15000),
+        'reads_per_ip' => (int) env('JET_READS_LIMIT_PER_IP', 1200),
+    ],
 
     // Operation results are kept this long; the key's identity is kept for good.
     'operation_ttl_days' => 7,
